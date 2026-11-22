@@ -38,6 +38,7 @@ func Spawn(exe string, args []string, config Config) (int, error) {
 		return 0, err
 	}
 	command := exec.Command(exe, append(append([]string(nil), args...), config.Args()...)...)
+	command.Dir = "/"
 	command.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	command.Stdout = file
 	command.Stderr = file

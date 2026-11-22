@@ -14,3 +14,18 @@
   (local tcp "localhost:32201")
   (local tcp "*:10100")
   (subpath "/tmp/instance \"quoted\"\\path"))
+
+(deny file-write*)
+(deny file-read-data file-write-data (literal "/dev/dtracehelper") (with no-log))
+(deny process-exec*)
+(deny appleevent-send job-creation)
+(deny mach-lookup
+  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard)([.]|$)"))
+(define entrypoint (param "BOX_PROBE"))
+(allow process-exec (require-all (process-attribute is-platform-binary) (literal entrypoint)))
+(allow file-write* (subpath "/tmp/instance \"quoted\"\\path"))
+(deny file-read* (subpath "/Users/fixture"))
+(allow file-read* (subpath "/state/lima") (literal "/opt/tools/limactl"))
+(allow file-write* (literal "/dev/null"))
+(allow file-write* (literal "/state/lima/_config/networks.yaml"))
+(allow process-exec (literal "/opt/tools/limactl") (literal "/usr/bin/ssh") (literal "/usr/bin/sw_vers") (literal "/usr/sbin/ioreg") (literal "/usr/sbin/system_profiler") (literal "/bin/sh") (literal "/bin/bash"))

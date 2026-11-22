@@ -65,12 +65,14 @@ func newService() (*app.Service, error) {
 	runner := execx.OS{}
 	ssh := sshx.Client{Runner: runner}
 	store := &state.Store{Root: root}
+	limaHome := filepath.Join(root, "lima")
+	const limactl = "limactl"
 	return &app.Service{
-		Driver:        lima.New(lima.Options{Home: filepath.Join(root, "lima"), Runner: runner}),
+		Driver:        lima.New(lima.Options{Home: limaHome, Limactl: limactl, Runner: runner}),
 		Profiles:      profiles,
 		Store:         store,
 		GuestSSH:      ssh,
-		Isolation:     &isolation.Host{Store: store, Executable: exe},
+		Isolation:     &isolation.Host{Store: store, Executable: exe, LimaHome: limaHome, Limactl: limactl},
 		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
 		LocalHostName: ssh.LocalHostName,
 		Progress:      os.Stderr,

@@ -19,7 +19,7 @@ func TestSeatbeltCompiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	wrap, err := Prepare(Rules{
-		RuntimeDir: instance,
+		RuntimeDir: instance, Home: root, LimaHome: root, Executable: "/usr/bin/true",
 		ConnectTCP: []int{32201},
 		ConnectUDP: []int{23101},
 		BindTCP:    []Bind{{Port: 32201}, {Port: 10100, LAN: true}},
@@ -41,14 +41,14 @@ func TestSeatbeltConnections(t *testing.T) {
 	}
 	allowed, denied := listen(), listen()
 	dir := t.TempDir()
-	wrap, err := Prepare(Rules{
-		RuntimeDir: dir,
-		ConnectTCP: []int{allowed.Addr().(*net.TCPAddr).Port},
-	}, dir)
+	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	exe, err := os.Executable()
+	wrap, err := Prepare(Rules{
+		RuntimeDir: dir, Home: dir, LimaHome: dir, Executable: exe,
+		ConnectTCP: []int{allowed.Addr().(*net.TCPAddr).Port},
+	}, dir)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,6 +60,7 @@ func sandbox(t *testing.T, wrap []string, args ...string) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	command := exec.CommandContext(ctx, wrap[0], append(wrap[1:], args...)...)
+	command.Dir = "/"
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("sandbox-exec: %v\n%s", err, output)
 	}
@@ -82,5 +83,32 @@ func TestSeatbeltDialProbe(t *testing.T) {
 		if !errors.Is(err, syscall.EPERM) && !errors.Is(err, syscall.EACCES) {
 			t.Errorf("dial %s: expected sandbox denial, got %v", address, err)
 		}
+	}
+}
+
+func TestSeatbeltDaemonCannotReexec(t *testing.T) {
+	dir := t.TempDir()
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrap, err := Prepare(Rules{
+		Daemon: true, RuntimeDir: dir, Executable: exe,
+		BindTCP: []Bind{{Port: 23001}},
+	}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sandbox(t, wrap, exe, "-test.run=^TestSeatbeltDaemonReexecProbe$", "--", exe)
+}
+
+func TestSeatbeltDaemonReexecProbe(t *testing.T) {
+	if len(os.Args) != 4 || os.Args[2] != "--" {
+		return
+	}
+	exe := os.Args[3]
+	err := syscall.Exec(exe, []string{exe, "-unexpected-flag"}, os.Environ())
+	if !errors.Is(err, syscall.EPERM) {
+		t.Fatalf("re-exec: expected sandbox denial, got %v", err)
 	}
 }

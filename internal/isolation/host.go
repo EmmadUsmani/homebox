@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 
@@ -30,6 +31,8 @@ type Host struct {
 	Store *state.Store
 	// Executable is the box binary to run the daemon from (os.Executable()).
 	Executable string
+	LimaHome   string
+	Limactl    string
 }
 
 var _ app.Isolation = (*Host)(nil)
@@ -48,20 +51,42 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 		return app.Session{}, err
 	}
 
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return app.Session{}, err
+	}
+	limactl, err := exec.LookPath(h.Limactl)
+	if err != nil {
+		return app.Session{}, err
+	}
+	hostRules := rules(box, instance)
+	hostRules.Home = home
+	hostRules.LimaHome = h.LimaHome
+	hostRules.Executable = limactl
+	wrap, err := confine.Prepare(hostRules, h.Store.BoxDir(box.Name))
+	if err != nil {
+		return app.Session{}, err
+	}
+
 	daemon := h.daemonConfig(box, host.LAN)
-	// A daemon left over from a VM that stopped on its own may hold stale
-	// settings (e.g. the LAN flag), so always start a fresh one.
+	daemonWrap, err := confine.Prepare(confine.Rules{
+		Daemon: true, RuntimeDir: dir, Executable: h.Executable,
+		BindTCP: []confine.Bind{{Port: daemon.ProxyPort}, {Port: daemon.DNSPort}, {
+			Port: daemon.SSHPublish.Port, LAN: host.LAN,
+		}},
+		BindUDP: []confine.Bind{{Port: daemon.DNSPort}},
+	}, h.Store.BoxDir(box.Name))
+	if err != nil {
+		return app.Session{}, err
+	}
+	// Replace any daemon left over from a VM that stopped on its own.
 	if err := vmnet.Stop(daemon.PIDFile); err != nil {
 		return app.Session{}, fmt.Errorf("stop old network daemon: %w", err)
 	}
-	if _, err := vmnet.Spawn(h.Executable, []string{DaemonCommand}, daemon); err != nil {
+	if _, err := vmnet.Spawn(daemonWrap[0], append(daemonWrap[1:], h.Executable, DaemonCommand), daemon); err != nil {
 		return app.Session{}, fmt.Errorf("start network daemon (log: %s): %w", daemon.LogFile, err)
 	}
 
-	wrap, err := confine.Prepare(rules(box, instance), dir)
-	if err != nil {
-		return app.Session{}, errors.Join(err, vmnet.Stop(daemon.PIDFile))
-	}
 	return app.Session{
 		Start:    vm.StartOptions{Wrap: wrap},
 		ProxyURL: "http://" + net.JoinHostPort(instance.HostAddress, strconv.Itoa(daemon.ProxyPort)),

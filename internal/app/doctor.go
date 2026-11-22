@@ -70,6 +70,11 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	}
 	targets, checks, closeCanaries := s.DoctorHost.Probe(ctx, instance.HostAddress, box.SSHPort, host.LAN)
 	defer closeCanaries()
+	if sandbox, ok := s.DoctorHost.(interface {
+		ProbeSandbox(context.Context, string) []doctor.Check
+	}); ok {
+		checks = append(checks, sandbox.ProbeSandbox(ctx, s.Store.BoxDir(box.Name))...)
+	}
 	checks = append(checks, doctor.Check{
 		Name: "network-daemon", OK: s.Isolation.Running(box.Name),
 		Detail: "network daemon is not running",
