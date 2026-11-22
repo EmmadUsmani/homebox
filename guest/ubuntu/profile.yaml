@@ -1,0 +1,20 @@
+name: ubuntu
+description: Ubuntu 26.04 LTS development VM
+# Pinned server images from Lima's templates/_images/ubuntu-26.04.yaml.
+images:
+  - arch: aarch64
+    url: https://cloud-images.ubuntu.com/releases/resolute/release-20261016/ubuntu-26.04-server-cloudimg-arm64.img
+    digest: sha256:8eb876c2ccc4b6ff89e4a65d511815923b285e04503ba465809bf587f763da24
+  - arch: x86_64
+    url: https://cloud-images.ubuntu.com/releases/resolute/release-20261016/ubuntu-26.04-server-cloudimg-amd64.img
+    digest: sha256:5645d0318ad21f643ebb1ac4567514620e9893380b07b0201fda163baa5b7eb5
+steps:
+  - {name: Proxy, script: ubuntu/proxy.sh, root: true}
+  - {name: Base packages, script: ubuntu/base.sh, root: true}
+  - {name: Docker Engine, script: ubuntu/docker.sh, root: true}
+  - {name: mise and languages, script: common/mise.sh, root: false}
+  - {name: Coding agents, script: common/agents.sh, root: false}
+  - {name: Playwright dependencies, script: ubuntu/playwright-deps.sh, root: true}
+  - {name: Playwright Chromium, script: common/playwright.sh, root: false}
+  - {name: Tailscale, script: ubuntu/tailscale.sh, root: true}
+  - {name: Self-test, script: common/selftest.sh, root: false}
