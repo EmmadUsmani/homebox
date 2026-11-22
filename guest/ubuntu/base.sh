@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update
+# Development and diagnostic tools drawn from the exeuntu package list.
+apt-get install -y --no-install-recommends \
+    build-essential pkg-config ca-certificates curl wget git jq sqlite3 \
+    ripgrep fd-find tmux unzip zip xz-utils zstd file less tree vim neovim \
+    python3 python3-pip python3-venv pipx locales tzdata \
+    openssh-server openssh-client sudo lsof iproute2 iputils-ping \
+    netcat-openbsd socat rsync psmisc btop ncdu man-db manpages-dev \
+    bubblewrap dbus-user-session imagemagick ffmpeg
+
+locale-gen en_US.UTF-8
+update-locale LANG=en_US.UTF-8
+timedatectl set-timezone Etc/UTC
+systemctl enable --now ssh.service
