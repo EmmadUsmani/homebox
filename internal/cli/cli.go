@@ -1,0 +1,195 @@
+// Package cli adapts Cobra commands to the box application.
+package cli
+
+import (
+	"bufio"
+	"context"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"text/tabwriter"
+
+	"github.com/EmmadUsmani/homebox/internal/app"
+	"github.com/EmmadUsmani/homebox/internal/vm"
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+)
+
+// Application contains the operations exposed by the CLI.
+type Application interface {
+	New(context.Context, app.NewOptions) error
+	Provision(context.Context, string) error
+	Start(context.Context, string) error
+	Stop(context.Context, string) error
+	Remove(context.Context, string) error
+	List(context.Context) ([]app.Listing, error)
+	SSH(context.Context, string, []string) error
+	Ports(context.Context, string, app.PortOptions) ([]vm.PortForward, error)
+	SSHConfig(context.Context, string) (string, error)
+	HostInit(context.Context, app.HostInitOptions) error
+	Doctor(context.Context, string) error
+}
+
+var _ Application = (*app.Service)(nil)
+
+// Execute runs box with the process arguments and returns its exit code.
+func Execute(service Application, version string) int {
+	root := NewCommand(service, version)
+	if err := root.Execute(); err != nil {
+		fmt.Fprintln(root.ErrOrStderr(), err)
+		return 1
+	}
+	return 0
+}
+
+// NewCommand constructs box's command tree.
+func NewCommand(service Application, version string) *cobra.Command {
+	return newCommand(service, version, func(input io.Reader) bool {
+		file, ok := input.(*os.File)
+		return ok && term.IsTerminal(int(file.Fd()))
+	})
+}
+
+func newCommand(service Application, version string, isTerminal func(io.Reader) bool) *cobra.Command {
+	root := &cobra.Command{
+		Use: "box", Short: "Manage home development VMs",
+		SilenceUsage: true, SilenceErrors: true,
+	}
+	root.CompletionOptions.DisableDefaultCmd = true
+	root.AddCommand(
+		newBoxCommand(service),
+		hostCommand(service),
+		portsCommand(service),
+		removeCommand(service, isTerminal),
+		namedCommand("start NAME", "Start a VM", service.Start),
+		namedCommand("stop NAME", "Stop a VM", service.Stop),
+		namedCommand("provision NAME", "Run guest provisioning", service.Provision),
+		&cobra.Command{Use: "ls", Short: "List VMs", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+			boxes, err := service.List(cmd.Context())
+			if err != nil {
+				return err
+			}
+			return printListing(cmd.OutOrStdout(), boxes)
+		}},
+		&cobra.Command{Use: "ssh NAME [-- cmd...]", Short: "Open an SSH session", Args: cobra.MinimumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+			return service.SSH(cmd.Context(), args[0], args[1:])
+		}},
+		sshConfigCommand(service),
+		&cobra.Command{Use: "doctor [NAME]", Short: "Check VM isolation", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+			name := ""
+			if len(args) == 1 {
+				name = args[0]
+			}
+			return service.Doctor(cmd.Context(), name)
+		}},
+		&cobra.Command{Use: "version", Short: "Print the box version", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+			_, err := fmt.Fprintln(cmd.OutOrStdout(), version)
+			return err
+		}},
+	)
+	return root
+}
+
+func namedCommand(use, summary string, run func(context.Context, string) error) *cobra.Command {
+	return &cobra.Command{Use: use, Short: summary, Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		return run(cmd.Context(), args[0])
+	}}
+}
+
+func newBoxCommand(service Application) *cobra.Command {
+	var options app.NewOptions
+	cmd := namedCommand("new NAME", "Create and provision a VM", func(ctx context.Context, name string) error {
+		options.Name = name
+		return service.New(ctx, options)
+	})
+	cmd.Flags().StringVar(&options.Profile, "profile", "", "Guest profile (default ubuntu)")
+	cmd.Flags().IntVar(&options.CPUs, "cpus", 0, "Number of CPUs (default 4)")
+	cmd.Flags().IntVar(&options.MemoryGiB, "memory", 0, "Memory in GiB (default 8)")
+	cmd.Flags().IntVar(&options.DiskGiB, "disk", 0, "Disk size in GiB (default 50)")
+	return cmd
+}
+
+func hostCommand(service Application) *cobra.Command {
+	var options app.HostInitOptions
+	var lan, noLAN bool
+	cmd := &cobra.Command{Use: "init", Short: "Check the VM driver and configure the host", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		if cmd.Flags().Changed("lan") {
+			options.LAN = &lan
+		}
+		if cmd.Flags().Changed("no-lan") {
+			bindLAN := !noLAN
+			options.LAN = &bindLAN
+		}
+		return service.HostInit(cmd.Context(), options)
+	}}
+	cmd.Flags().BoolVar(&lan, "lan", false, "Publish ports on the LAN")
+	cmd.Flags().BoolVar(&noLAN, "no-lan", false, "Publish ports on loopback only")
+	cmd.MarkFlagsMutuallyExclusive("lan", "no-lan")
+	cmd.Flags().StringArrayVar(&options.AuthorizedKeyFiles, "authorized-key", nil, "Public key file for guest SSH (repeatable)")
+	host := &cobra.Command{Use: "host", Short: "Configure the VM host"}
+	host.AddCommand(cmd)
+	return host
+}
+
+func removeCommand(service Application, isTerminal func(io.Reader) bool) *cobra.Command {
+	var force bool
+	cmd := &cobra.Command{Use: "rm NAME", Short: "Delete a VM and its disks", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		name := args[0]
+		if !force {
+			input := cmd.InOrStdin()
+			if !isTerminal(input) {
+				return errors.New("removing a VM without a terminal requires --force")
+			}
+			fmt.Fprintf(cmd.ErrOrStderr(), "Delete %s and its disks? [y/N] ", name)
+			answer, err := bufio.NewReader(input).ReadString('\n')
+			if err != nil && !errors.Is(err, io.EOF) {
+				return err
+			}
+			switch strings.ToLower(strings.TrimSpace(answer)) {
+			case "y", "yes":
+			default:
+				fmt.Fprintln(cmd.ErrOrStderr(), "Removal cancelled.")
+				return nil
+			}
+		}
+		return service.Remove(cmd.Context(), name)
+	}}
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Skip confirmation")
+	return cmd
+}
+
+func sshConfigCommand(service Application) *cobra.Command {
+	var host string
+	cmd := &cobra.Command{Use: "ssh-config", Short: "Print laptop SSH aliases", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		output, err := service.SSHConfig(cmd.Context(), host)
+		if err != nil {
+			return err
+		}
+		_, err = io.WriteString(cmd.OutOrStdout(), output)
+		return err
+	}}
+	cmd.Flags().StringVar(&host, "host", "", "Host address (default local mDNS name)")
+	return cmd
+}
+
+func portsCommand(service Application) *cobra.Command {
+	var options app.PortOptions
+	cmd := &cobra.Command{Use: "ports NAME", Short: "Show or change published ports", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
+		forwards, err := service.Ports(cmd.Context(), args[0], options)
+		if err != nil {
+			return err
+		}
+		table := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+		fmt.Fprintln(table, "GUEST\tHOST\tBIND")
+		for _, forward := range forwards {
+			fmt.Fprintf(table, "%d\t%d\t%s\n", forward.GuestPort, forward.HostPort, forward.HostIP)
+		}
+		return table.Flush()
+	}}
+	cmd.Flags().StringSliceVar(&options.Set, "set", nil, "Replace all forwards with GUEST:HOST mappings (repeatable)")
+	cmd.Flags().StringSliceVar(&options.Add, "add", nil, "Add GUEST:HOST mappings (repeatable)")
+	cmd.Flags().StringSliceVar(&options.Remove, "rm", nil, "Remove forwards by guest port (repeatable)")
+	return cmd
+}
