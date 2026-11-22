@@ -76,7 +76,10 @@ fi
 mount=
 while read -r _source destination type _rest; do
     case "$type" in
-        virtiofs|9p|sshfs|fuse.sshfs) mount=$destination; break ;;
+        virtiofs|9p|sshfs|fuse.sshfs)
+            mount=$destination
+            break
+            ;;
     esac
 done < /proc/mounts
 if [ -n "$mount" ]; then
