@@ -34,8 +34,14 @@ func TestBoxLifecycle(t *testing.T) {
 		}
 		index = parsed
 	}
-	// Keep the state path short enough for the driver's Unix sockets.
-	dir, err := os.MkdirTemp("/tmp", "hb-e2e-")
+	// State lives in the home directory, like the default ~/.homebox, because
+	// the host sandboxes treat it differently from /tmp. The path stays short
+	// enough for the driver's Unix sockets.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir, err := os.MkdirTemp(home, ".hb-e2e-")
 	if err != nil {
 		t.Fatal(err)
 	}
