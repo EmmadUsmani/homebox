@@ -30,26 +30,6 @@ else
 fi
 install -m 0644 "$temporary" /etc/environment
 
-: > "$temporary"
-if [ -n "$proxy" ]; then
-    # systemd interprets percent escapes in Environment= values.
-    escaped_proxy=$(printf '%s' "$proxy" | sed 's/%/%%/g')
-    escaped_bypass=$(printf '%s' "$bypass" | sed 's/%/%%/g')
-    printf '[Service]\nEnvironment="HTTP_PROXY=%s" "HTTPS_PROXY=%s" "NO_PROXY=%s"\n' \
-        "$escaped_proxy" "$escaped_proxy" "$escaped_bypass" > "$temporary"
-fi
-if [ -n "$proxy" ] && ! cmp -s "$temporary" "$docker_dropin"; then
-    install -D -m 0644 "$temporary" "$docker_dropin"
-    docker_changed=1
-elif [ -z "$proxy" ] && [ -f "$docker_dropin" ]; then
-    rm -f "$docker_dropin"
-    docker_changed=1
-fi
-if [ "${docker_changed:-0}" = 1 ]; then
-    systemctl daemon-reload
-    systemctl try-restart docker.service
-fi
-
 # Merge the managed Docker client keys without replacing unrelated settings.
 sudo -H -u "$admin" python3 - "$proxy" "$bypass" <<'PY'
 import json
@@ -83,3 +63,27 @@ if config:
 else:
     path.unlink(missing_ok=True)
 PY
+
+: > "$temporary"
+if [ -n "$proxy" ]; then
+    # systemd interprets percent escapes in Environment= values.
+    escaped_proxy=$(printf '%s' "$proxy" | sed 's/%/%%/g')
+    escaped_bypass=$(printf '%s' "$bypass" | sed 's/%/%%/g')
+    printf '[Service]\nEnvironment="HTTP_PROXY=%s" "HTTPS_PROXY=%s" "NO_PROXY=%s"\n' \
+        "$escaped_proxy" "$escaped_proxy" "$escaped_bypass" > "$temporary"
+fi
+if [ -n "$proxy" ] && ! cmp -s "$temporary" "$docker_dropin"; then
+    install -D -m 0644 "$temporary" "$docker_dropin"
+    docker_changed=1
+elif [ -z "$proxy" ] && [ -f "$docker_dropin" ]; then
+    rm -f "$docker_dropin"
+    docker_changed=1
+fi
+if [ "${docker_changed:-0}" = 1 ]; then
+    systemctl daemon-reload
+    if systemctl is-active --quiet docker.service; then
+        # Explicit proxy changes can restart Docker several times in a row.
+        systemctl reset-failed docker.service
+        systemctl restart docker.service
+    fi
+fi
