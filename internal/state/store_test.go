@@ -137,3 +137,18 @@ func TestIndexExhaustion(t *testing.T) {
 		t.Fatal("expected exhausted indices")
 	}
 }
+
+func TestNextIndexAtTestFloor(t *testing.T) {
+	store := &Store{Root: t.TempDir()}
+	t.Setenv("HOMEBOX_FIRST_INDEX", "20")
+	if err := store.Save(Box{Name: "one", Index: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if index, err := store.NextIndex(); err != nil || index != 21 {
+		t.Fatalf("index = %d, %v, want 21", index, err)
+	}
+	t.Setenv("HOMEBOX_FIRST_INDEX", "100")
+	if _, err := store.NextIndex(); err == nil {
+		t.Fatal("accepted an out-of-range index floor")
+	}
+}

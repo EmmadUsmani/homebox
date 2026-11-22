@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/EmmadUsmani/homebox/internal/vm"
@@ -129,7 +130,16 @@ func (s *Store) List() ([]Box, error) {
 }
 
 // NextIndex returns the lowest unused index. Hold WithLock through the subsequent Save.
+// HOMEBOX_FIRST_INDEX lets tests reserve a different port range beside real VMs.
 func (s *Store) NextIndex() (int, error) {
+	first := 1
+	if value := os.Getenv("HOMEBOX_FIRST_INDEX"); value != "" {
+		var err error
+		first, err = strconv.Atoi(value)
+		if err != nil || first < 1 || first > 99 {
+			return 0, errors.New("HOMEBOX_FIRST_INDEX must be an integer from 1 to 99")
+		}
+	}
 	boxes, err := s.List()
 	if err != nil {
 		return 0, err
@@ -138,12 +148,12 @@ func (s *Store) NextIndex() (int, error) {
 	for _, box := range boxes {
 		used[box.Index] = true
 	}
-	for index := 1; index <= 99; index++ {
+	for index := first; index <= 99; index++ {
 		if !used[index] {
 			return index, nil
 		}
 	}
-	return 0, errors.New("all 99 box indices are in use")
+	return 0, fmt.Errorf("all box indices from %d through 99 are in use", first)
 }
 
 // LoadHost reads host settings, defaulting to loopback and no extra keys.
