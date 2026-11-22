@@ -27,10 +27,9 @@ func TestRulesAllowOnlyTheVMsOwnPorts(t *testing.T) {
 }
 
 func TestDaemonConfigPublishesSSHOnTheLANOnlyWhenAsked(t *testing.T) {
-	host := &Host{Store: &state.Store{Root: "/state"}}
 	box := state.Box{Name: "main", Index: 1, SSHPort: 2201}
 	for _, lan := range []bool{false, true} {
-		config := host.daemonConfig(box, lan)
+		config := daemonConfig(box, "/state/boxes/main/run", lan)
 		wantIP := map[bool]string{false: "127.0.0.1", true: "0.0.0.0"}[lan]
 		if config.SSHPublish.IP != wantIP {
 			t.Errorf("lan=%v: SSH listen IP = %q, want %q", lan, config.SSHPublish.IP, wantIP)

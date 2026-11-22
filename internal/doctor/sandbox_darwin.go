@@ -64,6 +64,7 @@ func sandboxDenial(ctx context.Context, profile, operation, executable, target s
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "/usr/bin/sandbox-exec", "-f", profile, "-D", "BOX_PROBE="+executable, executable, target)
 	cmd.Dir = "/"
+	cmd.Env = append(os.Environ(), "LC_ALL=C")
 	cmd.Stdin = strings.NewReader("homebox canary\n")
 	_, err := cmd.Output()
 	var exitErr *exec.ExitError
