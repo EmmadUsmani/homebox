@@ -16,8 +16,9 @@ every requirement, including GPU passthrough. But Proxmox *is* the operating
 system: it can never run on a Mac, or alongside Windows.
 
 For a Mac or Windows machine as the host, the only options are desktop VM apps
-set up by hand for each VM, or closed-source agent sandboxes that aren't
-long-lived boxes you SSH into from another machine. That gap is why homebox
+set up by hand for each VM, or agent sandboxes (Docker Sandboxes, localbox)
+that agents drive through their own tools rather than long-lived boxes you SSH
+into from another machine. That gap is why homebox
 exists.
 
 ## Comparison
@@ -28,6 +29,7 @@ exists.
 | **Desktop VM apps, set up by hand** (Hyper-V, UTM, VMware) | ✅ UTM or VMware Fusion | ✅ Hyper-V or VMware Workstation | ✅ with bridged networking | ✅ | ⚠️ manual, or not possible | ❌ | ✅ free (UTM is open source) |
 | **OrbStack isolated machines** | ✅ only | ❌ | ⚠️ unverified | ⚠️ machines share one Linux kernel | ⚠️ can block the host; home network unclear | ❌ | ❌ closed source, free for personal use |
 | **Docker Sandboxes** | ✅ | ✅ | ❌ SSH is for editors on the same machine | ✅ microVM per sandbox | ✅ network rule presets | ⚠️ docs mention it; unverified | ❌ closed source, needs a Docker sign-in |
+| **localbox** | ✅ only (Apple Silicon) | ❌ | ❌ agents use its CLI or MCP; no SSH for you, no port forwarding | ✅ full VMs | ❌ doesn't block the Mac's own services | ❌ | ⚠️ free, but no license, and remote use runs through its hosted relay |
 | **Coder** (self-hosted) | ⚠️ workspaces are Docker containers | ⚠️ same | ✅ through its own CLI | Depends on the template | Depends on the template | Depends on the template | ✅ open source |
 | **boxd** (self-hosted) | ❌ | ❌ | ✅ | ✅ microVMs | Not documented | ❌ | ⚠️ free up to 16 vCPUs, telemetry on, vendor-signed releases |
 | **svkexe** (exe.dev clone) | ❌ | ❌ | ✅ SSH gateway | ⚠️ containers, not VMs | Not documented | ❌ | ✅ open source, but 13 stars and one maintainer |
@@ -183,6 +185,59 @@ servers is paid.
 **Fit:** the best ready-made agent sandbox on all three operating systems, but
 not an exe.dev-style box, and not open source.
 
+### localbox
+
+**What it is.** A Mac app that turns each of your Macs into sandboxes for coding
+agents ([github.com/dzhng/localbox](https://github.com/dzhng/localbox)). Each
+sandbox is a full Linux or macOS VM on Apple's Virtualization framework, with a
+shell, files, a desktop and Chrome. Your agent creates and drives sandboxes
+with the `localbox` CLI (`sandbox create`, `fs read`, `browser click`,
+`desktop screenshot`, ...) or the same operations over MCP. The host side is
+Swift; the CLI, relay and guest agent are TypeScript. It started in October
+2026, has one maintainer, and had 2 stars on 2026-11-22, with daily commits.
+Its Linux image uses exe.dev's own VM package set, ported to Arm64, plus an
+XFCE desktop and Chrome.
+
+**What it does well:**
+
+- **Images.** Save a running sandbox as an image (it pauses for about a second),
+  make one the default, and start new sandboxes from it. A sandbox made from an
+  image regenerates its machine ID and SSH host keys on first boot. Images copy
+  directly between your Macs, peer to peer.
+- **Sleep and resume.** A sandbox idle for 30 minutes goes to sleep, and the next
+  request wakes it with every process where it was, dev servers included.
+  Sandboxes can instead delete themselves after an idle timeout.
+- **macOS guests.** It builds a macOS VM from Apple's restore image with nothing
+  to click through (SIP is turned off inside the guest so its agent can grant
+  itself screen and input permissions). Xcode is installed once with your Apple
+  ID and saved as an image. Needs macOS 27 on the host; Apple's licence allows
+  two macOS VMs running per Mac.
+- **Several Macs as one pool**, with placement on whichever has room.
+- **Built-in desktop and browser operations** for agents: screenshot, click,
+  type and scroll on a 1440×900 display.
+
+**What it doesn't do:**
+
+- **No SSH for you.** It's built for agents, and its pitch is "not SSH". You
+  reach a sandbox through its CLI or MCP, and there's no port forwarding, so a
+  dev server in a sandbox isn't reachable from your laptop's browser.
+- **No blocking of the host or home network.** Sandboxes share Apple's NAT
+  network, and its security doc says it doesn't firewall them from each other or
+  from services the Mac listens on. Its own Xcode guide has the sandbox download
+  a file from a server on the Mac.
+- **A hosted relay.** Remote agents and other Macs reach your sandboxes through
+  localbox's own service (Vercel and Convex), with an emailed sign-in code.
+  Requests and results sit there as plain JSON that the operator can read. Use
+  on the same Mac doesn't go through the relay, but creating a sandbox needs the
+  sign-in.
+- **Mac only**, one Ubuntu image, no GPU.
+- **No license file**, so by default nobody else has the right to reuse the
+  code.
+
+**Fit:** a different product: sandboxes for agents, not a box you SSH into. Its
+images, sleep and resume, and macOS guests are ideas homebox adopts (see
+[plan.md](plan.md)), built on Lima rather than its code.
+
 ### Coder
 
 **What it is.** An open-source (AGPL) platform for remote development
@@ -272,6 +327,9 @@ Proxmox has the largest community and the best GPU passthrough record of these.
 - **Borrowable ideas:** Docker Sandboxes' and devvm's host-side credential
   proxy (homebox's planned credential proxy), Coder's SSH config integration,
   and Proxmox's cloud-init template and linked-clone workflow.
+- **Adopted from localbox** (owner, 2026-11-22): images, sleep and resume, and
+  macOS guests are now in [plan.md](plan.md). Images stay on the host that made
+  them; homebox won't run a relay to copy them between hosts.
 
 ## Sources
 
@@ -302,6 +360,11 @@ Proxmox has the largest community and the best GPU passthrough record of these.
   [docs](https://docs.docker.com/ai/sandboxes/),
   [cloud sandboxes announcement](https://www.docker.com/blog/introducing-cloud-sandboxes-start-on-your-laptop-finish-in-the-cloud/),
   [University of Cambridge guide](https://guidebook.devops.uis.cam.ac.uk/explanations/development/docker-sandboxes-for-agentic-ai/)
+- **localbox:**
+  [README](https://github.com/dzhng/localbox/blob/main/README.md),
+  [security model](https://github.com/dzhng/localbox/blob/main/SECURITY.md),
+  [development guide](https://github.com/dzhng/localbox/blob/main/DEVELOPMENT.md),
+  [images guide](https://github.com/dzhng/localbox/blob/main/skills/localbox/references/images.md)
 - **Dev environment platforms:**
   [Coder docs](https://coder.com/docs/@main),
   [Coder homelab post](https://coder.com/blog/run-coder-in-a-self-hosted-homelab),
