@@ -8,5 +8,5 @@ if [ ! -x "$HOME/.local/bin/claude" ]; then
     bash "$installer" stable
 fi
 if [ ! -x "$HOME/.local/bin/codex" ]; then
-    "$HOME/.local/bin/mise" exec -- npm install --global --prefix "$HOME/.local" @openai/codex
+    PATH="$HOME/.local/bin:$PATH" mise exec -- npm install --global --prefix "$HOME/.local" @openai/codex
 fi
