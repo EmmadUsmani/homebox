@@ -28,7 +28,7 @@ func Spawn(exe string, args []string, config Config) (int, error) {
 	if pid, ok := Running(config.PIDFile); ok {
 		return 0, fmt.Errorf("VM network daemon already running (PID %d)", pid)
 	}
-	file, err := openLog(config.LogFile)
+	file, err := os.OpenFile(config.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 	if err != nil {
 		return 0, err
 	}
@@ -54,12 +54,12 @@ func Spawn(exe string, args []string, config Config) (int, error) {
 	for {
 		select {
 		case err := <-exited:
-			return 0, startupError(config.LogFile, info.Size(), fmt.Sprintf("daemon exited before readiness (%v)", err))
+			return 0, startupError(config.LogFile, info, fmt.Sprintf("daemon exited before readiness (%v)", err))
 		case <-timeout.C:
 			command.Process.Kill()
 			<-exited
 			Running(config.PIDFile)
-			return 0, startupError(config.LogFile, info.Size(), "daemon startup timed out")
+			return 0, startupError(config.LogFile, info, "daemon startup timed out")
 		case <-ticker.C:
 			if ready, ok := Running(config.PIDFile); ok && ready == pid {
 				return pid, nil
@@ -68,9 +68,13 @@ func Spawn(exe string, args []string, config Config) (int, error) {
 	}
 }
 
-func startupError(path string, offset int64, message string) error {
+func startupError(path string, original os.FileInfo, message string) error {
 	if file, err := os.Open(path); err == nil {
 		defer file.Close()
+		var offset int64
+		if current, err := file.Stat(); err == nil && os.SameFile(original, current) {
+			offset = original.Size()
+		}
 		if _, err := file.Seek(offset, io.SeekStart); err == nil {
 			if data, err := io.ReadAll(io.LimitReader(file, 16<<10)); err == nil && len(data) != 0 {
 				return fmt.Errorf("%s: %s", message, strings.TrimSpace(string(data)))

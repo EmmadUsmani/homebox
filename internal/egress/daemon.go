@@ -40,7 +40,7 @@ func Run(ctx context.Context, config Config) error {
 
 	logger := slog.Default()
 	if config.LogFile != "" {
-		file, err := os.OpenFile(config.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		file, err := OpenDaemonLog(config.LogFile)
 		if err != nil {
 			return err
 		}
@@ -75,9 +75,11 @@ func Serve(ctx context.Context, listener *net.TCPListener, logger *slog.Logger) 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	proxy := NewProxy(ProxyOptions{Logger: logger})
-	proxy.denial = hostDenialReason
+	policy := hostPolicy{localNetworks: hostInterfaceNetworks}
+	proxy.denial = policy.denialReason
 	server := &http.Server{
-		Handler: proxy,
+		Handler:  proxy,
+		ErrorLog: slog.NewLogLogger(proxy.logger.Handler(), slog.LevelError),
 		// Only the header read is bounded; bodies and tunnels may be long.
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,
@@ -117,25 +119,6 @@ func watchLifeline(ctx context.Context, alive func() bool, cancel context.Cancel
 		case <-ticker.C:
 		}
 	}
-}
-
-func hostDenialReason(address netip.Addr) string {
-	if reason := DenialReason(address); reason != "" {
-		return reason
-	}
-	interfaces, err := net.InterfaceAddrs()
-	if err != nil {
-		return "cannot verify host interface addresses"
-	}
-	for _, entry := range interfaces {
-		if addr, ok := entry.(*net.IPNet); ok {
-			local, valid := netip.AddrFromSlice(addr.IP)
-			if valid && local.Unmap() == address {
-				return "target is assigned to a host interface"
-			}
-		}
-	}
-	return ""
 }
 
 // FreePort returns an available IPv4 loopback port without reserving it.

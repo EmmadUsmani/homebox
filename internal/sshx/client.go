@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"regexp"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -36,22 +37,25 @@ func (c Client) binary() string {
 }
 
 func endpointArgs(ep vm.Endpoint) ([]string, error) {
-	// Lima's own loopback endpoint uses its driver-managed identity. Keep
-	// relaxed host-key checking confined to numeric loopback addresses.
 	ip := net.ParseIP(ep.Host)
 	if ip == nil || !ip.IsLoopback() {
 		return nil, fmt.Errorf("expected a loopback SSH endpoint, got %q", ep.Host)
 	}
-	knownHosts := ep.KnownHosts
-	if knownHosts == "" {
-		knownHosts = os.DevNull
+	hostKeyOptions := []string{
+		"-o", "StrictHostKeyChecking=yes", "-o", "GlobalKnownHostsFile=none",
+		"-o", "UserKnownHostsFile=" + strconv.Quote(strings.ReplaceAll(ep.KnownHosts, "%", "%%")),
 	}
-	return []string{
-		"-F", "none", "-i", ep.IdentityFile, "-p", fmt.Sprint(ep.Port),
-		"-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=no",
-		"-o", "UserKnownHostsFile=" + knownHosts, "-o", "LogLevel=ERROR",
-		"-o", "BatchMode=yes", "-o", "ForwardAgent=no",
-	}, nil
+	if ep.KnownHosts == "" {
+		// Drivers without a known-hosts file retain loopback-only legacy behavior.
+		hostKeyOptions = []string{
+			"-o", "StrictHostKeyChecking=no", "-o", "UserKnownHostsFile=" + os.DevNull,
+		}
+	}
+	args := []string{
+		"-F", "none", "-i", ep.IdentityFile, "-p", fmt.Sprint(ep.Port), "-o", "IdentitiesOnly=yes",
+	}
+	args = append(args, hostKeyOptions...)
+	return append(args, "-o", "LogLevel=ERROR", "-o", "BatchMode=yes", "-o", "ForwardAgent=no"), nil
 }
 
 func quote(value string) string {

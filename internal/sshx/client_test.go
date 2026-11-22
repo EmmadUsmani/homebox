@@ -45,13 +45,17 @@ func TestRunScript(t *testing.T) {
 func TestRunAndInteractive(t *testing.T) {
 	fake := &execx.Fake{}
 	ep := endpoint
-	ep.KnownHosts = "test-known-hosts"
+	ep.KnownHosts = "test known-hosts"
 	client := Client{Runner: fake, SSH: os.Args[0]}
 	if _, err := client.Run(t.Context(), ep, "printf", "%s", "$(literal)"); err != nil {
 		t.Fatal(err)
 	}
 	args := fake.Calls[0].Args
-	if args[len(args)-1] != "'printf' '%s' '$(literal)'" || !slices.Contains(args, "UserKnownHostsFile=test-known-hosts") {
+	if args[len(args)-1] != "'printf' '%s' '$(literal)'" ||
+		!slices.Contains(args, `UserKnownHostsFile="test known-hosts"`) ||
+		!slices.Contains(args, "StrictHostKeyChecking=yes") ||
+		!slices.Contains(args, "GlobalKnownHostsFile=none") ||
+		slices.Contains(args, "StrictHostKeyChecking=no") {
 		t.Fatalf("argv = %v", args)
 	}
 	client.isTerminal = func() bool { return true }
