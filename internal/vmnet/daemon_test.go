@@ -134,6 +134,17 @@ func TestSpawnAndStop(t *testing.T) {
 
 func TestSpawnBindFailure(t *testing.T) {
 	config, _ := testConfig(t)
+	file, err := os.Create(config.LogFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Truncate(11 << 20); err != nil {
+		file.Close()
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
 	occupied, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: config.DNSPort})
 	if err != nil {
 		t.Fatal(err)

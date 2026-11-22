@@ -40,7 +40,7 @@ func Run(ctx context.Context, config Config) error {
 
 	logger := slog.Default()
 	if config.LogFile != "" {
-		file, err := os.OpenFile(config.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
+		file, err := OpenDaemonLog(config.LogFile)
 		if err != nil {
 			return err
 		}
@@ -78,7 +78,8 @@ func Serve(ctx context.Context, listener *net.TCPListener, logger *slog.Logger) 
 	policy := hostPolicy{localNetworks: hostInterfaceNetworks}
 	proxy.denial = policy.denialReason
 	server := &http.Server{
-		Handler: proxy,
+		Handler:  proxy,
+		ErrorLog: slog.NewLogLogger(proxy.logger.Handler(), slog.LevelError),
 		// Only the header read is bounded; bodies and tunnels may be long.
 		ReadHeaderTimeout: 10 * time.Second,
 		IdleTimeout:       60 * time.Second,

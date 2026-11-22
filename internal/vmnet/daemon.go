@@ -25,17 +25,6 @@ func run(ctx context.Context, config Config, upstreams []string) (err error) {
 	if err := config.validate(); err != nil {
 		return err
 	}
-	file, err := openLog(config.LogFile)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	logger := slog.New(slog.NewJSONHandler(file, nil)).With("vm", config.Name)
-	defer func() {
-		if err != nil {
-			logger.Error("VM network daemon failed", "error", err)
-		}
-	}()
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, os.Interrupt)
 	defer cancel()
 	pidFile, err := lockPIDFile(config.PIDFile)
@@ -45,6 +34,18 @@ func run(ctx context.Context, config Config, upstreams []string) (err error) {
 	defer func() {
 		removePIDFile(pidFile)
 		pidFile.Close()
+	}()
+
+	file, err := egress.OpenDaemonLog(config.LogFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	logger := slog.New(slog.NewJSONHandler(file, nil)).With("vm", config.Name)
+	defer func() {
+		if err != nil {
+			logger.Error("VM network daemon failed", "error", err)
+		}
 	}()
 
 	proxy, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: config.ProxyPort})
@@ -101,8 +102,4 @@ func run(ctx context.Context, config Config, upstreams []string) (err error) {
 	}
 	logger.Info("VM network daemon stopped")
 	return err
-}
-
-func openLog(path string) (*os.File, error) {
-	return os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0600)
 }

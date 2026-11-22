@@ -98,7 +98,7 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if entry.allowed {
 			result = "allow"
 		}
-		proxy.logger.Info("egress", "decision", result, "target", entry.target,
+		proxy.logger.Info("egress", "decision", result, "target", logTarget(entry.target),
 			"ip", entry.address.String(), "reason", entry.reason,
 			"bytes_sent", entry.sent, "bytes_received", entry.received)
 	}()
@@ -150,6 +150,14 @@ func (proxy *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	} else {
 		proxy.forward(w, r, pinned, &entry)
 	}
+}
+
+func logTarget(target string) string {
+	const limit = 256
+	if len(target) > limit {
+		return strconv.QuoteToASCII(target[:limit]) + "..."
+	}
+	return strconv.QuoteToASCII(target)
 }
 
 func destination(r *http.Request) (target, host, port string) {
