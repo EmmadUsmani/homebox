@@ -1,0 +1,1 @@
+{"name":"test-lima","hostname":"lima-test-lima","status":"Running","dir":"/fixture/lima/test-lima","vmType":"vz","arch":"aarch64","cpus":2,"memory":2147483648,"disk":10737418240,"sshLocalPort":62659,"sshAddress":"127.0.0.1","config":{"user":{"name":"box"}},"limaVersion":"2.3.0"}
