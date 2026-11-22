@@ -25,8 +25,9 @@ holds the requirements, the decisions already made and the phase order.
 The owner said to start building on 2026-11-21. Phases 0 and 1 (the Mac host)
 are built and pass `HOMEBOX_E2E=1 go test ./e2e/...` on an M2 Mac, including
 same-machine use, pinned laptop SSH, file-confined host processes and UDP/ICMP
-egress. The owner still has to confirm SSH from a second machine on the LAN and
-agent logins. [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
+egress. On 2026-11-22 a second Mac (an 8 GiB M2 Mac mini on macOS 27) hosted a
+VM that passed `box doctor`, and a laptop on the LAN reached it with pinned SSH
+and its published HTTP port. Agent logins in the VM are still unconfirmed. [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
 [docs/architecture.md](docs/architecture.md) holds the code layout, dependency
 rules and known limitations; follow it.
 

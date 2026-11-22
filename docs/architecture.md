@@ -27,6 +27,7 @@ internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    reads guest public host keys and renders OpenSSH config and pins
 internal/doctor    host-side controls and reporting for isolation checks
+internal/hostinfo  the host's CPU count and RAM, for sizing new VMs
 internal/execx     a small process-runner interface, so code that shells out
                    can be tested with a fake
 e2e/               opt-in CLI lifecycle tests against a real VM
