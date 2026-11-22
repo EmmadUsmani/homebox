@@ -24,7 +24,15 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 
 	const name = "e2e1"
-	const index = 20
+	// HOMEBOX_E2E_INDEX lets concurrent runs use separate host ports.
+	index := 20
+	if value := os.Getenv("HOMEBOX_E2E_INDEX"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil {
+			t.Fatalf("HOMEBOX_E2E_INDEX: %v", err)
+		}
+		index = parsed
+	}
 	// Keep the state path short enough for the driver's Unix sockets.
 	dir, err := os.MkdirTemp("/tmp", "hb-e2e-")
 	if err != nil {
