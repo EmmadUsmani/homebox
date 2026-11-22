@@ -58,13 +58,44 @@ overrides it):
 
 ## Ports
 
-Each VM gets a small index `n` (1–99) when created:
+Each VM gets a small index `n` (1–99) when created. All its host ports derive
+from `n`, so they stay the same across restarts and the guest's proxy and DNS
+settings can be written once, at provisioning:
 
-- SSH: host port `2200+n` → guest port 22.
-- HTTP: host ports `10000+100n … +99` → guest ports `8000 … 8099`.
+| Port | Bound on | Serves |
+|---|---|---|
+| `2200+n` | `127.0.0.1`, or `0.0.0.0` with LAN publishing | SSH, via box's relay to the driver's SSH port |
+| `10000+100n …` | same | HTTP: guest ports `8000 …`, one static driver forward each |
+| `32200+n` | `127.0.0.1` | the driver's own SSH forward (internal) |
+| `23000+n` | `127.0.0.1` | the VM's egress proxy (HTTP + CONNECT) |
+| `23100+n` | `127.0.0.1` | the VM's DNS forwarder (UDP + TCP) |
 
-Ports bind on `127.0.0.1` unless the host opted into LAN publishing
-(`box host init --lan`), then on `0.0.0.0`.
+LAN publishing is a host setting (`box host init --lan`).
+
+## Networking and isolation (macOS)
+
+From the [phase 0 spike](spikes/phase0-macos.md). Seatbelt can only tell
+"localhost" from "anywhere", so it can't express "internet but not the LAN".
+Instead the VM is confined to a few loopback ports, and box enforces the policy
+behind them:
+
+1. `box start` starts the VM's **host daemon** (`box _vmnet NAME`, outside any
+   sandbox). It serves the egress proxy, which allows public addresses only
+   (`internal/egress` policy), a DNS forwarder to a public resolver, and the
+   SSH relay.
+2. It renders a Seatbelt profile for the VM and starts the driver under
+   `sandbox-exec` (`vm.StartOptions.Wrap`). The VM's network process may only
+   connect to its proxy and DNS ports and its own SSH port on loopback, and
+   only bind its SSH and HTTP ports. Everything else fails at once.
+3. In the guest, provisioning points everything at `192.168.5.2` (the host's
+   loopback as the VM sees it): proxy env and apt/Docker proxy config, DNS,
+   and a transparent redirect (redsocks) so tools that ignore proxy settings
+   still get out. Root in the guest can undo the guest side, but that only
+   breaks its own access; the host side still holds.
+4. `box stop` stops the VM, then its host daemon.
+
+The VM layer is never trusted to enforce anything: the sandbox and the proxy
+are both on the host.
 
 ## Testing
 
