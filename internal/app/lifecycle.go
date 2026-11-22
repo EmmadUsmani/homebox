@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
@@ -20,13 +21,34 @@ func (s *Service) Start(ctx context.Context, name string) error {
 		if err != nil {
 			return err
 		}
-		return s.start(ctx, &box, instance)
+		if err := s.start(ctx, &box, instance); err != nil {
+			return err
+		}
+		// Keys added with `box host init` since the last start reach the VM now.
+		endpoint, err := s.Driver.SSH(ctx, name)
+		if err != nil {
+			return err
+		}
+		return s.authorizeHostKeys(ctx, name, endpoint)
 	})
+}
+
+// authorizeHostKeys puts the host's laptop keys into the guest; it is idempotent.
+func (s *Service) authorizeHostKeys(ctx context.Context, name string, endpoint vm.Endpoint) error {
+	host, err := s.Store.LoadHost()
+	if err != nil || len(host.AuthorizedKeys) == 0 {
+		return err
+	}
+	s.progress("Authorizing laptop keys for %s", name)
+	return s.GuestSSH.AuthorizeKeys(ctx, endpoint, host.AuthorizedKeys)
 }
 
 func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instance) error {
 	if instance.Status == vm.StatusRunning {
 		return nil
+	}
+	if err := s.applyLANSetting(ctx, box); err != nil {
+		return err
 	}
 	s.progress("Preparing isolation for %s", box.Name)
 	if s.Isolation == nil {
@@ -103,4 +125,32 @@ func (s *Service) releaseIsolation(ctx context.Context, name string) error {
 	}
 	s.progress("Releasing isolation for %s", name)
 	return s.Isolation.Down(context.WithoutCancel(ctx), name)
+}
+
+// applyLANSetting rebinds a stopped box's published ports when the host's LAN
+// setting changed since they were last set, so `box host init --lan` reaches
+// existing boxes at their next start. The SSH relay follows the setting on its
+// own; see internal/isolation.
+func (s *Service) applyLANSetting(ctx context.Context, box *state.Box) error {
+	host, err := s.Store.LoadHost()
+	if err != nil {
+		return err
+	}
+	want := state.HostIP(host.LAN)
+	forwards := slices.Clone(box.Forwards)
+	changed := false
+	for i := range forwards {
+		if forwards[i].HostIP != want {
+			forwards[i].HostIP, changed = want, true
+		}
+	}
+	if !changed {
+		return nil
+	}
+	s.progress("Publishing %s's ports on %s", box.Name, want)
+	if err := s.Driver.SetForwards(ctx, box.Name, forwards); err != nil {
+		return err
+	}
+	box.Forwards = forwards
+	return s.Store.Save(*box)
 }

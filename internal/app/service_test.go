@@ -185,8 +185,9 @@ func TestLifecycleFailureAndCleanup(t *testing.T) {
 	if err := service.Start(t.Context(), "main"); err != nil {
 		t.Fatal(err)
 	}
-	last := driver.Calls[len(driver.Calls)-1]
-	if last.Method != "Start" || !slices.Equal(last.Start.Wrap, []string{"test-wrapper"}) {
+	starts := slices.DeleteFunc(slices.Clone(driver.Calls), func(call vmtest.Call) bool { return call.Method != "Start" })
+	last := starts[len(starts)-1]
+	if !slices.Equal(last.Start.Wrap, []string{"test-wrapper"}) {
 		t.Fatalf("launch wrapper = %+v", last)
 	}
 	driver.Errors["Stop"] = errors.New("stop failed")
@@ -263,5 +264,31 @@ func TestPortsAndHostSettings(t *testing.T) {
 	recorded, err = service.Ports(t.Context(), "main", PortOptions{Remove: []string{"9000"}})
 	if err != nil || len(recorded) != 1 || recorded[0].GuestPort != 9001 || !slices.Equal(recorded, driver.Specs["main"].Forwards) {
 		t.Fatalf("removed forward = %v, %v", recorded, err)
+	}
+}
+
+func TestStartAppliesAChangedLANSetting(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Stop(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	lan := true
+	if err := service.HostInit(t.Context(), HostInitOptions{LAN: &lan}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Start(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	box, err := service.Store.Load("main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forwards := range [][]vm.PortForward{box.Forwards, driver.Specs["main"].Forwards} {
+		if len(forwards) == 0 || forwards[0].HostIP != "0.0.0.0" || forwards[len(forwards)-1].HostIP != "0.0.0.0" {
+			t.Fatalf("forwards not republished on the LAN: %v", forwards[:1])
+		}
 	}
 }

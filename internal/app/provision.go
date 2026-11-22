@@ -133,10 +133,6 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 				box.Name, err, box.Name, box.Name)
 		}
 	}()
-	host, err := s.Store.LoadHost()
-	if err != nil {
-		return err
-	}
 	instance, err := s.Driver.Get(ctx, box.Name)
 	if errors.Is(err, vm.ErrNotFound) {
 		s.progress("Creating %s", box.Name)
@@ -165,11 +161,8 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	if err != nil {
 		return err
 	}
-	if len(host.AuthorizedKeys) > 0 {
-		s.progress("Authorizing laptop keys for %s", box.Name)
-		if err := s.GuestSSH.AuthorizeKeys(ctx, endpoint, host.AuthorizedKeys); err != nil {
-			return err
-		}
+	if err := s.authorizeHostKeys(ctx, box.Name, endpoint); err != nil {
+		return err
 	}
 	env := map[string]string{
 		"HOMEBOX_PROXY_URL": box.ProxyURL, "HOMEBOX_NO_PROXY": box.NoProxy,
