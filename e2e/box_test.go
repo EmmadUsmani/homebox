@@ -349,9 +349,18 @@ asyncio.run(main())
 PYTHON
 tcp=$!
 run=$(date +%s)
-seq 1 500 | xargs -P 100 -I '{}' sh -eu -c '
-    result=$(dig -4 @9.9.9.9 +notcp +ignore +time=5 +tries=1 "hb-$1-$2.example.com" A)
-    printf "%s\n" "$result" | grep -Eq "status: (NOERROR|NXDOMAIN),"
+seq 1 500 | xargs -P 64 -I '{}' sh -eu -c '
+    name="hb-$1-$2.example.com"
+    case $(($2 % 2)) in
+        0) resolver=9.9.9.9 ;;
+        1) resolver=1.1.1.1 ;;
+    esac
+    if result=$(dig -4 "@$resolver" +notcp +ignore +time=2 +tries=2 "$name" A) &&
+        printf "%s\n" "$result" | grep -Eq "status: (NOERROR|NXDOMAIN),"; then
+        exit 0
+    fi
+    printf "UDP DNS failed for %s via %s\n%s\n" "$name" "$resolver" "$result" >&2
+    exit 1
 ' sh "$run" '{}' &
 dns=$!
 status=0
