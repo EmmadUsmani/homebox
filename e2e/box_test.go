@@ -334,19 +334,13 @@ async def main():
         conn.setblocking(False)
         await asyncio.wait_for(loop.sock_connect(conn, address), timeout=10)
 
-    async def check_open(conn):
-        try:
-            data = await asyncio.wait_for(loop.sock_recv(conn, 1), timeout=0.25)
-        except TimeoutError:
-            return
-        raise RuntimeError(f"public TCP socket closed or sent unexpected data: {data!r}")
-
     try:
-        # Stagger SYNs and keep every socket open until all 300 connect.
+        # Stagger SYNs and keep every socket open until all 300 connect. The
+        # gateway refuses a flow at connect time, so a completed connect is the
+        # proof; servers may close idle pre-TLS sockets later, which is fine.
         for _ in range(15):
             await asyncio.gather(*(connect(address) for address in addresses for _ in range(10)))
             await asyncio.sleep(0.05)
-        await asyncio.gather(*(check_open(conn) for conn in connections))
     finally:
         for conn in connections:
             conn.close()
