@@ -54,7 +54,7 @@ permissions use `claude --dangerously-skip-permissions` or
 
 ## Isolation
 
-The VM has no mounts and no SSH agent forwarding. Its network process on the
+The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding. Its network process on the
 Mac runs under a Seatbelt sandbox that can reach only box's per-VM daemon on
 loopback: an egress proxy that allows public addresses only, and a DNS
 forwarder to public resolvers. In the guest, a transparent redirect sends all
@@ -65,7 +65,7 @@ So the VM reaches the internet over TCP (and DNS), but not the Mac, its
 loopback, your router or anything else on your network. ICMP (`ping`) and
 other UDP don't leave the VM. Run `box doctor` to check.
 
-Details: [architecture](docs/architecture.md), [phase 0 spike](docs/spikes/phase0-macos.md).
+Details: [architecture](docs/architecture.md), [to do](docs/todo.md), [phase 0 spike](docs/spikes/phase0-macos.md).
 
 ## Development
 

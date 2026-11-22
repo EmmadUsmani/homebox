@@ -104,16 +104,21 @@ behind them:
 The VM layer is never trusted to enforce anything: the sandbox and the proxy
 are both on the host.
 
-Known limitations, accepted for now:
+Known limitations, accepted for now ([to do](todo.md) has the planned fixes):
 
 - Only TCP (through the proxy) and DNS leave the VM; ICMP and other UDP don't.
 - The proxy denies private ranges and every network attached to the host, but
   a router with NAT reflection could pass a connection to its own public IP
-  back to a LAN port forward.
-- Seatbelt limits only the VM process's network. A compromised Lima hostagent
-  could still read and write the host user's files (devvm has the same gap).
+  back to a LAN port forward. Accepted: turn NAT reflection off on such routers.
+- Seatbelt limits only the hostagent's network. A guest that compromised the
+  hostagent (Go code: its network stack and guest-agent handling) could read
+  and write the host user's files, and through a LaunchAgent or shell profile
+  run code outside the sandbox. The VM itself runs in Apple's separately
+  sandboxed Virtualization process. box's network daemon parses guest traffic
+  and isn't sandboxed.
 - The SSH relay forwards to the driver's loopback SSH port; if the VM is down
-  and another program takes that port, the relay would forward to it.
+  and another program takes that port, the relay would forward to it. The
+  laptop's host-key check catches that once it knows the VM's key.
 
 ## Testing
 
