@@ -6,23 +6,32 @@ public=${HOMEBOX_PUBLIC_URL:-https://example.com}
 failed=0
 pass() { printf 'PASS %s\n' "$1"; }
 fail() { printf 'FAIL %s: %s\n' "$1" "$2"; failed=1; }
+# Positive checks cross the internet, so give a slow moment a second chance.
+retry() {
+    "$@" || { sleep 1; "$@"; } || { sleep 2; "$@"; }
+}
 
-if curl -q -4 -fsS --noproxy '*' -m 15 -o /dev/null "$public"; then
+if retry curl -q -4 -fsS --noproxy '*' -m 15 -o /dev/null "$public"; then
     pass public-tcp
 else
     fail public-tcp 'public HTTPS request failed'
 fi
-if getent ahostsv4 example.com >/dev/null; then
+if retry getent ahostsv4 example.com >/dev/null; then
     pass dns
 else
     fail dns 'system resolver could not resolve example.com'
 fi
-if dig +time=2 +tries=2 +short @9.9.9.9 example.com A | grep -Eq '^[0-9]+\.'; then
+# Called through retry below.
+# shellcheck disable=SC2329
+udp_dns() {
+    dig +time=2 +tries=2 +short @9.9.9.9 example.com A | grep -Eq '^[0-9]+\.'
+}
+if retry udp_dns; then
     pass public-udp-dns
 else
     fail public-udp-dns 'public DNS over UDP failed'
 fi
-if ping -4 -c 2 -W 2 1.1.1.1 >/dev/null; then
+if retry ping -4 -c 2 -W 2 1.1.1.1 >/dev/null; then
     pass public-icmp
 else
     fail public-icmp 'public IPv4 echo failed'
@@ -40,11 +49,11 @@ def ntp():
     request = bytearray(48)
     request[0] = 0x23
     struct.pack_into("!Q", request, 40, int((time.time() + 2208988800) * 2**32))
-    for name in ("time.cloudflare.com", "time.google.com"):
+    for name in ("time.cloudflare.com", "time.google.com") * 2:
         try:
             address = socket.getaddrinfo(name, 123, socket.AF_INET, socket.SOCK_DGRAM)[0][4]
             with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as connection:
-                connection.settimeout(2)
+                connection.settimeout(3)
                 connection.connect(address)
                 connection.send(request)
                 reply = connection.recv(512)
