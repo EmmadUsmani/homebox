@@ -30,7 +30,17 @@ rules and known limitations; follow it.
 
 ## Hard rules
 
-- This repository is public. Never commit secrets, tokens, keys, the owner's email
-  address, or details of the owner's home network (hostnames, IP addresses).
+- This repository is public. Never commit secrets, tokens, keys, or details of
+  the owner's home network (hostnames, IP addresses), and don't write the
+  owner's email address into files.
 - Never use WSL2, and never weaken the VM's isolation from the host to make
   something work. See "Isolation and networking" in the design document.
+
+## Git
+
+- Author and commit as the owner: the identity in `git config --global
+  user.name` and `user.email` (the owner's email is fine in commit metadata).
+  Don't override it with another identity.
+- Push after every commit: your own branch, or `main` for the lead. Check the
+  diff for secrets and home-network details first; never force-push a branch
+  others may have fetched.
