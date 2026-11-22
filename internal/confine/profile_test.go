@@ -5,18 +5,31 @@ import (
 	"testing"
 )
 
-func TestRender(t *testing.T) {
-	rules := Rules{
+func TestRenderHostAgent(t *testing.T) {
+	assertProfile(t, "hostagent", Rules{
+		Home: "/Users/fixture", LimaHome: "/state/lima", Executable: "/opt/tools/limactl",
 		RuntimeDir: `/tmp/instance "quoted"\path`,
 		ConnectTCP: []int{32201, 23001, 23101},
 		ConnectUDP: []int{23101},
 		BindTCP:    []Bind{{Port: 32201}, {Port: 10100, LAN: true}},
-	}
+	})
+}
+
+func TestRenderDaemon(t *testing.T) {
+	assertProfile(t, "vmnet", Rules{
+		Daemon: true, RuntimeDir: "/state/boxes/fixture/run", Executable: "/opt/tools/box",
+		BindTCP: []Bind{{Port: 23001}, {Port: 23101}, {Port: 2201, LAN: true}},
+		BindUDP: []Bind{{Port: 23101}},
+	})
+}
+
+func assertProfile(t *testing.T, name string, rules Rules) {
+	t.Helper()
 	profile, err := render(rules)
 	if err != nil {
 		t.Fatal(err)
 	}
-	golden, err := os.ReadFile("testdata/hostagent.golden")
+	golden, err := os.ReadFile("testdata/" + name + ".golden")
 	if err != nil {
 		t.Fatal(err)
 	}

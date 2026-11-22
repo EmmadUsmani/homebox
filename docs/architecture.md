@@ -86,14 +86,21 @@ From the [phase 0 spike](spikes/phase0-macos.md). Seatbelt can only tell
 Instead the VM is confined to a few loopback ports, and box enforces the policy
 behind them:
 
-1. `box start` starts the VM's **host daemon** (`box _vmnet NAME`, outside any
-   sandbox). It serves the egress proxy, which allows public addresses only
-   (`internal/egress` policy), a DNS forwarder to a public resolver, and the
-   SSH relay.
-2. It renders a Seatbelt profile for the VM and starts the driver under
-   `sandbox-exec` (`vm.StartOptions.Wrap`). The VM's network process may only
-   connect to its proxy and DNS ports and its own SSH port on loopback, and
-   only bind its SSH and HTTP ports. Everything else fails at once.
+1. `box start` starts the VM's **host daemon** (`box _vmnet NAME`) under its
+   own Seatbelt profile. It serves the egress proxy, public DNS forwarder and
+   SSH relay, and can bind only those ports. It can read its binary, runtime
+   files and the system paths it needs. It writes only in its run directory
+   and cannot fork or execute programs after launch.
+2. Box starts the driver under a separate Seatbelt profile with
+   `sandbox-exec` (`vm.StartOptions.Wrap`). The driver's network process can
+   connect only to its proxy, DNS and SSH ports on loopback, and bind only
+   its SSH and published HTTP ports. Its home reads are limited to box's Lima
+   state and its executable. Writes are limited to its instance directory
+   (including instance-local temp files), Lima's network config and
+   `/dev/null`. It can execute Lima, OpenSSH and the system helpers Lima needs
+   at startup. Both profiles block LaunchServices lookups, AppleEvents and
+   launchd job creation. `box doctor` uses the generated profile files to
+   verify that both reject out-of-scope home reads and writes.
 3. In the guest, provisioning points everything at `192.168.5.2` (the host's
    loopback as the VM sees it): proxy env and apt/Docker proxy config, DNS,
    and a transparent redirect (redsocks) so tools that ignore proxy settings
@@ -110,12 +117,12 @@ Known limitations, accepted for now ([to do](todo.md) has the planned fixes):
 - The proxy denies private ranges and every network attached to the host, but
   a router with NAT reflection could pass a connection to its own public IP
   back to a LAN port forward. Accepted: turn NAT reflection off on such routers.
-- Seatbelt limits only the hostagent's network. A guest that compromised the
-  hostagent (Go code: its network stack and guest-agent handling) could read
-  and write the host user's files, and through a LaunchAgent or shell profile
-  run code outside the sandbox. The VM itself runs in Apple's separately
-  sandboxed Virtualization process. box's network daemon parses guest traffic
-  and isn't sandboxed.
+- The network daemon still needs broad outbound network access to enforce
+  the egress policy itself. A compromise of that daemon could bypass its
+  address policy. The hostagent can still modify its own instance files.
+  The VM itself runs in Apple's separately sandboxed Virtualization process.
+  Apple marks `sandbox-exec` deprecated. It still works on the tested macOS
+  host.
 - The SSH relay forwards to the driver's loopback SSH port; if the VM is down
   and another program takes that port, the relay would forward to it. The
   laptop's host-key check catches that once it knows the VM's key.

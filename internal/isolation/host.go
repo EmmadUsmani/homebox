@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 
@@ -30,6 +31,8 @@ type Host struct {
 	Store *state.Store
 	// Executable is the box binary to run the daemon from (os.Executable()).
 	Executable string
+	LimaHome   string
+	Limactl    string
 }
 
 var _ app.Isolation = (*Host)(nil)
@@ -48,20 +51,46 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 		return app.Session{}, err
 	}
 
-	daemon := h.daemonConfig(box, host.LAN)
-	// A daemon left over from a VM that stopped on its own may hold stale
-	// settings (e.g. the LAN flag), so always start a fresh one.
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return app.Session{}, err
+	}
+	limactl, err := exec.LookPath(h.Limactl)
+	if err != nil {
+		return app.Session{}, err
+	}
+	hostRules := rules(box, instance)
+	hostRules.Home = home
+	hostRules.LimaHome = h.LimaHome
+	hostRules.Executable = limactl
+	wrap, err := confine.Prepare(hostRules, h.Store.BoxDir(box.Name))
+	if err != nil {
+		return app.Session{}, err
+	}
+
+	daemon := daemonConfig(box, dir, host.LAN)
+	executable, err := filepath.EvalSymlinks(h.Executable)
+	if err != nil {
+		return app.Session{}, err
+	}
+	daemonWrap, err := confine.Prepare(confine.Rules{
+		Daemon: true, RuntimeDir: dir, Executable: executable,
+		BindTCP: []confine.Bind{{Port: daemon.ProxyPort}, {Port: daemon.DNSPort}, {
+			Port: daemon.SSHPublish.Port, LAN: host.LAN,
+		}},
+		BindUDP: []confine.Bind{{Port: daemon.DNSPort}},
+	}, h.Store.BoxDir(box.Name))
+	if err != nil {
+		return app.Session{}, err
+	}
+	// Replace any daemon left over from a VM that stopped on its own.
 	if err := vmnet.Stop(daemon.PIDFile); err != nil {
 		return app.Session{}, fmt.Errorf("stop old network daemon: %w", err)
 	}
-	if _, err := vmnet.Spawn(h.Executable, []string{DaemonCommand}, daemon); err != nil {
+	if _, err := vmnet.Spawn(daemonWrap[0], append(daemonWrap[1:], executable, DaemonCommand), daemon); err != nil {
 		return app.Session{}, fmt.Errorf("start network daemon (log: %s): %w", daemon.LogFile, err)
 	}
 
-	wrap, err := confine.Prepare(rules(box, instance), dir)
-	if err != nil {
-		return app.Session{}, errors.Join(err, vmnet.Stop(daemon.PIDFile))
-	}
 	return app.Session{
 		Start:    vm.StartOptions{Wrap: wrap},
 		ProxyURL: "http://" + net.JoinHostPort(instance.HostAddress, strconv.Itoa(daemon.ProxyPort)),
@@ -92,11 +121,6 @@ func pidFile(dir string) string {
 	return filepath.Join(dir, "vmnet.pid")
 }
 
-// LogFile is where a VM's network daemon logs, including every egress decision.
-func (h *Host) LogFile(name string) string {
-	return filepath.Join(h.runDir(name), "vmnet.log")
-}
-
 func (h *Host) runDir(name string) string {
 	return filepath.Join(h.Store.BoxDir(name), "run")
 }
@@ -106,18 +130,21 @@ func (h *Host) prepareRunDir(name string) (string, error) {
 		return "", err
 	}
 	dir := h.runDir(name)
-	return dir, os.MkdirAll(dir, 0o700)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return "", err
+	}
+	return filepath.EvalSymlinks(dir)
 }
 
-func (h *Host) daemonConfig(box state.Box, lan bool) vmnet.Config {
+func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 	return vmnet.Config{
 		Name:       box.Name,
 		ProxyPort:  state.ProxyPort(box.Index),
 		DNSPort:    state.DNSPort(box.Index),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
-		LogFile:    h.LogFile(box.Name),
-		PIDFile:    pidFile(h.runDir(box.Name)),
+		LogFile:    filepath.Join(dir, "vmnet.log"),
+		PIDFile:    pidFile(dir),
 	}
 }
 
