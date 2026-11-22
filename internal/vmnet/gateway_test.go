@@ -3,17 +3,21 @@
 package vmnet
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/binary"
 	"errors"
 	"io"
 	"testing"
 
+	"gvisor.dev/gvisor/pkg/buffer"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
+	"gvisor.dev/gvisor/pkg/tcpip/stack"
 )
 
 func TestReadFrame(t *testing.T) {
+	var data [frameMax]byte
 	for _, test := range []struct {
 		name    string
 		size    uint32
@@ -31,14 +35,48 @@ func TestReadFrame(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			wire := make([]byte, 4+test.body)
 			binary.BigEndian.PutUint32(wire, test.size)
-			frame, err := readFrame(bytes.NewReader(wire))
+			frame, err := readFrame(bytes.NewReader(wire), &data)
 			if (err != nil) != test.wantErr || (err == nil && len(frame) != test.body) {
 				t.Fatalf("frame length %d, error %v", len(frame), err)
 			}
 		})
 	}
-	if _, err := readFrame(bytes.NewReader([]byte{0, 0, 5})); !errors.Is(err, io.ErrUnexpectedEOF) {
+	if _, err := readFrame(bytes.NewReader([]byte{0, 0, 5}), &data); !errors.Is(err, io.ErrUnexpectedEOF) {
 		t.Fatalf("truncated header: %v", err)
+	}
+}
+
+func TestWriteFrameBatch(t *testing.T) {
+	var wire bytes.Buffer
+	writer := bufio.NewWriterSize(&wire, frameBatch*(4+frameMax))
+	for i := 0; i < frameBatch; i++ {
+		packet := stack.NewPacketBuffer(stack.PacketBufferOptions{
+			ReserveHeaderBytes: 64,
+			Payload:            buffer.MakeWithData(bytes.Repeat([]byte{byte(i)}, ethernetMTU)),
+		})
+		copy(packet.LinkHeader().Push(header.EthernetMinimumSize), []byte("EthernetHeader"))
+		err := writeFrame(writer, packet)
+		packet.DecRef()
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	var data [frameMax]byte
+	for i := 0; i < frameBatch; i++ {
+		frame, err := readFrame(&wire, &data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(frame[:header.EthernetMinimumSize]) != "EthernetHeader" ||
+			!bytes.Equal(frame[header.EthernetMinimumSize:], bytes.Repeat([]byte{byte(i)}, ethernetMTU)) {
+			t.Fatalf("invalid frame %d", i)
+		}
+	}
+	if wire.Len() != 0 {
+		t.Fatal("unexpected trailing bytes")
 	}
 }
 

@@ -33,7 +33,17 @@ import (
 	"gvisor.dev/gvisor/pkg/waiter"
 )
 
-const maxFlows = 256
+const (
+	// 1,536 TCP flows × (2 × 256 KiB netstack queues + 2 × 32 KiB
+	// copy buffers) ≈ 864 MiB of buffer budget. UDP uses about 160 KiB
+	// per flow (32 KiB receive queue + two 64 KiB buffers). Kernel socket
+	// buffers and per-packet and endpoint overhead are separate.
+	maxFlows          = 1536
+	newFlowsPerSecond = 500
+	newFlowBurst      = maxFlows
+	tcpBufferMax      = 256 << 10
+	tcpCopyBuffer     = 32 << 10
+)
 
 type flows struct {
 	ctx      context.Context
@@ -42,6 +52,7 @@ type flows struct {
 	slots    chan struct{}
 	attempts *rate.Limiter
 	denials  *rate.Limiter
+	refusals *rate.Limiter
 	workers  sync.WaitGroup
 	mu       sync.Mutex
 }
@@ -49,24 +60,29 @@ type flows struct {
 func newFlows(ctx context.Context, network *stack.Stack, logger *slog.Logger) *flows {
 	return &flows{
 		ctx: ctx, network: network, logger: logger,
-		slots: make(chan struct{}, maxFlows), attempts: rate.NewLimiter(100, 64),
-		denials: rate.NewLimiter(2, 8),
+		slots: make(chan struct{}, maxFlows), attempts: rate.NewLimiter(newFlowsPerSecond, newFlowBurst),
+		denials: rate.NewLimiter(2, 8), refusals: rate.NewLimiter(1, 2),
 	}
 }
 
 func (f *flows) reserve() bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.ctx.Err() != nil || !f.attempts.Allow() {
+	if f.ctx.Err() != nil {
 		return false
 	}
-	select {
-	case f.slots <- struct{}{}:
+	reason := "rate"
+	if len(f.slots) == cap(f.slots) {
+		reason = "capacity"
+	} else if f.attempts.Allow() {
+		f.slots <- struct{}{}
 		f.workers.Add(1)
 		return true
-	default:
-		return false
 	}
+	if f.refusals.Allow() {
+		f.logger.Warn("egress flow refused", "reason", reason, "active", len(f.slots), "limit", cap(f.slots))
+	}
+	return false
 }
 
 func (f *flows) release() {
@@ -95,7 +111,7 @@ func (f *flows) allowed(protocol string, id stack.TransportEndpointID) bool {
 }
 
 func (f *flows) install() {
-	tcpForward := tcp.NewForwarder(f.network, 0, 64, f.forwardTCP)
+	tcpForward := tcp.NewForwarder(f.network, tcpBufferMax, maxFlows, f.forwardTCP)
 	f.network.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForward.HandlePacket)
 	f.network.SetTransportProtocolHandler(udp.ProtocolNumber, f.forwardUDP)
 	f.network.SetTransportProtocolHandler(icmp.ProtocolNumber4, f.forwardICMP)
@@ -134,7 +150,7 @@ func (f *flows) forwardTCP(request *tcp.ForwarderRequest) {
 		return
 	}
 	guest := gonet.NewTCPConn(&queue, endpoint)
-	bridgeFlow(f.ctx, guest, host, 5*time.Minute, 32<<10)
+	bridgeFlow(f.ctx, guest, host, 5*time.Minute, tcpCopyBuffer)
 }
 
 func (f *flows) forwardUDP(id stack.TransportEndpointID, packet *stack.PacketBuffer) bool {
@@ -157,10 +173,17 @@ func (f *flows) forwardUDP(id stack.TransportEndpointID, packet *stack.PacketBuf
 		defer guest.Close()
 		host, err := f.dial("udp", id)
 		if err == nil {
-			bridgeFlow(f.ctx, guest, host, 30*time.Second, 65535)
+			bridgeFlow(f.ctx, guest, host, udpIdleTimeout(id.LocalPort), 65535)
 		}
 	}()
 	return true
+}
+
+func udpIdleTimeout(port uint16) time.Duration {
+	if port == 53 {
+		return 2 * time.Second
+	}
+	return 30 * time.Second
 }
 
 func bridgeFlow(ctx context.Context, guest, host net.Conn, idle time.Duration, size int) {

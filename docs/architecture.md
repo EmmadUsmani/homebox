@@ -89,7 +89,10 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
    guest TCP and UDP and handle IPv4 echo. Every new flow checks the numeric
    destination against the shared egress policy and the host's current
    interface networks before opening a host socket. The daemon bounds flow
-   count, connection attempts, idle time and denial logs.
+   count, connection attempts, idle time and denial logs. Each VM has 1,536
+   active flow slots and admits up to 500 new flows per second with a burst of
+   1,536. DNS over UDP releases its slot after two seconds of inactivity.
+   The daemon logs capacity and rate refusals.
 2. Box starts Lima under a separate Seatbelt profile. Lima can connect to
    its own SSH forward, its runtime sockets and the gateway's exact Unix
    socket. It can bind only its SSH, HTTP forward and runtime sockets.
