@@ -10,17 +10,13 @@ import (
 
 func TestForwarder(t *testing.T) {
 	loopback := net.IPv4(127, 0, 0, 1)
-	tcp, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: loopback})
+	upstream, err := Bind(0, nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer tcp.Close()
+	defer upstream.Close()
+	tcp, udp := upstream.tcp, upstream.udp
 	tcp.SetDeadline(time.Now().Add(3 * time.Second))
-	udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: loopback, Port: tcp.Addr().(*net.TCPAddr).Port})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer udp.Close()
 	udp.SetDeadline(time.Now().Add(3 * time.Second))
 	silent, err := net.ListenUDP("udp4", &net.UDPAddr{IP: loopback})
 	if err != nil {

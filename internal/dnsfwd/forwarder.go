@@ -4,11 +4,13 @@ package dnsfwd
 import (
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/netip"
 	"sync"
+	"syscall"
 	"time"
 )
 
@@ -44,17 +46,22 @@ func Bind(port int, upstreams []string, timeout time.Duration) (*Forwarder, erro
 	if timeout <= 0 {
 		timeout = time.Second
 	}
-	tcp, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port})
-	if err != nil {
-		return nil, err
-	}
-	address := tcp.Addr().(*net.TCPAddr)
-	udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: address.IP, Port: address.Port})
-	if err != nil {
+	// An ephemeral TCP port can already be in use for UDP.
+	for attempt := 1; ; attempt++ {
+		tcp, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: port})
+		if err != nil {
+			return nil, err
+		}
+		address := tcp.Addr().(*net.TCPAddr)
+		udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: address.IP, Port: address.Port})
+		if err == nil {
+			return &Forwarder{tcp: tcp, udp: udp, upstreams: addresses, timeout: timeout}, nil
+		}
 		tcp.Close()
-		return nil, err
+		if port != 0 || !errors.Is(err, syscall.EADDRINUSE) || attempt == 8 {
+			return nil, err
+		}
 	}
-	return &Forwarder{tcp: tcp, udp: udp, upstreams: addresses, timeout: timeout}, nil
 }
 
 // Addr returns the common TCP and UDP address.
