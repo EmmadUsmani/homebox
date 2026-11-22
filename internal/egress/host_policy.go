@@ -58,3 +58,8 @@ func hostInterfaceNetworks() ([]netip.Prefix, error) {
 	}
 	return networks, nil
 }
+
+// HostDenialReason applies public egress policy and checks the host's current interfaces.
+func HostDenialReason(address netip.Addr) string {
+	return (hostPolicy{localNetworks: hostInterfaceNetworks}).denialReason(address)
+}
