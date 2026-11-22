@@ -146,6 +146,10 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 			Forwards: box.Forwards,
 			// The host isolation limits the gateway to the VM's proxy and DNS ports.
 			HostGateway: true,
+			// The confined host process can't resolve names for the guest, so the
+			// driver's resolver is replaced by a placeholder until provisioning
+			// points the guest at box's DNS forwarder (HOMEBOX_DNS).
+			DNS: []string{"127.0.0.1"},
 		}); err != nil {
 			return err
 		}
