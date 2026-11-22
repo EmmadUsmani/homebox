@@ -20,8 +20,8 @@ guest/             the profiles themselves, embedded in the binary:
 internal/state     box's own records (one file per VM) and port allocation
 internal/egress    egress policy (which addresses a VM may reach) and the
                    host-side proxy that enforces it
-internal/confine   OS-specific host confinement of the VM's network process
-                   (macOS: Seatbelt; Linux: nftables later)
+internal/confine   OS-specific sandbox profiles for the VM's host process and
+                   network daemon (macOS: Seatbelt; Linux: later)
 internal/vmnet     runs the per-VM network daemon and manages its process
 internal/dnsfwd    forwards guest DNS queries to public resolvers
 internal/relay     publishes the driver's loopback SSH port
@@ -94,12 +94,13 @@ behind them:
 2. Box starts the driver under a separate Seatbelt profile with
    `sandbox-exec` (`vm.StartOptions.Wrap`). The driver's network process can
    connect only to its proxy, DNS and SSH ports on loopback, and bind only
-   its SSH and published HTTP ports. Its home reads are limited to box's Lima
-   state and its executable. Writes are limited to its instance directory
-   (including instance-local temp files), Lima's network config and
-   `/dev/null`. It can execute Lima, OpenSSH and the system helpers Lima needs
-   at startup. Both profiles block LaunchServices lookups, AppleEvents and
-   launchd job creation. `box doctor` uses the generated profile files to
+   its SSH and published HTTP ports. In the home directory it can read only
+   Lima's shared config (its SSH key), its own instance directory and its
+   executable, so not other VMs' disks. Writes are limited to its instance
+   directory (except `lima.yaml`, which the next start reads), Lima's network
+   config and `/dev/null`. It can execute Lima, OpenSSH and the system helpers
+   Lima needs at startup. Both profiles block LaunchServices, the pasteboard,
+   AppleEvents and launchd job creation. `box doctor` uses the generated profile files to
    verify that both reject out-of-scope home reads and writes.
 3. In the guest, provisioning points everything at `192.168.5.2` (the host's
    loopback as the VM sees it): proxy env and apt/Docker proxy config, DNS,
@@ -119,8 +120,11 @@ Known limitations, accepted for now ([to do](todo.md) has the planned fixes):
   back to a LAN port forward. Accepted: turn NAT reflection off on such routers.
 - The network daemon still needs broad outbound network access to enforce
   the egress policy itself. A compromise of that daemon could bypass its
-  address policy. The hostagent can still modify its own instance files.
-  The VM itself runs in Apple's separately sandboxed Virtualization process.
+  address policy. The hostagent can still modify its own instance files
+  (disks, logs) and Lima's `networks.yaml`, which only matters for
+  Lima-managed networks that box never configures. Both profiles still allow
+  other system services and reads outside the home directory. The VM itself
+  runs in Apple's separately sandboxed Virtualization process.
   Apple marks `sandbox-exec` deprecated. It still works on the tested macOS
   host.
 - The SSH relay forwards to the driver's loopback SSH port; if the VM is down

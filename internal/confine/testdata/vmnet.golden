@@ -14,7 +14,7 @@
 (deny process-exec*)
 (deny appleevent-send job-creation)
 (deny mach-lookup
-  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard)([.]|$)"))
+  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard|pasteboard)([.]|$)"))
 (define entrypoint (param "BOX_PROBE"))
 (allow process-exec (require-all (process-attribute is-platform-binary) (literal entrypoint)))
 (allow file-write* (subpath "/state/boxes/fixture/run"))

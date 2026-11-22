@@ -100,7 +100,7 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 (deny process-exec*)
 (deny appleevent-send job-creation)
 (deny mach-lookup
-  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard)([.]|$)"))
+  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard|pasteboard)([.]|$)"))
 `)
 	// The platform-signed sandbox-exec can launch the entrypoint, but the
 	// daemon cannot use that exception to re-execute itself.
@@ -137,18 +137,36 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	if err != nil {
 		return fmt.Errorf("home: %w", err)
 	}
-	limaHome, err := profilePath(rules.LimaHome)
-	if err != nil {
+	if _, err := profilePath(rules.LimaHome); err != nil {
 		return fmt.Errorf("Lima home: %w", err)
 	}
+	limaConfig, _ := profilePath(path.Join(rules.LimaHome, "_config"))
+	limaYAML, err := profilePath(path.Join(rules.RuntimeDir, "lima.yaml"))
+	if err != nil {
+		return err
+	}
+	// Only Lima's shared config (its SSH key) and this VM's own directory:
+	// not other VMs' disks.
 	fmt.Fprintf(profile, "(deny file-read* (subpath %s))\n", home)
-	fmt.Fprintf(profile, "(allow file-read* (subpath %s) (literal %s))\n", limaHome, executable)
+	fmt.Fprintf(profile, "(allow file-read* (subpath %s) (subpath %s) (literal %s))\n", limaConfig, runtimeDir, executable)
+	// Lima lists its home (names only) and resolves symlinks along its paths.
+	quotedHome, _ := profilePath(rules.LimaHome)
+	fmt.Fprintf(profile, "(allow file-read-data (literal %s))\n", quotedHome)
+	for parent := path.Clean(rules.LimaHome); parent != "/"; parent = path.Dir(parent) {
+		quoted, _ := profilePath(parent)
+		fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
+	}
 	profile.WriteString("(allow file-write* (literal \"/dev/null\"))\n")
+	// limactl start opens Lima's network config for writing; box never
+	// configures Lima-managed networks, which are all it holds.
 	networks, err := profilePath(path.Join(rules.LimaHome, "_config", "networks.yaml"))
 	if err != nil {
 		return err
 	}
 	fmt.Fprintf(profile, "(allow file-write* (literal %s))\n", networks)
+	// The next start reads the VM's config outside this VM's control, so the
+	// hostagent must not be able to add mounts or forwards to it.
+	fmt.Fprintf(profile, "(deny file-write* (literal %s))\n", limaYAML)
 	fmt.Fprintf(profile, "(allow process-exec (literal %s) (literal \"/usr/bin/ssh\") (literal \"/usr/bin/sw_vers\") (literal \"/usr/sbin/ioreg\") (literal \"/usr/sbin/system_profiler\") (literal \"/bin/sh\") (literal \"/bin/bash\"))\n", executable)
 	return nil
 }

@@ -1,9 +1,12 @@
 package confine
 
 import (
+	"flag"
 	"os"
 	"testing"
 )
+
+var update = flag.Bool("update", false, "rewrite the golden profiles")
 
 func TestRenderHostAgent(t *testing.T) {
 	assertProfile(t, "hostagent", Rules{
@@ -29,7 +32,13 @@ func assertProfile(t *testing.T, name string, rules Rules) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	golden, err := os.ReadFile("testdata/" + name + ".golden")
+	file := "testdata/" + name + ".golden"
+	if *update {
+		if err := os.WriteFile(file, []byte(profile), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	golden, err := os.ReadFile(file)
 	if err != nil {
 		t.Fatal(err)
 	}

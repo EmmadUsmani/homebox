@@ -27,21 +27,16 @@ proxy. Options:
    redirect in the guest. Smaller, but UDP only (no ICMP), and it adds another
    guest-side daemon.
 
-## Confine the hostagent's file access
+## Tighten the host sandboxes further
 
-Seatbelt limits only the network of Lima's hostagent. If a hostile guest found a
-bug in it, the hostagent could read the host user's files (`~/.ssh`, browser
-data) and write them. A write to a LaunchAgent or a shell profile runs code
-outside the sandbox later, so the network limit wouldn't hold either.
+Both host processes now have file and process limits (see "macOS networking"
+in the architecture). Left to do:
 
-Seatbelt's file filters, unlike its network filters, can say exactly what we
-need. Plan: deny writes outside the instance and cache directories, deny reads
-of the home directory except Lima's own paths, limit `process-exec` to Lima's
-binaries, and block LaunchServices. Then `box doctor` proves it by reading and
-writing a canary file under the same profile. Also confine box's network daemon
-(proxy, DNS, relay), which parses guest traffic and runs unconfined: it needs
-outbound network but only its log file. A separate macOS user for the VMs is
-the stronger, heavier follow-up.
+- Allow-list system services (`mach-lookup`) instead of denying a few by
+  name, and limit reads outside the home directory (`/Volumes`,
+  `/Users/Shared`, other apps' temp files).
+- Run the VMs as a separate macOS user, so Unix permissions protect the
+  owner's files even if a sandbox has a gap.
 
 ## Harden the SSH relay
 
