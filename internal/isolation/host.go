@@ -105,7 +105,8 @@ func (h *Host) daemonConfig(box state.Box, lan bool, dir string) vmnet.Config {
 }
 
 // rules lets the VM's host process reach only its own SSH forward, proxy and
-// DNS forwarder, and listen only on its SSH forward and published HTTP ports.
+// DNS forwarder (UDP, and TCP for truncated answers), and listen only on its
+// SSH forward and published HTTP ports.
 func rules(box state.Box, instance vm.Instance) confine.Rules {
 	sshTarget := state.DriverSSHPort(box.Index)
 	binds := []confine.Bind{{Port: sshTarget}}
@@ -114,7 +115,7 @@ func rules(box state.Box, instance vm.Instance) confine.Rules {
 	}
 	return confine.Rules{
 		RuntimeDir: instance.RuntimeDir,
-		ConnectTCP: []int{sshTarget, state.ProxyPort(box.Index)},
+		ConnectTCP: []int{sshTarget, state.ProxyPort(box.Index), state.DNSPort(box.Index)},
 		ConnectUDP: []int{state.DNSPort(box.Index)},
 		BindTCP:    binds,
 	}

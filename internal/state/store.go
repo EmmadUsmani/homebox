@@ -138,12 +138,12 @@ func (s *Store) NextIndex() (int, error) {
 	for _, box := range boxes {
 		used[box.Index] = true
 	}
-	for index := 1; index <= 99; index++ {
+	for index := 1; index <= MaxIndex; index++ {
 		if !used[index] {
 			return index, nil
 		}
 	}
-	return 0, errors.New("all 99 box indices are in use")
+	return 0, fmt.Errorf("all %d box indices are in use", MaxIndex)
 }
 
 // LoadHost reads host settings, defaulting to loopback and no extra keys.

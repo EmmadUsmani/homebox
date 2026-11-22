@@ -104,8 +104,10 @@ func (s *Service) Remove(ctx context.Context, name string) error {
 		}
 		if err == nil && instance.Status != vm.StatusStopped {
 			s.progress("Stopping %s", name)
+			// The VM is being deleted anyway, so a broken VM that won't shut
+			// down cleanly must not block its removal.
 			if err := s.Driver.Stop(ctx, name); err != nil {
-				return err
+				s.progress("Graceful stop failed (%v); deleting %s anyway", err, name)
 			}
 		}
 		s.progress("Removing %s", name)

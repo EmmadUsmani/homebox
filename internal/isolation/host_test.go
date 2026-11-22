@@ -17,7 +17,7 @@ func TestRulesAllowOnlyTheVMsOwnPorts(t *testing.T) {
 	got := rules(box, vm.Instance{RuntimeDir: "/lima/main"})
 	want := confine.Rules{
 		RuntimeDir: "/lima/main",
-		ConnectTCP: []int{32203, 23003},
+		ConnectTCP: []int{32203, 23003, 23103},
 		ConnectUDP: []int{23103},
 		BindTCP:    []confine.Bind{{Port: 32203}, {Port: 10300}, {Port: 10301, LAN: true}},
 	}

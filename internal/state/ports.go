@@ -17,6 +17,21 @@ func ProxyPort(index int) int { return 23000 + index }
 // DNSPort returns the loopback port of the box's DNS forwarder.
 func DNSPort(index int) int { return 23100 + index }
 
+// MaxIndex is the highest box index; indices run from 1.
+const MaxIndex = 99
+
+// Reserved reports whether port belongs to a range box keeps for its own
+// per-box services (SSH, the driver's SSH, egress proxy, DNS) of any index,
+// including boxes not created yet. Published HTTP ports must avoid them.
+func Reserved(port int) bool {
+	for _, base := range []int{SSHPort(0), DriverSSHPort(0), ProxyPort(0), DNSPort(0)} {
+		if port > base && port <= base+MaxIndex {
+			return true
+		}
+	}
+	return false
+}
+
 // HostIP is the bind address for published ports.
 func HostIP(lan bool) string {
 	if lan {

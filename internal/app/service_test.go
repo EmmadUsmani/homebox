@@ -243,7 +243,7 @@ func TestPortsAndHostSettings(t *testing.T) {
 	if err := service.Stop(t.Context(), "main"); err != nil {
 		t.Fatal(err)
 	}
-	for _, bad := range []string{"22:30000", "9000:10200", "9000:0", "9000:2201", "9000:2202"} {
+	for _, bad := range []string{"22:30000", "9000:10200", "9000:0", "9000:2201", "9000:2202", "9000:23050", "9000:23150", "9000:32250"} {
 		if _, err := service.Ports(t.Context(), "main", PortOptions{Set: []string{bad}}); err == nil {
 			t.Errorf("accepted invalid forward %q", bad)
 		}
@@ -290,5 +290,19 @@ func TestStartAppliesAChangedLANSetting(t *testing.T) {
 		if len(forwards) == 0 || forwards[0].HostIP != "0.0.0.0" || forwards[len(forwards)-1].HostIP != "0.0.0.0" {
 			t.Fatalf("forwards not republished on the LAN: %v", forwards[:1])
 		}
+	}
+}
+
+func TestRemoveDeletesAVMThatWontStop(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	driver.Errors["Stop"] = errors.New("stop failed")
+	if err := service.Remove(t.Context(), "main"); err != nil {
+		t.Fatalf("remove = %v", err)
+	}
+	if _, err := driver.Get(t.Context(), "main"); !errors.Is(err, vm.ErrNotFound) {
+		t.Fatalf("VM still exists: %v", err)
 	}
 }

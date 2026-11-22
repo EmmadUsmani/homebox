@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/EmmadUsmani/homebox/internal/state"
+	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
 // HostInitOptions updates LAN publishing and adds authorized key files.
@@ -45,13 +46,15 @@ func (s *Service) HostInit(ctx context.Context, options HostInitOptions) error {
 	}
 	return s.Store.WithLock(func() error {
 		s.progress("Checking %s driver", s.Driver.Name())
-		if _, err := s.Driver.List(ctx); err != nil {
+		instances, err := s.Driver.List(ctx)
+		if err != nil {
 			return fmt.Errorf("check VM driver: %w", err)
 		}
 		host, err := s.Store.LoadHost()
 		if err != nil {
 			return err
 		}
+		lanChanged := options.LAN != nil && *options.LAN != host.LAN
 		if options.LAN != nil {
 			host.LAN = *options.LAN
 		}
@@ -64,8 +67,25 @@ func (s *Service) HostInit(ctx context.Context, options HostInitOptions) error {
 			return err
 		}
 		s.progress("Host initialized (published ports bind to %s)", state.HostIP(host.LAN))
+		if lanChanged || len(keys) > 0 {
+			s.warnRunning(instances)
+		}
 		return nil
 	})
+}
+
+// warnRunning names the running boxes that keep their old ports and keys
+// until restarted: a running VM's listeners can't be rebound in place.
+func (s *Service) warnRunning(instances []vm.Instance) {
+	for _, instance := range instances {
+		if instance.Status != vm.StatusRunning {
+			continue
+		}
+		if _, err := s.Store.Load(instance.Name); err == nil {
+			s.progress("%s is running with its old settings; apply them with: box stop %s && box start %s",
+				instance.Name, instance.Name, instance.Name)
+		}
+	}
 }
 
 // publicKey recognizes the OpenSSH public key file format and discards comments.

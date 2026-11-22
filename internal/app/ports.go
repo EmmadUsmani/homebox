@@ -125,6 +125,9 @@ func (s *Service) validatePorts(box state.Box) error {
 		if guests[forward.GuestPort] {
 			return fmt.Errorf("guest port %d already has a forward", forward.GuestPort)
 		}
+		if state.Reserved(forward.HostPort) {
+			return fmt.Errorf("host port %d is reserved for box's own services", forward.HostPort)
+		}
 		if owner, used := hosts[forward.HostPort]; used {
 			return fmt.Errorf("host port %d is already assigned to %s", forward.HostPort, owner)
 		}
