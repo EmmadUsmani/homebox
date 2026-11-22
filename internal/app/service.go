@@ -65,6 +65,11 @@ type DoctorHost interface {
 	Probe(context.Context, string, int, bool) ([]string, []doctor.Check, func())
 }
 
+// HostCapacity reports available CPUs and total RAM. Zero memory means unknown.
+type HostCapacity interface {
+	Capacity() (cpus int, memoryBytes uint64, err error)
+}
+
 // Service implements the box use cases.
 type Service struct {
 	Driver        vm.Driver
@@ -73,6 +78,7 @@ type Service struct {
 	GuestSSH      SSH
 	Isolation     Isolation
 	DoctorHost    DoctorHost
+	HostCapacity  HostCapacity
 	LocalHostName func(context.Context) (string, error)
 	OpenURL       func(context.Context, string) error
 	Progress      io.Writer

@@ -56,6 +56,9 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
 		return errors.New("CPU, memory and disk sizes must be positive")
 	}
+	if err := s.sizeNewBox(&options); err != nil {
+		return err
+	}
 	profileName := options.Profile
 	if profileName == "" {
 		profileName = guest.DefaultProfile
@@ -89,7 +92,7 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		}
 		box := state.Box{
 			Name: options.Name, Profile: profileName, Driver: s.Driver.Name(), Index: index,
-			CPUs: sizeOrDefault(options.CPUs, 4), MemoryGiB: sizeOrDefault(options.MemoryGiB, 8),
+			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
 			DiskGiB: sizeOrDefault(options.DiskGiB, 50), User: username, SSHPort: state.SSHPort(index),
 			Forwards: state.DefaultForwards(index, host.LAN), CreatedAt: time.Now().UTC(),
 		}
@@ -101,6 +104,30 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		}
 		return s.provision(ctx, box, profile)
 	})
+}
+
+func (s *Service) sizeNewBox(options *NewOptions) error {
+	const bytesPerGiB = 1 << 30
+	cpus, memory, err := s.HostCapacity.Capacity()
+	if err != nil {
+		return fmt.Errorf("determine host capacity: %w", err)
+	}
+	if options.CPUs > cpus {
+		return fmt.Errorf("--cpus %d exceeds the host's %d CPUs", options.CPUs, cpus)
+	}
+	options.CPUs = sizeOrDefault(options.CPUs, min(4, cpus))
+	if memory == 0 {
+		options.MemoryGiB = sizeOrDefault(options.MemoryGiB, 8)
+		return nil
+	}
+	hostGiB := int(memory / bytesPerGiB)
+	maxExplicitGiB := max(0, hostGiB-2)
+	if options.MemoryGiB > maxExplicitGiB {
+		return fmt.Errorf("--memory %d GiB exceeds the host limit of %d GiB (%g GiB RAM on the host, with 2 GiB reserved)",
+			options.MemoryGiB, maxExplicitGiB, float64(memory)/bytesPerGiB)
+	}
+	options.MemoryGiB = sizeOrDefault(options.MemoryGiB, max(2, min(8, hostGiB/2)))
+	return nil
 }
 
 func sizeOrDefault(value, fallback int) int {

@@ -26,7 +26,8 @@ host-key check. Left to do:
 
 ## Resize a VM
 
-CPUs, memory and disk are set once by `box new` (defaults 4, 8 GiB, 50 GiB)
+CPUs, memory and disk are set once by `box new` (CPU and memory defaults scale
+with the host, and disk defaults to 50 GiB)
 and can't be changed afterwards; today the only way is `box rm` and `box new`,
 which loses the VM's contents. Add `box resize NAME [--cpus N] [--memory GiB]
 [--disk GiB]`:
