@@ -133,6 +133,14 @@ func TestBoxLifecycle(t *testing.T) {
 	if output := runOK("ssh", "-F", localConfig, name, "cmp scp-test rsync-test && cat scp-test"); output != "transfer verified\n" {
 		t.Fatalf("transferred contents = %q", output)
 	}
+	t.Log(box(time.Minute, "ssh", name, "--", egressStress))
+	daemonLog, err := os.ReadFile(filepath.Join(root, "boxes", name, "run", "vmnet.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(daemonLog), "egress flow refused") {
+		t.Fatal("gateway refused flows during provisioning or stress test")
+	}
 	diagnostics := box(2*time.Minute, "doctor", name)
 	t.Log(diagnostics)
 	for _, check := range []string{"public-tcp", "public-udp-dns", "public-udp-ntp", "public-icmp", "deny-tcp-", "deny-udp-", "deny-icmp-"} {
@@ -304,3 +312,66 @@ func checkHTTP(t *testing.T, url string) {
 		}
 	}
 }
+
+// Unique subdomains avoid exact-name cache hits. Either a positive or a
+// negative answer verifies the UDP round trip.
+const egressStress = `set -eu
+python3 - <<'PYTHON' &
+import asyncio
+import socket
+
+async def main():
+    loop = asyncio.get_running_loop()
+    addresses = []
+    for host in ("www.cloudflare.com", "www.google.com"):
+        records = await loop.getaddrinfo(host, 443, family=socket.AF_INET, type=socket.SOCK_STREAM)
+        addresses.append(records[0][4])
+
+    connections = []
+    async def connect(address):
+        conn = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        connections.append(conn)
+        conn.setblocking(False)
+        await asyncio.wait_for(loop.sock_connect(conn, address), timeout=10)
+
+    async def check_open(conn):
+        try:
+            data = await asyncio.wait_for(loop.sock_recv(conn, 1), timeout=0.25)
+        except TimeoutError:
+            return
+        raise RuntimeError(f"public TCP socket closed or sent unexpected data: {data!r}")
+
+    try:
+        # Stagger SYNs and keep every socket open until all 300 connect.
+        for _ in range(15):
+            await asyncio.gather(*(connect(address) for address in addresses for _ in range(10)))
+            await asyncio.sleep(0.05)
+        await asyncio.gather(*(check_open(conn) for conn in connections))
+    finally:
+        for conn in connections:
+            conn.close()
+
+asyncio.run(main())
+PYTHON
+tcp=$!
+run=$(date +%s)
+seq 1 500 | xargs -P 64 -I '{}' sh -eu -c '
+    name="hb-$1-$2.example.com"
+    case $(($2 % 2)) in
+        0) resolver=9.9.9.9 ;;
+        1) resolver=1.1.1.1 ;;
+    esac
+    if result=$(dig -4 "@$resolver" +notcp +ignore +time=2 +tries=2 "$name" A) &&
+        printf "%s\n" "$result" | grep -Eq "status: (NOERROR|NXDOMAIN),"; then
+        exit 0
+    fi
+    printf "UDP DNS failed for %s via %s\n%s\n" "$name" "$resolver" "$result" >&2
+    exit 1
+' sh "$run" '{}' &
+dns=$!
+status=0
+wait "$tcp" || status=1
+wait "$dns" || status=1
+test "$status" -eq 0
+echo "300 concurrent public TCP sockets and 500 distinct UDP DNS replies succeeded"
+`

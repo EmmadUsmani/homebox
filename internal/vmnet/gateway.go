@@ -3,6 +3,7 @@
 package vmnet
 
 import (
+	"bufio"
 	"context"
 	"encoding/binary"
 	"errors"
@@ -31,12 +32,15 @@ import (
 )
 
 const (
-	gatewayIP  = "10.114.0.1"
-	guestIP    = "10.114.0.21"
-	gatewayMAC = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x01")
-	guestMAC   = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x15")
-	networkNIC = 1
-	frameMax   = 1514
+	gatewayIP   = "10.114.0.1"
+	guestIP     = "10.114.0.21"
+	gatewayMAC  = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x01")
+	guestMAC    = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x15")
+	networkNIC  = 1
+	ethernetMTU = 1500
+	frameMax    = ethernetMTU + header.EthernetMinimumSize
+	frameQueue  = 1024
+	frameBatch  = 16
 )
 
 var (
@@ -61,7 +65,7 @@ func serveGateway(ctx context.Context, listener net.Listener, logger *slog.Logge
 
 func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger) error {
 	ctx, cancel := context.WithCancel(ctx)
-	link := channel.New(256, frameMax, gatewayMAC)
+	link := channel.New(frameQueue, frameMax, gatewayMAC)
 	network := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, arp.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol, udp.NewProtocol, icmp.NewProtocol4},
@@ -83,6 +87,12 @@ func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger) err
 			Protocol:          ipv4.ProtocolNumber,
 			AddressWithPrefix: tcpip.AddressWithPrefix{Address: gatewayAddress, PrefixLen: subnet.Bits()},
 		}, stack.AddressProperties{}),
+		network.SetTransportProtocolOption(tcp.ProtocolNumber, &tcpip.TCPSendBufferSizeRangeOption{
+			Min: tcp.MinBufferSize, Default: tcpSendBufferMax, Max: tcpSendBufferMax,
+		}),
+		network.SetTransportProtocolOption(tcp.ProtocolNumber, &tcpip.TCPReceiveBufferSizeRangeOption{
+			Min: tcp.MinBufferSize, Default: tcpReceiveBufferMax, Max: tcpReceiveBufferMax,
+		}),
 		network.SetSpoofing(networkNIC, true),
 		network.SetPromiscuousMode(networkNIC, true),
 	} {
@@ -122,22 +132,35 @@ func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger) err
 	workers.Go(func() { serveDHCP(dhcpConn) })
 	workers.Go(func() {
 		defer conn.Close()
+		writer := bufio.NewWriterSize(conn, frameBatch*(4+frameMax))
 		for {
 			packet := link.ReadContext(ctx)
 			if packet == nil {
 				return
 			}
-			frame := packet.ToView()
-			packet.DecRef()
-			err := writeFrame(conn, frame.AsSlice())
-			frame.Release()
-			if err != nil {
+			for count := 0; ; count++ {
+				err := writeFrame(writer, packet)
+				packet.DecRef()
+				if err != nil {
+					return
+				}
+				if count+1 == frameBatch {
+					break
+				}
+				packet = link.Read()
+				if packet == nil {
+					break
+				}
+			}
+			if err := writer.Flush(); err != nil {
 				return
 			}
 		}
 	})
+	reader := bufio.NewReaderSize(conn, frameBatch*(4+frameMax))
+	var data [frameMax]byte
 	for {
-		frame, err := readFrame(conn)
+		frame, err := readFrame(reader, &data)
 		if err != nil {
 			return err
 		}
@@ -153,7 +176,7 @@ func stackAddress(address string) tcpip.Address {
 	return tcpip.AddrFrom4(netip.MustParseAddr(address).As4())
 }
 
-func readFrame(reader io.Reader) ([]byte, error) {
+func readFrame(reader io.Reader, data *[frameMax]byte) ([]byte, error) {
 	var prefix [4]byte
 	if _, err := io.ReadFull(reader, prefix[:]); err != nil {
 		return nil, err
@@ -162,16 +185,24 @@ func readFrame(reader io.Reader) ([]byte, error) {
 	if size < header.EthernetMinimumSize || size > frameMax {
 		return nil, fmt.Errorf("invalid Ethernet frame size %d", size)
 	}
-	frame := make([]byte, size)
+	frame := data[:size]
 	_, err := io.ReadFull(reader, frame)
 	return frame, err
 }
 
-func writeFrame(writer io.Writer, frame []byte) error {
-	var prefix [4]byte
-	binary.BigEndian.PutUint32(prefix[:], uint32(len(frame)))
-	buffers := net.Buffers{prefix[:], frame}
-	_, err := buffers.WriteTo(writer)
+func writeFrame(writer *bufio.Writer, packet *stack.PacketBuffer) error {
+	frame := binary.BigEndian.AppendUint32(writer.AvailableBuffer(), uint32(packet.Size()))
+	views, offset := packet.AsViewList()
+	for view := views.Front(); view != nil; view = view.Next() {
+		data := view.AsSlice()
+		if offset >= len(data) {
+			offset -= len(data)
+			continue
+		}
+		frame = append(frame, data[offset:]...)
+		offset = 0
+	}
+	_, err := writer.Write(frame)
 	return err
 }
 
