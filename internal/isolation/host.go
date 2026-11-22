@@ -76,7 +76,20 @@ func (h *Host) Down(_ context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	return vmnet.Stop(filepath.Join(dir, "vmnet.pid"))
+	return vmnet.Stop(pidFile(dir))
+}
+
+// DaemonRunning reports whether name's network daemon holds its PID file.
+func (h *Host) DaemonRunning(name string) bool {
+	if state.ValidateName(name) != nil {
+		return false
+	}
+	_, running := vmnet.Running(pidFile(filepath.Join(h.Store.Root, "boxes", name, "run")))
+	return running
+}
+
+func pidFile(dir string) string {
+	return filepath.Join(dir, "vmnet.pid")
 }
 
 // LogFile is where a VM's network daemon logs, including every egress decision.
@@ -100,7 +113,7 @@ func (h *Host) daemonConfig(box state.Box, lan bool, dir string) vmnet.Config {
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
 		LogFile:    filepath.Join(dir, "vmnet.log"),
-		PIDFile:    filepath.Join(dir, "vmnet.pid"),
+		PIDFile:    pidFile(dir),
 	}
 }
 

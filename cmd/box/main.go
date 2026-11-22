@@ -10,6 +10,7 @@ import (
 	guestfs "github.com/EmmadUsmani/homebox/guest"
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/cli"
+	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/execx"
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/isolation"
@@ -73,6 +74,7 @@ func newService() (*app.Service, error) {
 		Store:         store,
 		GuestSSH:      ssh,
 		Isolation:     &isolation.Host{Store: store, Executable: exe},
+		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
 		LocalHostName: ssh.LocalHostName,
 		Progress:      os.Stderr,
 	}, nil

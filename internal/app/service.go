@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/sshx"
 	"github.com/EmmadUsmani/homebox/internal/state"
@@ -55,6 +56,11 @@ func (NoIsolation) Up(context.Context, state.Box, vm.Instance) (Session, error) 
 // Down has no isolation resources to release.
 func (NoIsolation) Down(context.Context, string) error { return nil }
 
+// DoctorHost provides the host controls for the guest's isolation diagnostics.
+type DoctorHost interface {
+	Probe(context.Context, string, int, bool) ([]string, []doctor.Check, func())
+}
+
 // Service implements the box use cases.
 type Service struct {
 	Driver        vm.Driver
@@ -62,6 +68,7 @@ type Service struct {
 	Store         *state.Store
 	GuestSSH      SSH
 	Isolation     Isolation
+	DoctorHost    DoctorHost
 	LocalHostName func(context.Context) (string, error)
 	Progress      io.Writer
 }
@@ -121,11 +128,6 @@ func (s *Service) SSH(ctx context.Context, name string, argv []string) error {
 		return err
 	}
 	return s.GuestSSH.Interactive(endpoint, argv)
-}
-
-// Doctor is the entry point for the upcoming isolation checks.
-func (*Service) Doctor(context.Context, string) error {
-	return errors.New("doctor not implemented yet")
 }
 
 // SSHConfig renders laptop SSH aliases using an explicit or local mDNS hostname.
