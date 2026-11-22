@@ -38,6 +38,7 @@ Codex with full permissions, run any server, render and screenshot UI.
 | GPU on a Linux host (gaming PC, separate drive, RTX 3080 Ti) | Later, design for it |
 | Android / iOS, Windows guests | Later, keep possible |
 | No server of my own, no paid service, no WSL2 | Constraint |
+| Nothing served to the public internet; outside access only through Tailscale | Constraint |
 | Build on established open source; borrow ideas from young projects, don't depend on them | Constraint |
 
 ## Decisions made
@@ -51,9 +52,13 @@ Codex with full permissions, run any server, render and screenshot UI.
   Other distros, including non-systemd ones like Alpine, must be addable as profiles
   without changing `box`.
 - **Tailscale** is acceptable for remote access.
+- **`box` is written in Go.**
 - devvm (MIT) is design reference only; exeuntu (Apache-2.0) is the package-list
-  reference. Neither is a dependency.
+  reference. Neither is a dependency. Docker Sandboxes is out (closed source, needs
+  a Docker account).
 - Repo: `homebox` (working name), public, under my GitHub account.
+- **Not decided yet:** the repo's license.
+- **The build hasn't started.** It starts when the owner says so.
 
 ## Architecture
 
@@ -86,7 +91,7 @@ shell. Without it, creating a VM means being at the host.
 stop, delete, list, SSH endpoint, port forwards. The Lima driver writes Lima configs
 and calls `limactl`; nothing else in `box` knows about Lima.
 
-**Language: Go** (to confirm). One static binary per OS (macOS, Windows, Linux),
+**Language: Go** (confirmed by the owner). One static binary per OS (macOS, Windows, Linux),
 nothing to install on the host but Lima and `box`. It's what Lima, Tailscale and
 exe.dev's own tooling are written in. OS-specific work calls native tools: `pfctl`
 and `sandbox-exec` on macOS, `nft` on Linux, `netsh`/PowerShell on Windows.
