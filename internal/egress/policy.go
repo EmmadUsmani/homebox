@@ -1,7 +1,4 @@
-// Package egress decides which addresses a VM may reach and enforces it with
-// a host-side proxy. The VM's own network process is confined (see
-// internal/confine) so that this proxy is its only way out; the proxy then
-// allows public addresses only. Policy is the single source of truth.
+// Package egress defines the gateway's public IPv4 destination policy.
 package egress
 
 import "net/netip"

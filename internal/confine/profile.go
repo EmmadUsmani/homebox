@@ -177,12 +177,18 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	// not other VMs' disks.
 	fmt.Fprintf(profile, "(deny file-read* (subpath %s))\n", home)
 	fmt.Fprintf(profile, "(allow file-read* (subpath %s) (subpath %s) (literal %s))\n", limaConfig, runtimeDir, executable)
-	// Lima lists its home (names only) and resolves symlinks along its paths.
+	// Lima lists its home (names only), stats the gateway socket when it
+	// validates the config, and resolves symlinks along both paths.
 	quotedHome, _ := profilePath(rules.LimaHome)
 	fmt.Fprintf(profile, "(allow file-read-data (literal %s))\n", quotedHome)
-	for parent := path.Clean(rules.LimaHome); parent != "/"; parent = path.Dir(parent) {
-		quoted, _ := profilePath(parent)
-		fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
+	allowParents(profile, rules.LimaHome)
+	if rules.GatewaySocket != "" {
+		gateway, err := profilePath(rules.GatewaySocket)
+		if err != nil {
+			return fmt.Errorf("gateway socket: %w", err)
+		}
+		fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", gateway)
+		allowParents(profile, path.Dir(rules.GatewaySocket))
 	}
 	profile.WriteString("(allow file-write* (literal \"/dev/null\"))\n")
 	// limactl start opens Lima's network config for writing; box never
@@ -197,6 +203,14 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	fmt.Fprintf(profile, "(deny file-write* (literal %s))\n", limaYAML)
 	fmt.Fprintf(profile, "(allow process-exec (literal %s) (literal \"/usr/bin/ssh\") (literal \"/usr/bin/sw_vers\") (literal \"/usr/sbin/ioreg\") (literal \"/usr/sbin/system_profiler\") (literal \"/bin/sh\") (literal \"/bin/bash\"))\n", executable)
 	return nil
+}
+
+// allowParents lets the process stat dir and every directory above it.
+func allowParents(profile *strings.Builder, dir string) {
+	for parent := path.Clean(dir); parent != "/"; parent = path.Dir(parent) {
+		quoted, _ := profilePath(parent)
+		fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
+	}
 }
 
 func profilePath(value string) (string, error) {
