@@ -50,12 +50,13 @@ which loses the VM's contents. Add `box resize NAME [--cpus N] [--memory GiB]
   also deny the host's public address if it learned it without an outside
   service.
 
-## Start VMs again after the host restarts
+## Start VMs again when the host boots
 
-The owner wants VMs back without logging in to the host after a restart or power
-cut (design: "Autostart" in [plan.md](plan.md); a later phase, not urgent).
+The owner wants VMs back after a restart or power cut without logging in to the
+host (design: "Autostart" in [plan.md](plan.md); a later phase, not urgent).
 Approach: a mark in each box record, set by `box start` and cleared by `box
-stop`, and `box autostart on`, which installs a login item that starts every
-marked VM through box. Don't use `limactl autostart`: it skips box's isolation.
-The spike settles login item versus boot-time launchd job, and how FileVault
-and automatic login affect a headless Mac Mini.
+stop`, and `box autostart on`, which installs a boot-time job (launchd on macOS)
+that runs box as the owner and starts every marked VM through box. Don't use
+`limactl autostart`: it skips box's isolation. FileVault hosts aren't supported
+(owner). The spike checks that a VM starts from a boot-time job with nobody
+logged in; automatic login is the fallback.

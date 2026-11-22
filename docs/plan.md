@@ -2,8 +2,8 @@
 
 Status: signed off by the owner on 2026-11-21. Phases 0 and 1 built on 2026-11-22.
 v6 (owner, 2026-11-22) adds images, sleep and resume, and macOS guests, after
-comparing [localbox](alternatives.md#localbox), and restarting VMs after the host
-restarts.
+comparing [localbox](alternatives.md#localbox); restarting VMs when the host
+boots; and base images, so new VMs start from an image instead of provisioning.
 
 **This document changes only with the owner's explicit consent.** See
 [AGENTS.md](../AGENTS.md).
@@ -39,8 +39,11 @@ Codex with full permissions, run any server, render and screenshot UI.
 | Several VMs per host | Nice, don't design it out |
 | Images: save a VM as an image and start new VMs from it | Nice, phase 2 |
 | Images stay on the host that made them; moving one to another host is a manual copy | Constraint |
+| Base images: `box new` starts from a local image built by the profile's scripts, instead of running them every time | Nice, phase 2 |
+| A prebuilt base image published on GitHub Releases | Later, maybe |
 | Sleep and resume: an idle VM pauses, then resumes with its processes still running | Later |
-| VMs that were running start again, isolated as usual, when the host restarts | Later |
+| VMs that were running start again, isolated as usual, when the host boots, before anyone logs in | Later |
+| Autostart on hosts with FileVault (disk encryption locked until someone types the password) | Not supported (owner) |
 | Remote access from outside my network via Tailscale (approved) | Later |
 | Desktop + remote desktop | Later |
 | GPU on a Linux host (gaming PC, separate drive, RTX 3080 Ti) | Later, design for it |
@@ -96,13 +99,18 @@ Runs on the host. Draft commands:
 | `box doctor` | Checks isolation: VM can reach the internet, not the host or LAN |
 | `box image save NAME IMAGE` / `image ls` / `image rm` | Saves a VM as an image; lists or deletes images (phase 2) |
 | `box new NAME --image IMAGE` | Creates a VM from an image instead of provisioning from scratch (phase 2) |
+| `box image rebuild [--profile P]` | Rebuilds a profile's base image from its scripts (phase 2) |
 | `box image export IMAGE FILE` / `image import FILE` | Writes an image to one file, or reads one back, for copying to another host by hand (phase 2) |
 | `box sleep` / `wake` NAME | Pauses a VM with its memory saved, and resumes it (later) |
-| `box autostart on` / `off` | Adds or removes a host login item that starts again every VM that was running when the host went down (later) |
+| `box autostart on` / `off` | Installs or removes a boot-time job on the host that starts again every VM that was running when the host went down (later) |
 
 **Autostart.** `box start` marks a VM as one that should be running and `box stop`
-clears the mark; a host shutdown or crash leaves it set. At login, the autostart
-item runs box, which starts every marked VM the normal way, isolation first. (A
+clears the mark; a host shutdown or crash leaves it set. When the host boots,
+before anyone logs in, the autostart job runs box as the owner, which starts
+every marked VM the normal way, isolation first. The job is the host OS's own
+boot-time service: launchd on macOS, systemd on Linux, a startup task on Windows.
+Hosts using it don't use FileVault, which would hold the boot until someone
+types the password. (A
 VM put to sleep would be woken instead, once sleep exists.) Lima's own
 `limactl autostart` isn't used: it would start the VM without box's isolation.
 
@@ -145,8 +153,20 @@ guest/
 ### Images
 
 - An image is a saved VM disk plus the record `box` needs to start it (profile,
-  size). Images live on the host under box's own state, never on a shared or
+  size). Your images live on the host under box's own state, never on a shared or
   cloud store.
+- **Base images.** The first `box new` with a profile provisions a throwaway VM
+  with that profile's scripts, before anything is logged in, and saves it as
+  the profile's base image. Later `box new` clones the base image, gives the VM
+  its fresh identity, and runs a short update step (Claude Code, Codex, OS
+  packages) instead of the full scripts. The scripts stay the only definition of
+  what's in a VM; the base image is a cache of their output, refreshed with
+  `box image rebuild`, and rebuilt automatically when the profile changes.
+- **Later, maybe: a published base image.** CI builds the same base image and
+  publishes it on GitHub Releases, signed, so the first `box new` downloads it
+  instead of provisioning. Open questions before doing this: GitHub's 2 GB file
+  limit, one image per distro and CPU type, and whether Claude Code may be
+  redistributed inside an image.
 - A VM made from an image gets a fresh machine ID, hostname and SSH host keys on
   first boot, and box pins the new keys, so two VMs from one image never share
   an identity.
@@ -175,11 +195,11 @@ guest/
 |---|---|---|
 | 0 | **Spikes on the Mac** (about a day): Lima config, SSH published on the LAN, Seatbelt egress rule | SSH into a VM from the MacBook; it reaches the internet but not the Mini, its loopback or my router |
 | 1 | Mac, done properly: `box` with the Lima driver, Ubuntu profile, host init, ssh-config, doctor, CI | From the MacBook: `ssh main`, agents run with full permissions on my accounts, Playwright screenshots a dev server I also open on the laptop; the same `ssh main` and dev server from the Mac itself; `box doctor` passes |
-| 2 | Multiple VMs, images, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side, the second started from an image of the first; SSH from off my network; desktop from the laptop |
+| 2 | Multiple VMs, images and base images, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side, the second started from an image of the first; a new VM from the base image skips the full scripts; SSH from off my network; desktop from the laptop |
 | 3 | Credential proxy | Agent tokens unreadable inside the VM |
 | 4 | Windows host, when Lima's HCS driver is ready | Phase 1's exit criterion on the Windows PC |
 | 5 | Linux GPU box: Lima with the 3080 Ti passed through; Incus driver if Lima can't | `nvidia-smi` and a CUDA job in an isolated VM |
-| 6 | Later | Sleep and resume, autostart after a host restart, `box`-only SSH account, more guest profiles, Android, macOS guests (iOS and Mac apps), Windows guests |
+| 6 | Later | Sleep and resume, autostart when the host boots, a published base image, `box`-only SSH account, more guest profiles, Android, macOS guests (iOS and Mac apps), Windows guests |
 
 ## Open risks
 
@@ -196,10 +216,10 @@ guest/
 - **Sleep and resume on Lima** has no `limactl` command; Apple's framework can
   save a running VM's state (macOS 14+), and Lima's `vz` driver links that API,
   but whether Lima exposes it is unverified. QEMU has its own save and restore.
-- **Autostart before login:** a login item runs only once the owner logs in. A
-  headless Mac Mini needs automatic login, or a boot-time launchd job run as the
-  owner, and FileVault blocks both until the disk is unlocked. Which one box
-  uses is for a spike.
+- **Autostart at boot on macOS:** whether Apple's Virtualization framework runs a
+  VM from a boot-time launchd job, with nobody logged in, is unverified. If it
+  needs a user session, the fallback is automatic login, which works without
+  FileVault.
 - **macOS guests:** Lima 2.3 ships macOS guest templates (`vz` only). Apple's
   licence allows two running per Mac. Setting a macOS guest up without clicking
   through Apple's setup screens is unexplored here (localbox shows it can be done).
