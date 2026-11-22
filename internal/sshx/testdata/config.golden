@@ -2,8 +2,12 @@ Host alpha
   HostName vm-host.example
   Port 2201
   User developer
+  ForwardAgent no
+  ForwardX11 no
 
 Host beta
   HostName 192.0.2.1
   Port 2202
   User builder
+  ForwardAgent no
+  ForwardX11 no

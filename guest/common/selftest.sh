@@ -21,6 +21,8 @@ check Node sh -lc 'node --version'
 check Python sh -lc 'python --version'
 check 'Claude Code' sh -lc 'claude --version'
 check Codex sh -lc 'codex --version'
+check 'sshd refuses agent and X11 forwarding' sh -c \
+    'sudo -n sshd -T | grep -qx "allowagentforwarding no" && sudo -n sshd -T | grep -qx "x11forwarding no"'
 
 workspace="$HOME/.local/share/homebox/playwright"
 mise="$HOME/.local/bin/mise"

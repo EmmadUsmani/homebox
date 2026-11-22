@@ -15,4 +15,13 @@ apt-get install -y --no-install-recommends \
 locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8
 timedatectl set-timezone Etc/UTC
-systemctl enable --now ssh.service
+
+# The VM must never reach the laptop's SSH agent or display, whatever the
+# client asks for.
+cat > /etc/ssh/sshd_config.d/10-homebox.conf <<'EOF'
+AllowAgentForwarding no
+X11Forwarding no
+EOF
+sshd -t
+systemctl enable ssh.service
+systemctl reload-or-restart ssh.service
