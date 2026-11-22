@@ -16,6 +16,7 @@ import (
 type SSHConfigOptions struct {
 	Host       string
 	KnownHosts bool
+	Installer  bool
 	Include    bool
 }
 
@@ -25,11 +26,14 @@ func (s *Service) SSHConfig(ctx context.Context, options SSHConfigOptions) (stri
 		return sshx.IncludeLine(s.Store.SSHConfigPath())
 	}
 	boxes, err := s.Store.List()
-	if err != nil || len(boxes) == 0 {
+	if err != nil {
 		return "", err
 	}
+	if len(boxes) == 0 && !options.Installer {
+		return "", nil
+	}
 	host := options.Host
-	if !options.KnownHosts && host == "" {
+	if !options.KnownHosts && host == "" && len(boxes) > 0 {
 		if s.LocalHostName == nil {
 			return "", errors.New("local hostname resolver is unavailable; specify --host")
 		}
@@ -45,6 +49,9 @@ func (s *Service) SSHConfig(ctx context.Context, options SSHConfigOptions) (stri
 		}
 		entries = append(entries, configEntry(box, host))
 	}
+	if options.Installer {
+		return sshx.RenderInstaller(entries)
+	}
 	if options.KnownHosts {
 		return sshx.RenderKnownHosts(entries)
 	}
@@ -56,28 +63,43 @@ func configEntry(box state.Box, host string) sshx.ConfigEntry {
 }
 
 func (s *Service) pinSSH(ctx context.Context, box *state.Box) (vm.Endpoint, error) {
-	endpoint, err := s.Driver.SSH(ctx, box.Name)
+	endpoint, keys, err := s.readSSHPins(ctx, box.Name)
 	if err != nil {
 		return vm.Endpoint{}, err
+	}
+	if len(box.SSHHostKeys) > 0 && !slices.Equal(box.SSHHostKeys, keys) {
+		return vm.Endpoint{}, fmt.Errorf("SSH host keys changed for box %q; if intentional, run box repin %s", box.Name, box.Name)
+	}
+	return endpoint, s.saveSSHPins(box, endpoint, keys)
+}
+
+func (s *Service) readSSHPins(ctx context.Context, name string) (vm.Endpoint, []string, error) {
+	endpoint, err := s.Driver.SSH(ctx, name)
+	if err != nil {
+		return vm.Endpoint{}, nil, err
+	}
+	if !filepath.IsAbs(endpoint.IdentityFile) {
+		return vm.Endpoint{}, nil, fmt.Errorf("driver SSH identity for %q must be an absolute path", name)
 	}
 	keys, err := s.GuestSSH.HostKeys(ctx, endpoint)
 	if err != nil {
-		return vm.Endpoint{}, fmt.Errorf("read SSH host keys for %s: %w", box.Name, err)
+		return vm.Endpoint{}, nil, fmt.Errorf("read SSH host keys for %s: %w", name, err)
 	}
 	if len(keys) == 0 {
-		return vm.Endpoint{}, fmt.Errorf("box %q returned no SSH host keys", box.Name)
+		return vm.Endpoint{}, nil, fmt.Errorf("box %q returned no SSH host keys", name)
 	}
-	if len(box.SSHHostKeys) > 0 && !slices.Equal(box.SSHHostKeys, keys) {
-		return vm.Endpoint{}, fmt.Errorf("SSH host keys changed for box %q", box.Name)
-	}
-	if !filepath.IsAbs(endpoint.IdentityFile) {
-		return vm.Endpoint{}, fmt.Errorf("driver SSH identity for %q must be an absolute path", box.Name)
-	}
+	return endpoint, keys, nil
+}
+
+func (s *Service) saveSSHPins(box *state.Box, endpoint vm.Endpoint, keys []string) error {
 	box.SSHHostKeys, box.SSHIdentityFile = keys, endpoint.IdentityFile
 	if err := s.Store.Save(*box); err != nil {
-		return vm.Endpoint{}, err
+		return err
 	}
-	return endpoint, s.refreshLocalSSH()
+	if err := s.refreshLocalSSH(); err != nil {
+		return fmt.Errorf("SSH pins saved, but local SSH files could not be refreshed; fix the error and retry: %w", err)
+	}
+	return nil
 }
 
 func (s *Service) refreshLocalSSH() error {

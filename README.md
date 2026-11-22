@@ -41,47 +41,43 @@ Restart an already running VM so it picks up those settings. Run
 ./box stop main
 ./box start main
 
-umask 077
-./box ssh-config > homebox_config &&
-  ./box ssh-config --known-hosts > homebox_known_hosts
+./box ssh-config --installer > homebox-ssh.sh
 ```
 
-The default hostname is the Mac's mDNS name. Use `box ssh-config --host ADDR`
-if the laptop needs a different address. Transfer both exported files from the
-host to the laptop's Downloads folder over a trusted channel, such as a USB
-drive. Then paste this into the laptop's terminal.
+The default hostname is the Mac's mDNS name. Add `--host ADDR` if the laptop
+needs a different address. Transfer `homebox-ssh.sh` to the laptop over a
+trusted channel such as AirDrop or USB, then run:
 
 ```sh
-(
-  set -eu
-  umask 077
-  ssh_dir="$HOME/.ssh"
-  mkdir -p "$ssh_dir"
-  test -s "$HOME/Downloads/homebox_config"
-  test -s "$HOME/Downloads/homebox_known_hosts"
-  install -m 600 "$HOME/Downloads/homebox_known_hosts" "$ssh_dir/homebox_known_hosts"
-  install -m 600 "$HOME/Downloads/homebox_config" "$ssh_dir/homebox_config"
-
-  include='Include ~/.ssh/homebox_config'
-  config="$ssh_dir/config"
-  if ! grep -Fqx "$include" "$config" 2>/dev/null; then
-    new_config=$(mktemp "$ssh_dir/config.homebox.XXXXXX")
-    trap 'rm -f "$new_config"' 0
-    printf '%s\n' "$include" > "$new_config"
-    if [ -f "$config" ]; then
-      backup=$(mktemp "$ssh_dir/config.homebox-backup.XXXXXX")
-      cp "$config" "$backup"
-      cat "$config" >> "$new_config"
-    fi
-    mv "$new_config" "$config"
-  fi
-)
+sh homebox-ssh.sh
+ssh main
 ```
 
-Run `ssh main`. OpenSSH checks the exported key on the first connection and
-rejects a mismatch. Export and install both files again after adding or
-recreating a VM. If an existing VM presents a different key set during start or
-provision, box keeps the original pins and reports an error.
+If the Mac has Remote Login enabled, you can generate and run the installer
+in one step from the laptop. Replace the destination and binary path with
+yours. This trusts the Mac's own SSH host key, which you should verify before
+using the pipeline.
+
+```sh
+ssh user@mac.local '/absolute/path/to/box ssh-config --installer' | sh
+```
+
+The installer saves the aliases and pins under `~/.ssh` and prepends an
+Include to `~/.ssh/config`, backing up the existing config before changing
+it. OpenSSH checks the exported keys from the first VM connection. Generate
+and run the installer again after adding or recreating a VM.
+
+### After an intentional guest host-key change
+
+If start or provision reports changed SSH keys, leave the VM running and
+run `box repin NAME` on the Mac. Review the old and new SHA-256 fingerprints
+and confirm only if you intended the change. Use `box repin NAME --yes` for
+an intentional change in a non-interactive session. Box refreshes the Mac's
+aliases, and you need to generate and run the laptop installer again.
+
+The command reads new keys over the driver's authenticated connection. If
+you also replaced Lima's own pinned guest key, restore that key before
+running `box repin` so the driver can authenticate the guest.
 
 ## Commands
 
@@ -94,7 +90,8 @@ provision, box keeps the original pins and reports an error.
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
 | `box ports NAME [--add G:H] [--rm G] [--set G:H]` | Shows or changes published ports (VM stopped) |
 | `box provision NAME` | Re-runs provisioning (idempotent) |
-| `box ssh-config [--host ADDR \| --known-hosts \| --include]` | Prints laptop SSH aliases, their pinned keys, or the local Include line |
+| `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
+| `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
 | `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
 | `box doctor [NAME]` | Proves the VM reaches the internet but not the host or LAN |
 

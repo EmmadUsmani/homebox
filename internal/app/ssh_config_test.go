@@ -49,6 +49,27 @@ func TestSSHPinsLifecycle(t *testing.T) {
 	if read(pinsPath) != expectedPins {
 		t.Fatal("changed pins replaced known_hosts")
 	}
+	confirm := func(approved bool) func([]string, []string) (bool, error) {
+		return func(old, new []string) (bool, error) {
+			if len(old) != 1 || len(new) != 1 || old[0] == new[0] ||
+				!strings.HasPrefix(old[0], "ssh-ed25519 SHA256:") || !strings.HasPrefix(new[0], "ssh-ed25519 SHA256:") {
+				t.Fatalf("review fingerprints: old %v, new %v", old, new)
+			}
+			return approved, nil
+		}
+	}
+	if err := service.Repin(ctx, name, confirm(false)); err != nil || read(pinsPath) != expectedPins {
+		t.Fatalf("declined re-pin: %v", err)
+	}
+	if err := service.Repin(ctx, name, confirm(true)); err != nil {
+		t.Fatal(err)
+	}
+	if read(pinsPath) != "homebox-main "+ssh.hostKeys[0]+"\n" {
+		t.Fatal("approved re-pin did not refresh local pins")
+	}
+	if err := service.Start(ctx, name); err != nil {
+		t.Fatalf("start after re-pin: %v", err)
+	}
 	if err := service.Stop(ctx, name); err != nil {
 		t.Fatal(err)
 	}

@@ -28,6 +28,7 @@ type Application interface {
 	SSH(context.Context, string, []string) error
 	Ports(context.Context, string, app.PortOptions) ([]vm.PortForward, error)
 	SSHConfig(context.Context, app.SSHConfigOptions) (string, error)
+	Repin(context.Context, string, func(old, new []string) (bool, error)) error
 	Open(context.Context, string, string, bool) (string, error)
 	HostInit(context.Context, app.HostInitOptions) error
 	Doctor(context.Context, string) error
@@ -64,6 +65,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 		hostCommand(service),
 		portsCommand(service),
 		removeCommand(service, isTerminal),
+		repinCommand(service, isTerminal),
 		namedCommand("start NAME", "Start a VM", service.Start),
 		namedCommand("stop NAME", "Stop a VM", service.Stop),
 		namedCommand("provision NAME", "Run guest provisioning", service.Provision),
@@ -176,7 +178,9 @@ func sshConfigCommand(service Application) *cobra.Command {
 	cmd.Flags().StringVar(&options.Host, "host", "", "Host address (default local mDNS name)")
 	cmd.Flags().BoolVar(&options.KnownHosts, "known-hosts", false, "Print pinned laptop known_hosts entries")
 	cmd.Flags().BoolVar(&options.Include, "include", false, "Print the local SSH Include line")
+	cmd.Flags().BoolVar(&options.Installer, "installer", false, "Print a shell script to install laptop SSH aliases and pins")
 	cmd.MarkFlagsMutuallyExclusive("host", "known-hosts", "include")
+	cmd.MarkFlagsMutuallyExclusive("installer", "known-hosts", "include")
 	return cmd
 }
 
