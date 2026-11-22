@@ -57,9 +57,8 @@ once the laptop knows the VM's key; a first connection would trust it.
 
 ## Using the VM on the host Mac itself
 
-Proposed as a first-class use case, waiting on the owner's change to the design
-document. Today `box ssh NAME` works on the host, and the published ports work
-on `127.0.0.1`. Missing pieces:
+A Must requirement since 2026-11-22 (design document). Today `box ssh NAME`
+works on the host, and the published ports work on `127.0.0.1`. Missing pieces:
 
 - `box ssh-config --local` (or an `Include` file box maintains), so plain
   `ssh main`, `scp`, `rsync` and editors' remote-SSH modes work on the host
