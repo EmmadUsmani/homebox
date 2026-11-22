@@ -34,10 +34,10 @@ func watchHostProcess(parent context.Context, pid int, written time.Time) (conte
 		defer close(exited)
 		defer unix.Close(queue)
 		defer cancel()
+		var event [1]unix.Kevent_t
 		for ctx.Err() == nil {
 			timeout := unix.NsecToTimespec(int64(100 * time.Millisecond))
-			event := make([]unix.Kevent_t, 1)
-			count, err := unix.Kevent(queue, nil, event, &timeout)
+			count, err := unix.Kevent(queue, nil, event[:], &timeout)
 			if count > 0 || (err != nil && !errors.Is(err, unix.EINTR)) {
 				return
 			}

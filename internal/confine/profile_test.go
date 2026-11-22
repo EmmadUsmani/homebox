@@ -11,18 +11,19 @@ var update = flag.Bool("update", false, "rewrite the golden profiles")
 func TestRenderHostAgent(t *testing.T) {
 	assertProfile(t, "hostagent", Rules{
 		Home: "/Users/fixture", LimaHome: "/state/lima", Executable: "/opt/tools/limactl",
-		RuntimeDir: `/tmp/instance "quoted"\path`,
-		ConnectTCP: []int{32201, 23001, 23101},
-		ConnectUDP: []int{23101},
-		BindTCP:    []Bind{{Port: 32201}, {Port: 10100, LAN: true}},
+		RuntimeDir:    `/tmp/instance "quoted"\path`,
+		GatewaySocket: "/state/boxes/fixture/run/net.sock",
+		ConnectTCP:    []int{32201},
+		BindTCP:       []Bind{{Port: 32201}, {Port: 10100, LAN: true}},
 	})
 }
 
 func TestRenderDaemon(t *testing.T) {
 	assertProfile(t, "vmnet", Rules{
 		Daemon: true, RuntimeDir: "/state/boxes/fixture/run", Executable: "/opt/tools/box",
-		BindTCP: []Bind{{Port: 23001}, {Port: 23101}, {Port: 2201, LAN: true}},
-		BindUDP: []Bind{{Port: 23101}},
+		GatewaySocket: "/state/boxes/fixture/run/net.sock",
+		HostPIDFile:   "/state/lima/fixture/ha.pid",
+		BindTCP:       []Bind{{Port: 2201, LAN: true}},
 	})
 }
 

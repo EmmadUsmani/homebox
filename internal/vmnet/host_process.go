@@ -58,6 +58,9 @@ func readHostPID(path string) (int, time.Time, error) {
 	if err != nil {
 		return 0, time.Time{}, err
 	}
-	pid, _ := strconv.Atoi(strings.TrimSpace(string(data)))
-	return pid, info.ModTime(), nil
+	pid, err := strconv.ParseInt(strings.TrimSpace(string(data)), 10, 32)
+	if err != nil {
+		return 0, info.ModTime(), nil
+	}
+	return int(pid), info.ModTime(), nil
 }

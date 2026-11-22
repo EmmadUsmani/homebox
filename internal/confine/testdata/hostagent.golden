@@ -4,9 +4,7 @@
 (deny network-outbound)
 (allow network-outbound
   (remote tcp "localhost:32201")
-  (remote tcp "localhost:23001")
-  (remote tcp "localhost:23101")
-  (remote udp "localhost:23101")
+  (literal "/state/boxes/fixture/run/net.sock")
   (subpath "/tmp/instance \"quoted\"\\path"))
 
 (deny network-bind)

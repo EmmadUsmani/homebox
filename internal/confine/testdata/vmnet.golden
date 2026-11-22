@@ -1,12 +1,13 @@
 (version 1)
 (allow default)
 
+(deny network-outbound)
+(allow network-outbound (remote ip4 "*:*"))
+
 (deny network-bind)
 (allow network-bind
-  (local tcp "localhost:23001")
-  (local tcp "localhost:23101")
   (local tcp "*:2201")
-  (local udp "localhost:23101")
+  (literal "/state/boxes/fixture/run/net.sock")
 )
 
 (deny file-write*)
@@ -39,3 +40,7 @@
 (allow file-read-metadata (literal "/state"))
 (allow file-read-metadata (literal "/opt/tools"))
 (allow file-read-metadata (literal "/opt"))
+(allow file-read* (literal "/state/lima/fixture/ha.pid"))
+(allow file-read-metadata (literal "/state/lima/fixture"))
+(allow file-read-metadata (literal "/state/lima"))
+(allow file-read-metadata (literal "/state"))

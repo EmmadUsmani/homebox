@@ -113,6 +113,12 @@ func TestSpawnAndStop(t *testing.T) {
 	if _, err := os.Stat(config.PIDFile); !os.IsNotExist(err) {
 		t.Fatalf("stale PID file was not removed: %v", err)
 	}
+	stale, err := net.ListenUnix("unix", &net.UnixAddr{Name: config.Socket, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale.SetUnlinkOnClose(false)
+	stale.Close()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)

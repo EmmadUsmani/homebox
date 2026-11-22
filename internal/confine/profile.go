@@ -42,10 +42,10 @@ func render(rules Rules) (string, error) {
 	}
 	var profile strings.Builder
 	profile.WriteString("(version 1)\n(allow default)\n\n")
-	if !rules.Daemon {
-		if err := writeOutbound(&profile, rules, socketPath); err != nil {
-			return "", err
-		}
+	if rules.Daemon {
+		profile.WriteString("(deny network-outbound)\n(allow network-outbound (remote ip4 \"*:*\"))\n\n")
+	} else if err := writeOutbound(&profile, rules, socketPath); err != nil {
+		return "", err
 	}
 	profile.WriteString("(deny network-bind)\n(allow network-bind\n")
 	for _, local := range []struct {
