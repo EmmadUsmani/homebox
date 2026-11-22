@@ -5,7 +5,10 @@ proxy=${HOMEBOX_PROXY_URL:-}
 bypass=${HOMEBOX_NO_PROXY:-localhost,127.0.0.1,::1}
 admin=${HOMEBOX_USER:-${SUDO_USER:?admin user required}}
 case "$proxy$bypass" in
-    *[[:space:]]*|*'"'*|*\\*) echo "Invalid proxy or no-proxy value" >&2; exit 1 ;;
+    *[[:space:]]*|*'"'*|*\\*)
+        echo "Invalid proxy or no-proxy value" >&2
+        exit 1
+        ;;
 esac
 
 # /etc/environment is read by SSH's PAM session. Preserve unrelated entries.

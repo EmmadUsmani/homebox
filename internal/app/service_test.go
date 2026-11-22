@@ -112,23 +112,63 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 		t.Fatal(err)
 	}
 	spec := driver.Specs["main"]
-	if spec.CPUs != 4 || spec.MemoryGiB != 8 || spec.DiskGiB != 50 || spec.SSHPort != 32201 || !spec.HostGateway || !guestUser.MatchString(spec.User) ||
-		len(spec.Images) != 1 || len(spec.Forwards) != 100 || spec.Forwards[0].HostIP != "0.0.0.0" {
-		t.Fatalf("unexpected create spec: %+v", spec)
+	if spec.CPUs != 4 || spec.MemoryGiB != 8 || spec.DiskGiB != 50 {
+		t.Errorf("default VM size = %d CPUs, %d GiB memory, %d GiB disk", spec.CPUs, spec.MemoryGiB, spec.DiskGiB)
 	}
-	if !slices.Equal(ssh.calls, []string{"keys", "sudo base.sh", "tools.sh"}) || !slices.Equal(ssh.keys, []string{"test-key"}) {
-		t.Fatalf("unexpected guest operations: %+v", ssh)
+	if spec.SSHPort != 32201 || !spec.HostGateway {
+		t.Errorf("driver SSH port = %d, host gateway enabled = %t", spec.SSHPort, spec.HostGateway)
 	}
-	wantEnv := map[string]string{"HOMEBOX_PROXY_URL": "http://proxy.example", "HOMEBOX_NO_PROXY": "localhost", "HOMEBOX_DNS": "192.0.2.53:53", "HOMEBOX_USER": spec.User}
+	if !guestUser.MatchString(spec.User) {
+		t.Errorf("invalid guest user %q", spec.User)
+	}
+	if len(spec.Images) != 1 {
+		t.Errorf("got %d images, want 1", len(spec.Images))
+	}
+	if len(spec.Forwards) != 100 {
+		t.Fatalf("got %d forwards, want 100", len(spec.Forwards))
+	}
+	if spec.Forwards[0].HostIP != "0.0.0.0" {
+		t.Errorf("HTTP listen IP = %q, want LAN binding", spec.Forwards[0].HostIP)
+	}
+	if !slices.Equal(ssh.calls, []string{"keys", "sudo base.sh", "tools.sh"}) {
+		t.Errorf("unexpected guest operations: %v", ssh.calls)
+	}
+	if !slices.Equal(ssh.keys, []string{"test-key"}) {
+		t.Errorf("unexpected authorized keys: %v", ssh.keys)
+	}
+	wantEnv := map[string]string{
+		"HOMEBOX_PROXY_URL": "http://proxy.example",
+		"HOMEBOX_NO_PROXY":  "localhost",
+		"HOMEBOX_DNS":       "192.0.2.53:53",
+		"HOMEBOX_USER":      spec.User,
+	}
 	if !reflect.DeepEqual(ssh.env, wantEnv) {
-		t.Fatalf("provision env = %v", ssh.env)
+		t.Errorf("provision env = %v, want %v", ssh.env, wantEnv)
 	}
 	boxes, err := service.List(t.Context())
-	if err != nil || len(boxes) != 1 || !boxes[0].Provisioned || boxes[0].ProvisionedAt == nil || boxes[0].Status != vm.StatusRunning {
-		t.Fatalf("listing = %+v, %v", boxes, err)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if err := service.Provision(t.Context(), "main"); err != nil || len(ssh.calls) != 6 || len(isolation.calls) != 1 || !reflect.DeepEqual(ssh.env, wantEnv) {
-		t.Fatalf("reprovision: %v, ssh %v, isolation %v", err, ssh.calls, isolation.calls)
+	if len(boxes) != 1 {
+		t.Fatalf("listing has %d boxes, want 1", len(boxes))
+	}
+	if !boxes[0].Provisioned || boxes[0].ProvisionedAt == nil {
+		t.Errorf("listing is missing provisioning state: %+v", boxes[0])
+	}
+	if boxes[0].Status != vm.StatusRunning {
+		t.Errorf("listing status = %q, want running", boxes[0].Status)
+	}
+	if err := service.Provision(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	if len(ssh.calls) != 6 {
+		t.Errorf("guest operations after reprovisioning = %v, want 6", ssh.calls)
+	}
+	if len(isolation.calls) != 1 {
+		t.Errorf("isolation operations after reprovisioning = %v, want 1", isolation.calls)
+	}
+	if !reflect.DeepEqual(ssh.env, wantEnv) {
+		t.Errorf("reprovision env = %v, want %v", ssh.env, wantEnv)
 	}
 	for host, want := range map[string]string{"": "example.local", "vm-host.example": "vm-host.example"} {
 		config, err := service.SSHConfig(t.Context(), host)

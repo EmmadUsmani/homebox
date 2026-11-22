@@ -22,14 +22,16 @@ internal/egress    egress policy (which addresses a VM may reach) and the
                    host-side proxy that enforces it
 internal/confine   OS-specific host confinement of the VM's network process
                    (macOS: Seatbelt; Linux: nftables later)
-internal/vmnet     the per-VM host daemon: egress proxy, DNS forwarder
-                   (internal/dnsfwd) and SSH relay (internal/relay)
+internal/vmnet     runs the per-VM network daemon and manages its process
+internal/dnsfwd    forwards guest DNS queries to public resolvers
+internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    renders the laptop ~/.ssh/config snippet
-internal/doctor    isolation checks run from inside a VM
+internal/doctor    host-side controls and reporting for isolation checks
 internal/execx     a small process-runner interface, so code that shells out
                    can be tested with a fake
+e2e/               opt-in CLI lifecycle tests against a real VM
 ```
 
 ## Dependency rules

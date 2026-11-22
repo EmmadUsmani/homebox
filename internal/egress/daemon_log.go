@@ -44,51 +44,51 @@ func openDaemonLog(path string, limit int64) (*daemonLog, error) {
 	return log, nil
 }
 
-func (log *daemonLog) Write(data []byte) (int, error) {
-	log.mu.Lock()
-	defer log.mu.Unlock()
-	if log.file == nil {
+func (l *daemonLog) Write(data []byte) (int, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.file == nil {
 		return 0, os.ErrClosed
 	}
 	size := int64(len(data))
-	if size > log.limit {
-		return 0, fmt.Errorf("log record exceeds %d bytes", log.limit)
+	if size > l.limit {
+		return 0, fmt.Errorf("log record exceeds %d bytes", l.limit)
 	}
-	if size > log.limit-log.size {
-		if err := log.rotate(); err != nil {
+	if size > l.limit-l.size {
+		if err := l.rotate(); err != nil {
 			return 0, err
 		}
 	}
-	written, err := log.file.Write(data)
-	log.size += int64(written)
+	written, err := l.file.Write(data)
+	l.size += int64(written)
 	return written, err
 }
 
-func (log *daemonLog) rotate() error {
-	if err := os.Rename(log.path, log.path+".1"); err != nil {
+func (l *daemonLog) rotate() error {
+	if err := os.Rename(l.path, l.path+".1"); err != nil {
 		return err
 	}
-	next, err := os.OpenFile(log.path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	next, err := os.OpenFile(l.path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		// Restore the active path when possible so future writes can retry.
-		if restoreErr := os.Rename(log.path+".1", log.path); restoreErr != nil {
-			log.file.Close()
-			log.file = nil
+		if restoreErr := os.Rename(l.path+".1", l.path); restoreErr != nil {
+			l.file.Close()
+			l.file = nil
 		}
 		return err
 	}
-	log.file.Close()
-	log.file, log.size = next, 0
+	l.file.Close()
+	l.file, l.size = next, 0
 	return nil
 }
 
-func (log *daemonLog) Close() error {
-	log.mu.Lock()
-	defer log.mu.Unlock()
-	if log.file == nil {
+func (l *daemonLog) Close() error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.file == nil {
 		return os.ErrClosed
 	}
-	err := log.file.Close()
-	log.file = nil
+	err := l.file.Close()
+	l.file = nil
 	return err
 }

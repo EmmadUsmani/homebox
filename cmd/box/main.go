@@ -49,9 +49,6 @@ func runDaemon(args []string) int {
 	return 0
 }
 
-// newService wires the concrete pieces: the Lima driver in box's own Lima
-// home, the embedded guest profiles, the on-disk store, the system ssh and
-// the host isolation.
 func newService() (*app.Service, error) {
 	root, err := state.DefaultRoot()
 	if err != nil {

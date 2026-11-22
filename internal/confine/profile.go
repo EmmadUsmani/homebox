@@ -1,3 +1,4 @@
+// Package confine prepares host-side network restrictions for VM processes.
 package confine
 
 import (

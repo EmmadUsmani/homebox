@@ -28,16 +28,16 @@ type Config struct {
 }
 
 // Args encodes the flags following the hidden _vmnet command.
-func (config Config) Args() []string {
+func (c Config) Args() []string {
 	return []string{
-		"--name=" + config.Name,
-		"--proxy-port=" + strconv.Itoa(config.ProxyPort),
-		"--dns-port=" + strconv.Itoa(config.DNSPort),
-		"--ssh-ip=" + config.SSHPublish.IP,
-		"--ssh-port=" + strconv.Itoa(config.SSHPublish.Port),
-		"--ssh-target=" + strconv.Itoa(config.SSHTarget),
-		"--log-file=" + config.LogFile,
-		"--pid-file=" + config.PIDFile,
+		"--name=" + c.Name,
+		"--proxy-port=" + strconv.Itoa(c.ProxyPort),
+		"--dns-port=" + strconv.Itoa(c.DNSPort),
+		"--ssh-ip=" + c.SSHPublish.IP,
+		"--ssh-port=" + strconv.Itoa(c.SSHPublish.Port),
+		"--ssh-target=" + strconv.Itoa(c.SSHTarget),
+		"--log-file=" + c.LogFile,
+		"--pid-file=" + c.PIDFile,
 	}
 }
 
@@ -63,22 +63,22 @@ func ParseArgs(args []string) (Config, error) {
 	return config, config.validate()
 }
 
-func (config Config) validate() error {
-	if config.Name == "" {
+func (c Config) validate() error {
+	if c.Name == "" {
 		return fmt.Errorf("missing VM name")
 	}
-	if config.SSHPublish.IP != "127.0.0.1" && config.SSHPublish.IP != "0.0.0.0" {
+	if c.SSHPublish.IP != "127.0.0.1" && c.SSHPublish.IP != "0.0.0.0" {
 		return fmt.Errorf("SSH listen address must be 127.0.0.1 or 0.0.0.0")
 	}
 	ports := make(map[int]bool, 4)
-	for _, port := range []int{config.ProxyPort, config.DNSPort, config.SSHPublish.Port, config.SSHTarget} {
+	for _, port := range []int{c.ProxyPort, c.DNSPort, c.SSHPublish.Port, c.SSHTarget} {
 		if port < 1 || port > 65535 || ports[port] {
 			return fmt.Errorf("invalid or duplicate VM network port %d", port)
 		}
 		ports[port] = true
 	}
-	if !filepath.IsAbs(config.LogFile) || !filepath.IsAbs(config.PIDFile) ||
-		filepath.Clean(config.LogFile) == filepath.Clean(config.PIDFile) {
+	if !filepath.IsAbs(c.LogFile) || !filepath.IsAbs(c.PIDFile) ||
+		filepath.Clean(c.LogFile) == filepath.Clean(c.PIDFile) {
 		return fmt.Errorf("log and PID files must be distinct absolute paths")
 	}
 	return nil

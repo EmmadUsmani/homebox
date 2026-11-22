@@ -10,9 +10,15 @@ loopback=/etc/systemd/network/05-homebox-dns.network
 
 if [ -n "$dns" ]; then
     case "$dns" in
-        *[!0-9.:]*|:*|*:|*:*:*) echo 'Invalid HOMEBOX_DNS endpoint' >&2; exit 1 ;;
+        *[!0-9.:]*|:*|*:|*:*:*)
+            echo 'Invalid HOMEBOX_DNS endpoint' >&2
+            exit 1
+            ;;
         *:*) ;;
-        *) echo 'HOMEBOX_DNS requires an explicit port' >&2; exit 1 ;;
+        *)
+            echo 'HOMEBOX_DNS requires an explicit port' >&2
+            exit 1
+            ;;
     esac
     mkdir -p "${resolved%/*}" "${link%/*}"
     # The cloud-init netplan supplies a static DNS entry as well as DHCP.
@@ -98,16 +104,25 @@ fi
 
 case "$proxy" in
     http://*:* ) ;;
-    *) echo 'HOMEBOX_PROXY_URL must be http://IPv4:PORT' >&2; exit 1 ;;
+    *)
+        echo 'HOMEBOX_PROXY_URL must be http://IPv4:PORT' >&2
+        exit 1
+        ;;
 esac
 endpoint=${proxy#http://}
 proxy_ip=${endpoint%:*}
 proxy_port=${endpoint##*:}
 case "$proxy_ip" in
-    ''|*[!0-9.]*) echo 'Invalid proxy IPv4 address' >&2; exit 1 ;;
+    ''|*[!0-9.]*)
+        echo 'Invalid proxy IPv4 address' >&2
+        exit 1
+        ;;
 esac
 case "$proxy_port" in
-    ''|*[!0-9]*) echo 'Invalid proxy port' >&2; exit 1 ;;
+    ''|*[!0-9]*)
+        echo 'Invalid proxy port' >&2
+        exit 1
+        ;;
 esac
 
 export DEBIAN_FRONTEND=noninteractive

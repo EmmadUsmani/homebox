@@ -1,3 +1,4 @@
+// Package e2e exercises the box CLI against a real VM.
 package e2e
 
 import (
@@ -83,8 +84,11 @@ func TestBoxLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if record.Index != index || !record.Provisioned {
-		t.Fatalf("expected a provisioned VM at index %d, got index %d (provisioned: %t)", index, record.Index, record.Provisioned)
+	if record.Index != index {
+		t.Fatalf("box index = %d, want %d", record.Index, index)
+	}
+	if !record.Provisioned {
+		t.Fatal("box new did not mark the VM provisioned")
 	}
 	assertRunning(t, box(time.Minute, "ls"), name)
 	output := box(time.Minute, "ssh", name, "--", "echo ok && whoami")

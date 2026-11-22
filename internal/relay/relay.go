@@ -18,28 +18,28 @@ type Relay struct {
 }
 
 // Bind opens the relay's listener before serving any traffic.
-func (relay Relay) Bind() (*net.TCPListener, error) {
-	address, err := netip.ParseAddrPort(relay.Listen)
+func (r Relay) Bind() (*net.TCPListener, error) {
+	address, err := netip.ParseAddrPort(r.Listen)
 	if err != nil || !address.Addr().Is4() {
-		return nil, fmt.Errorf("invalid IPv4 relay listen address %q", relay.Listen)
+		return nil, fmt.Errorf("invalid IPv4 relay listen address %q", r.Listen)
 	}
-	if _, err := relay.target(); err != nil {
+	if _, err := r.target(); err != nil {
 		return nil, err
 	}
 	return net.ListenTCP("tcp4", net.TCPAddrFromAddrPort(address))
 }
 
 // Run binds and serves the relay until cancellation.
-func (relay Relay) Run(ctx context.Context) error {
-	listener, err := relay.Bind()
+func (r Relay) Run(ctx context.Context) error {
+	listener, err := r.Bind()
 	if err != nil {
 		return err
 	}
-	return relay.Serve(ctx, listener)
+	return r.Serve(ctx, listener)
 }
 
-func (relay Relay) target() (netip.AddrPort, error) {
-	address, err := netip.ParseAddrPort(relay.Target)
+func (r Relay) target() (netip.AddrPort, error) {
+	address, err := netip.ParseAddrPort(r.Target)
 	if err != nil || address.Addr() != netip.MustParseAddr("127.0.0.1") || address.Port() == 0 {
 		return netip.AddrPort{}, fmt.Errorf("relay target must be a nonzero port on 127.0.0.1")
 	}
@@ -47,9 +47,9 @@ func (relay Relay) target() (netip.AddrPort, error) {
 }
 
 // Serve handles connections on a bound listener and closes it on return.
-func (relay Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
+func (r Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
 	defer listener.Close()
-	target, err := relay.target()
+	target, err := r.target()
 	if err != nil {
 		return err
 	}

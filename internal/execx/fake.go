@@ -30,6 +30,7 @@ func (f *Fake) On(prefix string, stdout string, err error) {
 	f.Responses = append(f.Responses, FakeResponse{Prefix: prefix, Result: Result{Stdout: []byte(stdout)}, Err: err})
 }
 
+// Run records the command and returns the first matching response.
 func (f *Fake) Run(_ context.Context, c Cmd) (Result, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
