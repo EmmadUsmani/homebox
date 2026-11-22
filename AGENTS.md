@@ -20,6 +20,30 @@ holds the requirements, the decisions already made and the phase order.
 - If the work can't follow the design, stop and ask. Don't quietly deviate, and
   don't edit the document to match what you built.
 
+## Keep the docs current
+
+The docs are part of the work. A change isn't done until the docs that
+describe it are true, in the same commit or the one right after.
+
+| Doc | Update it when |
+|---|---|
+| [README.md](README.md) | Commands, setup steps or user-visible behaviour change |
+| [SECURITY.md](SECURITY.md) | Anything touches isolation, egress, SSH, ports, confinement or secrets |
+| [docs/architecture.md](docs/architecture.md) | Packages, dependencies, host state or known limitations change |
+| [docs/decisions.md](docs/decisions.md) | A decision is made or reversed: record why, the date and who made it |
+| [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |
+| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found |
+| [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
+| [docs/images-and-sleep.md](docs/images-and-sleep.md) | Images or sleep are built, or a spike answers one of its questions |
+
+- Fix a doc that's wrong or stale as soon as you notice it, even outside your
+  task.
+- When a topic has no home, write a new doc in `docs/` and link it from the
+  README's list and from this table.
+- Link to the code or doc that holds a fact instead of copying it.
+- `docs/plan.md` is the exception: it still changes only with the owner's
+  consent (above). Propose the diff instead.
+
 ## Current status
 
 The owner said to start building on 2026-11-21. Phases 0 and 1 (the Mac host)
