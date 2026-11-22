@@ -107,6 +107,25 @@ apps, and Tailscale (installed, off). Log the agents in yourself; for full
 permissions use `claude --dangerously-skip-permissions` or
 `codex --dangerously-bypass-approvals-and-sandbox`.
 
+## Stopping and starting
+
+`box stop NAME` shuts the VM down cleanly; `box start NAME` boots it again
+from the same disk, with no re-provisioning. Only `box rm` deletes a VM's disk.
+
+- **Kept:** files and git checkouts, installed packages and tools, agent
+  logins, shell history, Docker images and volumes, the VM's ports and SSH
+  aliases.
+- **Lost:** running processes (dev servers, agent sessions, tmux, background
+  jobs), and anything only in memory or `/tmp`.
+- **Back on their own:** sshd and Docker start at boot, and so do containers
+  with a restart policy (`--restart unless-stopped`, or `restart:` in Compose).
+  To bring back your own server, run it as a systemd service or in such a
+  container.
+
+VMs don't start again on their own after the host restarts yet; run
+`box start NAME`. Setting up an always-on host is in
+[host setup](docs/host-setup-macos.md).
+
 ## Isolation
 
 The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
@@ -119,7 +138,8 @@ The gateway allows public IPv4 TCP, UDP and ICMP echo, including DNS directly
 to public resolvers. It blocks host and private network destinations even
 when root in the guest changes its routes. Run `box doctor` to check.
 
-See the [architecture](docs/architecture.md) for known limitations.
+See [SECURITY.md](SECURITY.md) for the full security model, and the
+[architecture](docs/architecture.md) for known limitations.
 
 ## Development
 
@@ -131,5 +151,9 @@ shellcheck --shell=sh guest/*/*.sh
 
 - [Design document](docs/plan.md): requirements, decisions and phases.
 - [Code architecture](docs/architecture.md): packages and dependency rules.
+- [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
+- [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
+- [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
+- [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)
