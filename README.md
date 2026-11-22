@@ -132,4 +132,5 @@ shellcheck --shell=sh guest/*/*.sh
 
 - [Design document](docs/plan.md): requirements, decisions and phases.
 - [Code architecture](docs/architecture.md): packages and dependency rules.
+- [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)
