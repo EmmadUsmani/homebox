@@ -30,11 +30,16 @@ func TestDaemonConfigPublishesSSHOnTheLANOnlyWhenAsked(t *testing.T) {
 	host := &Host{Store: &state.Store{Root: "/state"}}
 	box := state.Box{Name: "main", Index: 1, SSHPort: 2201}
 	for _, lan := range []bool{false, true} {
-		config := host.daemonConfig(box, lan, "/state/boxes/main/run")
+		config := host.daemonConfig(box, lan)
 		wantIP := map[bool]string{false: "127.0.0.1", true: "0.0.0.0"}[lan]
-		if config.SSHPublish.IP != wantIP || config.SSHPublish.Port != 2201 || config.SSHTarget != 32201 ||
-			config.ProxyPort != 23001 || config.DNSPort != 23101 {
-			t.Fatalf("lan=%v: config = %+v", lan, config)
+		if config.SSHPublish.IP != wantIP {
+			t.Errorf("lan=%v: SSH listen IP = %q, want %q", lan, config.SSHPublish.IP, wantIP)
+		}
+		if config.SSHPublish.Port != 2201 || config.SSHTarget != 32201 {
+			t.Errorf("lan=%v: SSH listen port = %d, target = %d", lan, config.SSHPublish.Port, config.SSHTarget)
+		}
+		if config.ProxyPort != 23001 || config.DNSPort != 23101 {
+			t.Errorf("lan=%v: proxy port = %d, DNS port = %d", lan, config.ProxyPort, config.DNSPort)
 		}
 	}
 }

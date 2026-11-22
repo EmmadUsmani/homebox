@@ -67,8 +67,18 @@ func ValidateName(name string) error {
 	return nil
 }
 
+func (s *Store) boxesDir() string {
+	return filepath.Join(s.Root, "boxes")
+}
+
+// BoxDir returns the state directory for a box. Callers validate the name
+// before accessing files there.
+func (s *Store) BoxDir(name string) string {
+	return filepath.Join(s.boxesDir(), name)
+}
+
 func (s *Store) boxPath(name string) string {
-	return filepath.Join(s.Root, "boxes", name, "box.json")
+	return filepath.Join(s.BoxDir(name), "box.json")
 }
 
 // Load reads a named box record.
@@ -106,7 +116,7 @@ func (s *Store) Delete(name string) error {
 
 // List returns records in name order.
 func (s *Store) List() ([]Box, error) {
-	entries, err := os.ReadDir(filepath.Join(s.Root, "boxes"))
+	entries, err := os.ReadDir(s.boxesDir())
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
 	}

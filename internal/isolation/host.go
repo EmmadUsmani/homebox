@@ -43,12 +43,12 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	if err != nil {
 		return app.Session{}, err
 	}
-	dir, err := h.runDir(box.Name)
+	dir, err := h.prepareRunDir(box.Name)
 	if err != nil {
 		return app.Session{}, err
 	}
 
-	daemon := h.daemonConfig(box, host.LAN, dir)
+	daemon := h.daemonConfig(box, host.LAN)
 	// A daemon left over from a VM that stopped on its own may hold stale
 	// settings (e.g. the LAN flag), so always start a fresh one.
 	if err := vmnet.Stop(daemon.PIDFile); err != nil {
@@ -72,7 +72,7 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 
 // Down stops the VM's network daemon. It is safe to call when none runs.
 func (h *Host) Down(_ context.Context, name string) error {
-	dir, err := h.runDir(name)
+	dir, err := h.prepareRunDir(name)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (h *Host) Running(name string) bool {
 	if state.ValidateName(name) != nil {
 		return false
 	}
-	_, running := vmnet.Running(pidFile(filepath.Join(h.Store.Root, "boxes", name, "run")))
+	_, running := vmnet.Running(pidFile(h.runDir(name)))
 	return running
 }
 
@@ -94,26 +94,30 @@ func pidFile(dir string) string {
 
 // LogFile is where a VM's network daemon logs, including every egress decision.
 func (h *Host) LogFile(name string) string {
-	return filepath.Join(h.Store.Root, "boxes", name, "run", "vmnet.log")
+	return filepath.Join(h.runDir(name), "vmnet.log")
 }
 
-func (h *Host) runDir(name string) (string, error) {
+func (h *Host) runDir(name string) string {
+	return filepath.Join(h.Store.BoxDir(name), "run")
+}
+
+func (h *Host) prepareRunDir(name string) (string, error) {
 	if err := state.ValidateName(name); err != nil {
 		return "", err
 	}
-	dir := filepath.Join(h.Store.Root, "boxes", name, "run")
+	dir := h.runDir(name)
 	return dir, os.MkdirAll(dir, 0o700)
 }
 
-func (h *Host) daemonConfig(box state.Box, lan bool, dir string) vmnet.Config {
+func (h *Host) daemonConfig(box state.Box, lan bool) vmnet.Config {
 	return vmnet.Config{
 		Name:       box.Name,
 		ProxyPort:  state.ProxyPort(box.Index),
 		DNSPort:    state.DNSPort(box.Index),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
-		LogFile:    filepath.Join(dir, "vmnet.log"),
-		PIDFile:    pidFile(dir),
+		LogFile:    h.LogFile(box.Name),
+		PIDFile:    pidFile(h.runDir(box.Name)),
 	}
 }
 
