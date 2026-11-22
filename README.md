@@ -155,5 +155,6 @@ shellcheck --shell=sh guest/*/*.sh
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
+- [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)

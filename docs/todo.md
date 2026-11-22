@@ -39,6 +39,17 @@ which loses the VM's contents. Add `box resize NAME [--cpus N] [--memory GiB]
 - Refuse more CPUs or memory than the host has, with a clear message, instead
   of leaving the VM unable to start.
 
+## Sign agents in once per host
+
+Every new VM starts with Claude Code and Codex signed out, so each `box new`
+means two browser logins. The owner wants to sign in once per host. Approach:
+`box auth add` stores a login on the host under box's state, outside every
+sandbox's readable paths, and `box new` copies it into the VM. Prefer a
+long-lived token made for machines without a browser. Copying a browser login
+risks VMs signing each other out if refresh tokens rotate. A spike checks how
+both agents store and refresh logins first. Design and open questions:
+[agent-logins.md](agent-logins.md).
+
 ## Smaller
 
 - Reconnect the socket NIC after a daemon failure without restarting the VM.

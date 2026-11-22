@@ -35,6 +35,7 @@ describe it are true, in the same commit or the one right after.
 | [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found |
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
 | [docs/images-and-sleep.md](docs/images-and-sleep.md) | Images or sleep are built, or a spike answers one of its questions |
+| [docs/agent-logins.md](docs/agent-logins.md) | Agent logins are stored or copied by box, or a spike answers one of its questions |
 
 - Fix a doc that's wrong or stale as soon as you notice it, even outside your
   task.
@@ -51,7 +52,8 @@ are built and pass `HOMEBOX_E2E=1 go test ./e2e/...` on an M2 Mac, including
 same-machine use, pinned laptop SSH, file-confined host processes and UDP/ICMP
 egress. On 2026-11-22 a second Mac (an 8 GiB M2 Mac mini on macOS 27) hosted a
 VM that passed `box doctor`, and a laptop on the LAN reached it with pinned SSH
-and its published HTTP port. Agent logins in the VM are still unconfirmed. [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
+and its published HTTP port, and the owner signed Claude Code and Codex in
+inside that VM. [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
 [docs/architecture.md](docs/architecture.md) holds the code layout, dependency
 rules and known limitations; follow it.
 
