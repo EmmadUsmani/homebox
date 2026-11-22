@@ -54,14 +54,25 @@ func TestRunAndInteractive(t *testing.T) {
 	if args[len(args)-1] != "'printf' '%s' '$(literal)'" || !slices.Contains(args, "UserKnownHostsFile=test-known-hosts") {
 		t.Fatalf("argv = %v", args)
 	}
+	client.isTerminal = func() bool { return true }
 	client.replaceProcess = func(path string, args, _ []string) error {
-		want := []string{"-t", "--", "developer@127.0.0.1", "'echo' 'hello world'"}
+		want := []string{"-t", "--", "developer@127.0.0.1", "echo", "hello world"}
 		if path != os.Args[0] || !slices.Equal(args[len(args)-len(want):], want) {
 			t.Fatalf("exec = %q %v", path, args)
 		}
 		return nil
 	}
 	if err := client.Interactive(ep, []string{"echo", "hello world"}); err != nil {
+		t.Fatal(err)
+	}
+	client.isTerminal = func() bool { return false }
+	client.replaceProcess = func(_ string, args, _ []string) error {
+		if slices.Contains(args, "-t") || args[len(args)-1] != "make && ./run" {
+			t.Fatalf("exec args = %v", args)
+		}
+		return nil
+	}
+	if err := client.Interactive(ep, []string{"make && ./run"}); err != nil {
 		t.Fatal(err)
 	}
 	ep.Host = "192.0.2.1"

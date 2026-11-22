@@ -17,6 +17,7 @@ import (
 
 	"github.com/EmmadUsmani/homebox/internal/execx"
 	"github.com/EmmadUsmani/homebox/internal/vm"
+	"golang.org/x/term"
 )
 
 // Client runs OpenSSH commands. SSH defaults to "ssh".
@@ -24,6 +25,7 @@ type Client struct {
 	Runner         execx.Runner
 	SSH            string
 	replaceProcess func(string, []string, []string) error
+	isTerminal     func() bool
 }
 
 func (c Client) binary() string {
@@ -102,16 +104,20 @@ func (c Client) run(ctx context.Context, ep vm.Endpoint, argv []string, stdin io
 	})
 }
 
-// Interactive replaces the current process with an SSH session.
+// Interactive replaces the current process with an SSH session. Like plain
+// ssh, the command words are handed to the guest's shell as typed, so
+// `box ssh main -- 'make && ./run'` works; a terminal is requested only when
+// box itself runs in one.
 func (c Client) Interactive(ep vm.Endpoint, argv []string) error {
 	args, err := endpointArgs(ep)
 	if err != nil {
 		return err
 	}
-	args = append(args, "-t", "--", ep.User+"@"+ep.Host)
-	if len(argv) > 0 {
-		args = append(args, remoteCommand(argv))
+	if c.stdinIsTerminal() {
+		args = append(args, "-t")
 	}
+	args = append(args, "--", ep.User+"@"+ep.Host)
+	args = append(args, argv...)
 	path, err := exec.LookPath(c.binary())
 	if err != nil {
 		return err
@@ -121,6 +127,13 @@ func (c Client) Interactive(ep vm.Endpoint, argv []string) error {
 		replace = syscall.Exec
 	}
 	return replace(path, append([]string{c.binary()}, args...), os.Environ())
+}
+
+func (c Client) stdinIsTerminal() bool {
+	if c.isTerminal != nil {
+		return c.isTerminal()
+	}
+	return term.IsTerminal(int(os.Stdin.Fd()))
 }
 
 // AuthorizeKeys adds missing public key lines to the guest user's authorized_keys.
