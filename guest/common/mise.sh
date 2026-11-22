@@ -17,5 +17,13 @@ profile_line='if [ -x "$HOME/.local/bin/mise" ]; then export PATH="$HOME/.local/
 bashrc_line='if [ -x "$HOME/.local/bin/mise" ]; then eval "$("$HOME/.local/bin/mise" activate bash)"; fi'
 grep -Fqx "$profile_line" "$HOME/.profile" 2>/dev/null ||
     printf '\n%s\n' "$profile_line" >> "$HOME/.profile"
+# bash also reads ~/.bashrc for `ssh host cmd`, but Ubuntu's ~/.bashrc returns
+# early when the shell isn't interactive, so the PATH has to come first.
+if ! grep -Fqx "$profile_line" "$HOME/.bashrc" 2>/dev/null; then
+    bashrc=$(mktemp)
+    { printf '%s\n' "$profile_line"; cat "$HOME/.bashrc" 2>/dev/null || :; } > "$bashrc"
+    cat "$bashrc" > "$HOME/.bashrc"
+    rm -f "$bashrc"
+fi
 grep -Fqx "$bashrc_line" "$HOME/.bashrc" 2>/dev/null ||
     printf '\n%s\n' "$bashrc_line" >> "$HOME/.bashrc"

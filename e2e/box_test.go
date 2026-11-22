@@ -124,6 +124,8 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 	localConfig := store.SSHConfigPath()
 	runOK("ssh", "-F", localConfig, name, "true")
+	// A plain `ssh host cmd` must find the tools, not only a login shell.
+	runOK("ssh", "-F", localConfig, name, "node --version && claude --version && codex --version")
 	source := filepath.Join(dir, "transfer")
 	if err := os.WriteFile(source, []byte("transfer verified\n"), 0600); err != nil {
 		t.Fatal(err)
