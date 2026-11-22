@@ -35,6 +35,8 @@ type Isolation interface {
 	Up(ctx context.Context, box state.Box, instance vm.Instance) (Session, error)
 	// Down runs after the VM stops or fails to start. It must be safe to retry.
 	Down(ctx context.Context, name string) error
+	// Running reports whether the VM's host-side services are up.
+	Running(name string) bool
 }
 
 // Session describes the launch and guest network configuration.
@@ -55,6 +57,9 @@ func (NoIsolation) Up(context.Context, state.Box, vm.Instance) (Session, error) 
 
 // Down has no isolation resources to release.
 func (NoIsolation) Down(context.Context, string) error { return nil }
+
+// Running is always true: there is nothing to run.
+func (NoIsolation) Running(string) bool { return true }
 
 // DoctorHost provides the host controls for the guest's isolation diagnostics.
 type DoctorHost interface {

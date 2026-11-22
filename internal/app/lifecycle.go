@@ -45,7 +45,7 @@ func (s *Service) authorizeHostKeys(ctx context.Context, name string, endpoint v
 
 func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instance) error {
 	if instance.Status == vm.StatusRunning {
-		return nil
+		return s.restartDeadIsolation(ctx, box, instance)
 	}
 	if err := s.applyLANSetting(ctx, box); err != nil {
 		return err
@@ -155,4 +155,18 @@ func (s *Service) applyLANSetting(ctx context.Context, box *state.Box) error {
 	}
 	box.Forwards = forwards
 	return s.Store.Save(*box)
+}
+
+// restartDeadIsolation brings back the host-side services of a running VM
+// whose network daemon died, e.g. after it was killed. The VM keeps its
+// confinement; it only lost its way out until now.
+func (s *Service) restartDeadIsolation(ctx context.Context, box *state.Box, instance vm.Instance) error {
+	if s.Isolation.Running(box.Name) {
+		return nil
+	}
+	s.progress("%s is running but its network daemon isn't; restarting it", box.Name)
+	if _, err := s.Isolation.Up(ctx, *box, instance); err != nil {
+		return fmt.Errorf("restart isolation: %w", err)
+	}
+	return nil
 }

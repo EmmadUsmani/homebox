@@ -65,13 +65,18 @@ func (s *testSSH) Interactive(_ vm.Endpoint, argv []string) error {
 type testIsolation struct {
 	calls    []string
 	failDown error
+	up       map[string]bool
 }
 
 func (i *testIsolation) Up(_ context.Context, box state.Box, instance vm.Instance) (Session, error) {
-	if box.Name != instance.Name || instance.Status != vm.StatusStopped {
+	if box.Name != instance.Name {
 		return Session{}, errors.New("wrong instance for confinement")
 	}
 	i.calls = append(i.calls, "up "+box.Name)
+	if i.up == nil {
+		i.up = map[string]bool{}
+	}
+	i.up[box.Name] = true
 	return Session{Start: vm.StartOptions{Wrap: []string{"test-wrapper"}}, ProxyURL: "http://proxy.example", NoProxy: "localhost", DNS: "192.0.2.53:53"}, nil
 }
 
@@ -80,8 +85,11 @@ func (i *testIsolation) Down(ctx context.Context, name string) error {
 		return ctx.Err()
 	}
 	i.calls = append(i.calls, "down "+name)
+	delete(i.up, name)
 	return i.failDown
 }
+
+func (i *testIsolation) Running(name string) bool { return i.up[name] }
 
 func fixture(t *testing.T) (*Service, *vmtest.Driver, *testSSH, *testIsolation) {
 	t.Helper()
@@ -304,5 +312,25 @@ func TestRemoveDeletesAVMThatWontStop(t *testing.T) {
 	}
 	if _, err := driver.Get(t.Context(), "main"); !errors.Is(err, vm.ErrNotFound) {
 		t.Fatalf("VM still exists: %v", err)
+	}
+}
+
+func TestStartRestartsTheDaemonOfARunningVM(t *testing.T) {
+	service, _, _, isolation := fixture(t)
+	if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := service.Start(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(isolation.calls, []string{"up main"}) {
+		t.Fatalf("healthy running VM touched isolation: %v", isolation.calls)
+	}
+	delete(isolation.up, "main") // the daemon died
+	if err := service.Start(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(isolation.calls, []string{"up main", "up main"}) || !isolation.Running("main") {
+		t.Fatalf("dead daemon not restarted: %v", isolation.calls)
 	}
 }

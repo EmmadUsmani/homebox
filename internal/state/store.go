@@ -136,7 +136,7 @@ func (s *Store) NextIndex() (int, error) {
 	if value := os.Getenv("HOMEBOX_FIRST_INDEX"); value != "" {
 		var err error
 		first, err = strconv.Atoi(value)
-		if err != nil || first < 1 || first > 99 {
+		if err != nil || first < 1 || first > MaxIndex {
 			return 0, errors.New("HOMEBOX_FIRST_INDEX must be an integer from 1 to 99")
 		}
 	}

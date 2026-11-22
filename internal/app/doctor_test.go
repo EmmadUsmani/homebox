@@ -25,7 +25,7 @@ type doctorIsolation struct {
 	stopped string
 }
 
-func (i doctorIsolation) DaemonRunning(name string) bool { return name != i.stopped }
+func (i doctorIsolation) Running(name string) bool { return name != i.stopped }
 
 func TestDoctor(t *testing.T) {
 	service, driver, ssh, isolation := fixture(t)

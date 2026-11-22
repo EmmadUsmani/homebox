@@ -79,8 +79,8 @@ func (h *Host) Down(_ context.Context, name string) error {
 	return vmnet.Stop(pidFile(dir))
 }
 
-// DaemonRunning reports whether name's network daemon holds its PID file.
-func (h *Host) DaemonRunning(name string) bool {
+// Running reports whether name's network daemon holds its PID file.
+func (h *Host) Running(name string) bool {
 	if state.ValidateName(name) != nil {
 		return false
 	}
