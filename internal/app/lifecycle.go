@@ -39,7 +39,7 @@ func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instanc
 	cleanup := func(err error) error {
 		return errors.Join(err, s.releaseIsolation(ctx, box.Name))
 	}
-	box.ProxyURL, box.NoProxy = session.ProxyURL, session.NoProxy
+	box.ProxyURL, box.NoProxy, box.DNS = session.ProxyURL, session.NoProxy, session.DNS
 	if err := s.Store.Save(*box); err != nil {
 		return cleanup(err)
 	}

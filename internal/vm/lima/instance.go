@@ -11,6 +11,9 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
+// hostAddress is where Lima's user-mode network maps the host's loopback.
+const hostAddress = "192.168.5.2"
+
 type instanceRecord struct {
 	Name         string `json:"name"`
 	Dir          string `json:"dir"`
@@ -31,7 +34,7 @@ func (r instanceRecord) instance() vm.Instance {
 	case "Stopped", "Uninitialized":
 		status = vm.StatusStopped
 	}
-	return vm.Instance{Name: r.Name, Status: status, RuntimeDir: r.Dir}
+	return vm.Instance{Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress}
 }
 
 // List reports all instances in the driver's Lima home.

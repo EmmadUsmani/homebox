@@ -72,7 +72,7 @@ func (i *testIsolation) Up(_ context.Context, box state.Box, instance vm.Instanc
 		return Session{}, errors.New("wrong instance for confinement")
 	}
 	i.calls = append(i.calls, "up "+box.Name)
-	return Session{Start: vm.StartOptions{Wrap: []string{"test-wrapper"}}, ProxyURL: "http://proxy.example", NoProxy: "localhost"}, nil
+	return Session{Start: vm.StartOptions{Wrap: []string{"test-wrapper"}}, ProxyURL: "http://proxy.example", NoProxy: "localhost", DNS: "192.0.2.53:53"}, nil
 }
 
 func (i *testIsolation) Down(ctx context.Context, name string) error {
@@ -104,14 +104,14 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 		t.Fatal(err)
 	}
 	spec := driver.Specs["main"]
-	if spec.CPUs != 4 || spec.MemoryGiB != 8 || spec.DiskGiB != 50 || spec.SSHPort != 2201 || !guestUser.MatchString(spec.User) ||
+	if spec.CPUs != 4 || spec.MemoryGiB != 8 || spec.DiskGiB != 50 || spec.SSHPort != 32201 || !spec.HostGateway || !guestUser.MatchString(spec.User) ||
 		len(spec.Images) != 1 || len(spec.Forwards) != 100 || spec.Forwards[0].HostIP != "0.0.0.0" {
 		t.Fatalf("unexpected create spec: %+v", spec)
 	}
 	if !slices.Equal(ssh.calls, []string{"keys", "sudo base.sh", "tools.sh"}) || !slices.Equal(ssh.keys, []string{"test-key"}) {
 		t.Fatalf("unexpected guest operations: %+v", ssh)
 	}
-	wantEnv := map[string]string{"HOMEBOX_PROXY_URL": "http://proxy.example", "HOMEBOX_NO_PROXY": "localhost", "HOMEBOX_USER": spec.User}
+	wantEnv := map[string]string{"HOMEBOX_PROXY_URL": "http://proxy.example", "HOMEBOX_NO_PROXY": "localhost", "HOMEBOX_DNS": "192.0.2.53:53", "HOMEBOX_USER": spec.User}
 	if !reflect.DeepEqual(ssh.env, wantEnv) {
 		t.Fatalf("provision env = %v", ssh.env)
 	}

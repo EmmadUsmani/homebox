@@ -2,8 +2,20 @@ package state
 
 import "github.com/EmmadUsmani/homebox/internal/vm"
 
-// SSHPort returns the host SSH port for a box index.
+// Every host port a box uses derives from its index; see docs/architecture.md.
+
+// SSHPort returns the published SSH port for a box index.
 func SSHPort(index int) int { return 2200 + index }
+
+// DriverSSHPort returns the loopback port of the driver's own SSH forward,
+// which box's relay publishes as SSHPort.
+func DriverSSHPort(index int) int { return 32200 + index }
+
+// ProxyPort returns the loopback port of the box's egress proxy.
+func ProxyPort(index int) int { return 23000 + index }
+
+// DNSPort returns the loopback port of the box's DNS forwarder.
+func DNSPort(index int) int { return 23100 + index }
 
 // HostIP is the bind address for published ports.
 func HostIP(lan bool) string {

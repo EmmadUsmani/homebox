@@ -84,6 +84,7 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 		User:         userConfig{Name: spec.User, Home: "/home/" + spec.User, Comment: spec.User},
 		PortForwards: portRules(spec.Forwards),
 	}
+	settings.NetworkOpts.HostLoopback = spec.HostGateway
 	for _, source := range spec.Images {
 		settings.Images = append(settings.Images, image{Location: source.URL, Arch: source.Arch, Digest: source.Digest})
 	}

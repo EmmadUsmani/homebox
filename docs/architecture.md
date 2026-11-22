@@ -22,6 +22,9 @@ internal/egress    egress policy (which addresses a VM may reach) and the
                    host-side proxy that enforces it
 internal/confine   OS-specific host confinement of the VM's network process
                    (macOS: Seatbelt; Linux: nftables later)
+internal/vmnet     the per-VM host daemon: egress proxy, DNS forwarder
+                   (internal/dnsfwd) and SSH relay (internal/relay)
+internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    renders the laptop ~/.ssh/config snippet
 internal/doctor    isolation checks run from inside a VM
@@ -31,7 +34,9 @@ internal/execx     a small process-runner interface, so code that shells out
 
 ## Dependency rules
 
-- `cli` → `app` → everything else. Nothing imports `cli` or `app` but `cmd/box`.
+- `cli` → `app` → everything else. Nothing imports `cli` but `cmd/box`. `app`
+  defines the interfaces it needs (ports); only `cmd/box` and the adapters that
+  implement them (`internal/isolation`) import `app`.
 - Only `cmd/box` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's paths, YAML and `limactl` never leak out of `vm/lima`.
 - Drivers know nothing about profiles, ports policy or egress. They get plain

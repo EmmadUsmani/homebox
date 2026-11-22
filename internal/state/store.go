@@ -30,6 +30,7 @@ type Box struct {
 	CreatedAt     time.Time        `json:"created_at"`
 	ProxyURL      string           `json:"proxy_url,omitempty"`
 	NoProxy       string           `json:"no_proxy,omitempty"`
+	DNS           string           `json:"dns,omitempty"`
 }
 
 // Host holds the host-wide settings for VM creation and provisioning.

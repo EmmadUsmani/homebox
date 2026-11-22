@@ -50,6 +50,10 @@ type Spec struct {
 	// DNS, when set, replaces the guest's resolvers (e.g. a host-side resolver
 	// reachable through the VM's network). Empty keeps the driver's default.
 	DNS []string
+	// HostGateway lets the guest reach the host's loopback at
+	// Instance.HostAddress. Set it only when host confinement limits which
+	// loopback ports the VM can reach (box allows just its proxy and DNS).
+	HostGateway bool
 }
 
 // Endpoint is how to reach a VM's sshd from the host.
@@ -69,6 +73,9 @@ type Instance struct {
 	// confinement needs it, because the VM's host process talks over unix
 	// sockets kept there.
 	RuntimeDir string
+	// HostAddress is the guest-side address of the host's loopback, usable
+	// when the VM was created with Spec.HostGateway.
+	HostAddress string
 }
 
 // StartOptions controls how the VM's host-side process is launched.

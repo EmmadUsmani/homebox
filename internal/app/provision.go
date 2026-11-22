@@ -142,7 +142,10 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 		s.progress("Creating %s", box.Name)
 		if err := s.Driver.Create(ctx, vm.Spec{
 			Name: box.Name, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
-			DiskGiB: box.DiskGiB, User: box.User, SSHPort: box.SSHPort, Forwards: box.Forwards,
+			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
+			Forwards: box.Forwards,
+			// The host isolation limits the gateway to the VM's proxy and DNS ports.
+			HostGateway: true,
 		}); err != nil {
 			return err
 		}
@@ -165,7 +168,8 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 		}
 	}
 	env := map[string]string{
-		"HOMEBOX_PROXY_URL": box.ProxyURL, "HOMEBOX_NO_PROXY": box.NoProxy, "HOMEBOX_USER": box.User,
+		"HOMEBOX_PROXY_URL": box.ProxyURL, "HOMEBOX_NO_PROXY": box.NoProxy,
+		"HOMEBOX_DNS": box.DNS, "HOMEBOX_USER": box.User,
 	}
 	for _, step := range profile.Steps {
 		s.progress("Provisioning %s: %s", box.Name, step.Name)

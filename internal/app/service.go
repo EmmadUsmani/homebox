@@ -39,10 +39,9 @@ type Isolation interface {
 // Session describes the launch and guest network configuration.
 type Session struct {
 	Start    vm.StartOptions
-	ProxyURL string
+	ProxyURL string // the guest's egress proxy, e.g. http://192.168.5.2:23001
 	NoProxy  string
-	// DNS is reserved for the integration that configures guest resolvers at launch.
-	DNS []string
+	DNS      string // the guest's resolver as "IP:PORT"
 }
 
 // NoIsolation is the temporary phase-zero implementation for fake or spike runs.
