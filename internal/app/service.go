@@ -3,13 +3,11 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/guest"
-	"github.com/EmmadUsmani/homebox/internal/sshx"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
@@ -23,6 +21,7 @@ type Profiles interface {
 
 // SSH runs commands in guests using endpoints supplied by the VM driver.
 type SSH interface {
+	HostKeys(ctx context.Context, ep vm.Endpoint) ([]string, error)
 	RunScript(ctx context.Context, ep vm.Endpoint, script []byte, env map[string]string, sudo bool, stdout, stderr io.Writer) error
 	AuthorizeKeys(ctx context.Context, ep vm.Endpoint, keys []string) error
 	Interactive(ep vm.Endpoint, argv []string) error
@@ -75,6 +74,7 @@ type Service struct {
 	Isolation     Isolation
 	DoctorHost    DoctorHost
 	LocalHostName func(context.Context) (string, error)
+	OpenURL       func(context.Context, string) error
 	Progress      io.Writer
 }
 
@@ -133,32 +133,4 @@ func (s *Service) SSH(ctx context.Context, name string, argv []string) error {
 		return err
 	}
 	return s.GuestSSH.Interactive(endpoint, argv)
-}
-
-// SSHConfig renders laptop SSH aliases using an explicit or local mDNS hostname.
-func (s *Service) SSHConfig(ctx context.Context, host string) (string, error) {
-	boxes, err := s.Store.List()
-	if err != nil || len(boxes) == 0 {
-		return "", err
-	}
-	if host == "" {
-		if s.LocalHostName == nil {
-			return "", errors.New("local hostname resolver is unavailable; specify --host")
-		}
-		host, err = s.LocalHostName(ctx)
-		if err != nil {
-			return "", err
-		}
-	}
-	if !configHost.MatchString(host) {
-		return "", fmt.Errorf("invalid SSH host %q", host)
-	}
-	entries := make([]sshx.ConfigEntry, 0, len(boxes))
-	for _, box := range boxes {
-		if !guestUser.MatchString(box.User) {
-			return "", fmt.Errorf("box %q has an invalid SSH user", box.Name)
-		}
-		entries = append(entries, sshx.ConfigEntry{Name: box.Name, Host: host, Port: box.SSHPort, User: box.User})
-	}
-	return sshx.RenderConfig(entries), nil
 }

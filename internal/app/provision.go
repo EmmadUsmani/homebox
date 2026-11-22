@@ -18,7 +18,6 @@ import (
 var (
 	guestUser       = regexp.MustCompile(`^[a-z_][a-z0-9_-]{0,30}$`)
 	invalidUserRune = regexp.MustCompile(`[^a-z0-9_-]+`)
-	configHost      = regexp.MustCompile(`^[a-zA-Z0-9_:.%-]+$`)
 )
 
 // NewOptions overrides the default profile or VM size.
@@ -157,11 +156,11 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	if err := s.start(ctx, &box, instance); err != nil {
 		return err
 	}
-	endpoint, err := s.Driver.SSH(ctx, box.Name)
+	endpoint, err := s.pinSSH(ctx, &box)
 	if err != nil {
 		return err
 	}
-	if err := s.authorizeHostKeys(ctx, box.Name, endpoint); err != nil {
+	if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
 		return err
 	}
 	env := map[string]string{

@@ -16,22 +16,24 @@ import (
 
 // Box describes a VM managed by box.
 type Box struct {
-	Name          string           `json:"name"`
-	Profile       string           `json:"profile"`
-	Driver        string           `json:"driver"`
-	Index         int              `json:"index"`
-	CPUs          int              `json:"cpus"`
-	MemoryGiB     int              `json:"memory_gib"`
-	DiskGiB       int              `json:"disk_gib"`
-	User          string           `json:"user"`
-	SSHPort       int              `json:"ssh_port"`
-	Forwards      []vm.PortForward `json:"forwards"`
-	Provisioned   bool             `json:"provisioned"`
-	ProvisionedAt *time.Time       `json:"provisioned_at,omitempty"`
-	CreatedAt     time.Time        `json:"created_at"`
-	ProxyURL      string           `json:"proxy_url,omitempty"`
-	NoProxy       string           `json:"no_proxy,omitempty"`
-	DNS           string           `json:"dns,omitempty"`
+	Name            string           `json:"name"`
+	Profile         string           `json:"profile"`
+	Driver          string           `json:"driver"`
+	Index           int              `json:"index"`
+	CPUs            int              `json:"cpus"`
+	MemoryGiB       int              `json:"memory_gib"`
+	DiskGiB         int              `json:"disk_gib"`
+	User            string           `json:"user"`
+	SSHHostKeys     []string         `json:"ssh_host_keys,omitempty"`
+	SSHIdentityFile string           `json:"ssh_identity_file,omitempty"`
+	SSHPort         int              `json:"ssh_port"`
+	Forwards        []vm.PortForward `json:"forwards"`
+	Provisioned     bool             `json:"provisioned"`
+	ProvisionedAt   *time.Time       `json:"provisioned_at,omitempty"`
+	CreatedAt       time.Time        `json:"created_at"`
+	ProxyURL        string           `json:"proxy_url,omitempty"`
+	NoProxy         string           `json:"no_proxy,omitempty"`
+	DNS             string           `json:"dns,omitempty"`
 }
 
 // Host holds the host-wide settings for VM creation and provisioning.
@@ -197,6 +199,11 @@ func writeJSON(path string, value any) error {
 	if err != nil {
 		return err
 	}
+	return WritePrivateFile(path, append(data, '\n'))
+}
+
+// WritePrivateFile atomically replaces a file with owner-only permissions.
+func WritePrivateFile(path string, data []byte) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
@@ -206,7 +213,7 @@ func writeJSON(path string, value any) error {
 		return err
 	}
 	defer os.Remove(file.Name())
-	_, writeErr := file.Write(append(data, '\n'))
+	_, writeErr := file.Write(data)
 	if err := errors.Join(writeErr, file.Close()); err != nil {
 		return err
 	}

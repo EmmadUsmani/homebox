@@ -2,6 +2,13 @@ Host alpha
   HostName vm-host.example
   Port 2201
   User developer
+  HostKeyAlias homebox-alpha
+  UserKnownHostsFile "~/.ssh/homebox_known_hosts"
+  GlobalKnownHostsFile none
+  KnownHostsCommand none
+  StrictHostKeyChecking yes
+  VerifyHostKeyDNS no
+  UpdateHostKeys no
   ForwardAgent no
   ForwardX11 no
 
@@ -9,5 +16,12 @@ Host beta
   HostName 192.0.2.1
   Port 2202
   User builder
+  HostKeyAlias homebox-beta
+  UserKnownHostsFile "~/.ssh/homebox_known_hosts"
+  GlobalKnownHostsFile none
+  KnownHostsCommand none
+  StrictHostKeyChecking yes
+  VerifyHostKeyDNS no
+  UpdateHostKeys no
   ForwardAgent no
   ForwardX11 no

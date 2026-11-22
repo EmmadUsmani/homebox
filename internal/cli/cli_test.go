@@ -20,7 +20,7 @@ type stubApp struct {
 	portOptions app.PortOptions
 	argv        []string
 	name        string
-	host        string
+	sshOptions  app.SSHConfigOptions
 }
 
 func (s *stubApp) New(_ context.Context, options app.NewOptions) error {
@@ -48,9 +48,43 @@ func (s *stubApp) Ports(_ context.Context, name string, options app.PortOptions)
 	return []vm.PortForward{{GuestPort: 9000, HostPort: 30000, HostIP: "127.0.0.1"}}, nil
 }
 
-func (s *stubApp) SSHConfig(_ context.Context, host string) (string, error) {
-	s.host = host
+func (s *stubApp) SSHConfig(_ context.Context, options app.SSHConfigOptions) (string, error) {
+	s.sshOptions = options
 	return "Host main\n", nil
+}
+
+func (s *stubApp) Open(_ context.Context, name, port string, print bool) (string, error) {
+	s.name = name
+	s.argv = []string{port}
+	if print {
+		return "http://127.0.0.1:10100/", nil
+	}
+	return "", nil
+}
+
+func TestSSHConfigAndOpenFlags(t *testing.T) {
+	service := &stubApp{}
+	for flag, options := range map[string]app.SSHConfigOptions{
+		"--include":     {Include: true},
+		"--known-hosts": {KnownHosts: true},
+	} {
+		_, _, err := execute(t, service, false, "", "ssh-config", flag)
+		if err != nil || service.sshOptions != options {
+			t.Fatalf("ssh-config %s = %+v, %v", flag, service.sshOptions, err)
+		}
+	}
+	_, _, err := execute(t, service, false, "", "host", "init", "--ssh-include")
+	if err != nil || !service.hostOptions.SSHInclude {
+		t.Fatalf("host initialization = %+v, %v", service.hostOptions, err)
+	}
+	out, _, err := execute(t, service, false, "", "open", "main", "--print")
+	if err != nil || service.name != "main" || !reflect.DeepEqual(service.argv, []string{"8000"}) || out != "http://127.0.0.1:10100/\n" {
+		t.Fatalf("default open = %q, %v, %q, %v", service.name, service.argv, out, err)
+	}
+	out, _, err = execute(t, service, false, "", "open", "main", "9000")
+	if err != nil || !reflect.DeepEqual(service.argv, []string{"9000"}) || out != "" {
+		t.Fatalf("explicit open = %v, %q, %v", service.argv, out, err)
+	}
 }
 
 func (*stubApp) List(context.Context) ([]app.Listing, error) {
@@ -101,8 +135,8 @@ func TestSSHAndPorts(t *testing.T) {
 		t.Fatalf("ports = %+v, %q, %v", service.portOptions, out, err)
 	}
 	out, _, err = execute(t, service, false, "", "ssh-config", "--host", "example.local")
-	if err != nil || service.host != "example.local" || out != "Host main\n" {
-		t.Fatalf("ssh-config = %q %q, %v", service.host, out, err)
+	if err != nil || service.sshOptions.Host != "example.local" || out != "Host main\n" {
+		t.Fatalf("ssh-config = %q %q, %v", service.sshOptions.Host, out, err)
 	}
 }
 

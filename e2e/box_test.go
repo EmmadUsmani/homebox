@@ -76,7 +76,11 @@ func TestBoxLifecycle(t *testing.T) {
 	if output, err := run(2*time.Minute, "go", "build", "-o", binary, "./cmd/box"); err != nil {
 		t.Fatalf("build box: %v\n%s", err, output)
 	}
-	box(time.Minute, "host", "init")
+	laptopKey := filepath.Join(dir, "laptop-key")
+	if output, err := run(time.Minute, "ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", laptopKey); err != nil {
+		t.Fatalf("create test laptop key: %v\n%s", err, output)
+	}
+	box(time.Minute, "host", "init", "--authorized-key", laptopKey+".pub")
 	store := &state.Store{Root: root}
 	t.Cleanup(func() {
 		if _, err := store.Load(name); !errors.Is(err, os.ErrNotExist) {
@@ -103,6 +107,25 @@ func TestBoxLifecycle(t *testing.T) {
 	if strings.TrimSpace(output) != "ok\n"+record.User {
 		t.Fatalf("unexpected SSH command output: %q", output)
 	}
+	runOK := func(executable string, args ...string) string {
+		t.Helper()
+		output, err := run(time.Minute, executable, args...)
+		if err != nil {
+			t.Fatalf("%s %v: %v\n%s", executable, args, err, output)
+		}
+		return output
+	}
+	localConfig := store.SSHConfigPath()
+	runOK("ssh", "-F", localConfig, name, "true")
+	source := filepath.Join(dir, "transfer")
+	if err := os.WriteFile(source, []byte("transfer verified\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runOK("scp", "-F", localConfig, source, name+":scp-test")
+	runOK("rsync", "-e", "ssh -F "+localConfig, source, name+":rsync-test")
+	if output := runOK("ssh", "-F", localConfig, name, "cmp scp-test rsync-test && cat scp-test"); output != "transfer verified\n" {
+		t.Fatalf("transferred contents = %q", output)
+	}
 	t.Log(box(2*time.Minute, "doctor", name))
 
 	box(time.Minute, "ssh", name, "--", `set -e
@@ -112,7 +135,14 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 	if len(record.Forwards) == 0 || record.Forwards[0].GuestPort != 8000 {
 		t.Fatal("missing first HTTP forward")
 	}
-	checkHTTP(t, record.Forwards[0].HostPort)
+	url := strings.TrimSpace(box(time.Minute, "open", name, "--print"))
+	if want := fmt.Sprintf("http://127.0.0.1:%d/", record.Forwards[0].HostPort); url != want {
+		t.Fatalf("box open --print = %q, want %q", url, want)
+	}
+	checkHTTP(t, url)
+	if output := runOK("curl", "--noproxy", "*", "--fail", "--silent", "--show-error", url); output != "homebox e2e\n" {
+		t.Fatalf("curl response = %q", output)
+	}
 
 	config := box(time.Minute, "ssh-config", "--host", "example.local")
 	for _, want := range []string{"Host " + name, "HostName example.local", fmt.Sprintf("Port %d", record.SSHPort), "User " + record.User} {
@@ -120,6 +150,30 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 			t.Fatalf("ssh-config is missing %q:\n%s", want, config)
 		}
 	}
+	laptopConfig := filepath.Join(dir, "laptop-config")
+	laptopPins := filepath.Join(dir, "laptop-known-hosts")
+	pins := box(time.Minute, "ssh-config", "--known-hosts")
+	loopbackConfig := box(time.Minute, "ssh-config", "--host", "127.0.0.1")
+	for path, contents := range map[string]string{laptopConfig: loopbackConfig, laptopPins: pins} {
+		if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	laptopArgs := []string{"-F", laptopConfig, "-o", "UserKnownHostsFile=" + laptopPins, "-o", "BatchMode=yes",
+		"-o", "IdentitiesOnly=yes", "-i", laptopKey, name, "true"}
+	runOK("ssh", laptopArgs...)
+	// The test laptop's public key is a valid key that cannot match the VM's key.
+	wrongKey, err := os.ReadFile(laptopKey + ".pub")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(laptopPins, append([]byte("homebox-"+name+" "), wrongKey...), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if output, err := run(time.Minute, "ssh", laptopArgs...); err == nil || !strings.Contains(output, "REMOTE HOST IDENTIFICATION HAS CHANGED") {
+		t.Fatalf("tampered pins did not trigger a host-key mismatch: %v\n%s", err, output)
+	}
+	t.Log("SSH rejected the tampered host key")
 	box(2*time.Minute, "stop", name)
 	box(3*time.Minute, "start", name)
 	t.Log(box(2*time.Minute, "doctor", name))
@@ -140,13 +194,12 @@ func assertRunning(t *testing.T, listing, name string) {
 	t.Fatalf("%s is missing or stopped:\n%s", name, listing)
 }
 
-func checkHTTP(t *testing.T, port int) {
+func checkHTTP(t *testing.T, url string) {
 	t.Helper()
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
 	defer cancel()
 	client := &http.Client{Timeout: time.Second}
-	url := fmt.Sprintf("http://127.0.0.1:%d/", port)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		t.Fatal(err)

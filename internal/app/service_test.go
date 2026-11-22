@@ -33,12 +33,27 @@ func (testProfiles) Get(name string) (guest.Profile, error) {
 }
 func (testProfiles) ReadScript(path string) ([]byte, error) { return []byte(path), nil }
 
+const fixtureHostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+
 type testSSH struct {
-	calls []string
-	keys  []string
-	env   map[string]string
-	argv  []string
-	fail  error
+	hostKeys []string
+	calls    []string
+	keys     []string
+	env      map[string]string
+	argv     []string
+	fail     error
+}
+
+func (s *testSSH) HostKeys(_ context.Context, _ vm.Endpoint) ([]string, error) {
+	return slices.Clone(s.hostKeys), nil
+}
+
+type testDriver struct{ *vmtest.Driver }
+
+func (d testDriver) SSH(ctx context.Context, name string) (vm.Endpoint, error) {
+	ep, err := d.Driver.SSH(ctx, name)
+	ep.IdentityFile = "/test/driver-id"
+	return ep, err
 }
 
 func (s *testSSH) RunScript(_ context.Context, _ vm.Endpoint, script []byte, env map[string]string, sudo bool, _, _ io.Writer) error {
@@ -94,10 +109,10 @@ func (i *testIsolation) Running(name string) bool { return i.up[name] }
 func fixture(t *testing.T) (*Service, *vmtest.Driver, *testSSH, *testIsolation) {
 	t.Helper()
 	driver := &vmtest.Driver{Errors: map[string]error{}}
-	ssh := &testSSH{}
+	ssh := &testSSH{hostKeys: []string{fixtureHostKey}}
 	isolation := &testIsolation{}
 	return &Service{
-		Driver: driver, Profiles: testProfiles{}, Store: &state.Store{Root: t.TempDir()}, GuestSSH: ssh,
+		Driver: testDriver{driver}, Profiles: testProfiles{}, Store: &state.Store{Root: t.TempDir()}, GuestSSH: ssh,
 		Isolation: isolation, Progress: &bytes.Buffer{},
 		LocalHostName: func(context.Context) (string, error) { return "example.local", nil },
 	}, driver, ssh, isolation
@@ -171,12 +186,12 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 		t.Errorf("reprovision env = %v, want %v", ssh.env, wantEnv)
 	}
 	for host, want := range map[string]string{"": "example.local", "vm-host.example": "vm-host.example"} {
-		config, err := service.SSHConfig(t.Context(), host)
+		config, err := service.SSHConfig(t.Context(), SSHConfigOptions{Host: host})
 		if err != nil || !strings.Contains(config, "HostName "+want+"\n") {
 			t.Fatalf("ssh-config = %q, %v", config, err)
 		}
 	}
-	if _, err := service.SSHConfig(t.Context(), "example.local\n  Bad"); err == nil {
+	if _, err := service.SSHConfig(t.Context(), SSHConfigOptions{Host: "example.local\n  Bad"}); err == nil {
 		t.Fatal("accepted newline in SSH config host")
 	}
 	argv := []string{"echo", "two words"}

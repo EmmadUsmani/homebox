@@ -14,30 +14,88 @@ later; see the [design document](docs/plan.md).
 brew install lima go
 go build -o box ./cmd/box            # or: go install ./cmd/box
 
-# Once: publish VM ports on the LAN and authorize your laptop's SSH key.
-./box host init --lan --authorized-key ~/laptop_id_ed25519.pub
+# Once: add the generated local SSH aliases to the top of ~/.ssh/config.
+./box host init --ssh-include
 
 # Create a VM (about 5 minutes the first time: image download + provisioning).
 ./box new main
 
-./box ssh main                       # a shell in the VM, from the host
-./box ssh-config                     # paste the output into the laptop's ~/.ssh/config
+ssh main
+./box open main                      # open guest port 8000 in the Mac's browser
 ```
 
-Then, from the laptop: `ssh main`.
+Use `main` with `scp`, `rsync`, or Remote-SSH in VS Code or Cursor. The local
+alias uses the VM driver's existing identity. To add the Include yourself,
+run `box ssh-config --include` and put its output at the top of
+`~/.ssh/config`. The opt-in installer saves a copy of an existing config
+before editing it.
+
+## SSH from a laptop
+
+On the VM host, authorize the laptop's public key and enable LAN publishing.
+Restart an already running VM so it picks up those settings. Run
+`box start NAME` for each older box that still needs its host keys pinned.
+
+```sh
+./box host init --lan --authorized-key ~/laptop_id_ed25519.pub
+./box stop main
+./box start main
+
+umask 077
+./box ssh-config > homebox_config &&
+  ./box ssh-config --known-hosts > homebox_known_hosts
+```
+
+The default hostname is the Mac's mDNS name. Use `box ssh-config --host ADDR`
+if the laptop needs a different address. Transfer both exported files from the
+host to the laptop's Downloads folder over a trusted channel, such as a USB
+drive. Then paste this into the laptop's terminal.
+
+```sh
+(
+  set -eu
+  umask 077
+  ssh_dir="$HOME/.ssh"
+  mkdir -p "$ssh_dir"
+  test -s "$HOME/Downloads/homebox_config"
+  test -s "$HOME/Downloads/homebox_known_hosts"
+  install -m 600 "$HOME/Downloads/homebox_known_hosts" "$ssh_dir/homebox_known_hosts"
+  install -m 600 "$HOME/Downloads/homebox_config" "$ssh_dir/homebox_config"
+
+  include='Include ~/.ssh/homebox_config'
+  config="$ssh_dir/config"
+  if ! grep -Fqx "$include" "$config" 2>/dev/null; then
+    new_config=$(mktemp "$ssh_dir/config.homebox.XXXXXX")
+    trap 'rm -f "$new_config"' 0
+    printf '%s\n' "$include" > "$new_config"
+    if [ -f "$config" ]; then
+      backup=$(mktemp "$ssh_dir/config.homebox-backup.XXXXXX")
+      cp "$config" "$backup"
+      cat "$config" >> "$new_config"
+    fi
+    mv "$new_config" "$config"
+  fi
+)
+```
+
+Run `ssh main`. OpenSSH checks the exported key on the first connection and
+rejects a mismatch. Export and install both files again after adding or
+recreating a VM. If an existing VM presents a different key set during start or
+provision, box keeps the original pins and reports an error.
 
 ## Commands
 
 | Command | Does |
 |---|---|
-| `box host init [--lan/--no-lan] [--authorized-key FILE]` | Checks Lima, sets LAN publishing, adds laptop keys |
+| `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
 | `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50]` | Creates, starts and provisions a VM |
 | `box ls` | Lists VMs with their SSH port and HTTP port range |
 | `box start` / `stop` / `rm [-f]` NAME | Lifecycle |
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
 | `box ports NAME [--add G:H] [--rm G] [--set G:H]` | Shows or changes published ports (VM stopped) |
 | `box provision NAME` | Re-runs provisioning (idempotent) |
-| `box ssh-config [--host ADDR]` | Prints `~/.ssh/config` entries for the laptop |
+| `box ssh-config [--host ADDR \| --known-hosts \| --include]` | Prints laptop SSH aliases, their pinned keys, or the local Include line |
+| `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
 | `box doctor [NAME]` | Proves the VM reaches the internet but not the host or LAN |
 
 Each VM gets an index `n`: SSH on host port `2200+n`, and guest ports
