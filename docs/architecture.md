@@ -18,11 +18,10 @@ guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
   ubuntu/          Ubuntu LTS: image, apt packages, services
 internal/state     box's own records (one file per VM) and port allocation
-internal/egress    public-address policy and host interface checks
+internal/egress    public-address policy, host interface checks and bounded daemon log
 internal/confine   OS-specific sandbox profiles for the VM's host process and
                    network daemon (macOS: Seatbelt; Linux: later)
 internal/vmnet     per-VM network daemon, IPv4 gateway and process monitoring
-internal/dnsfwd    forwards guest DNS queries to public resolvers
 internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;

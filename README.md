@@ -109,18 +109,17 @@ permissions use `claude --dangerously-skip-permissions` or
 
 ## Isolation
 
-The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding. Its network process on the
-Mac runs under a Seatbelt sandbox that can reach only box's per-VM daemon on
-loopback: an egress proxy that allows public addresses only, and a DNS
-forwarder to public resolvers. In the guest, a transparent redirect sends all
-TCP through that proxy. Root in the VM can remove the redirect, but that only
-cuts off its own access: the rules that matter are on the host.
+The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
+On macOS, Lima's built-in NIC carries inbound SSH and published HTTP ports
+under Seatbelt confinement. A second NIC sends IPv4 traffic over a Unix
+socket to box's per-VM gateway, which checks every new destination before
+opening a host socket.
 
-So the VM reaches the internet over TCP (and DNS), but not the Mac, its
-loopback, your router or anything else on your network. ICMP (`ping`) and
-other UDP don't leave the VM. Run `box doctor` to check.
+The gateway allows public IPv4 TCP, UDP and ICMP echo, including DNS directly
+to public resolvers. It blocks host and private network destinations even
+when root in the guest changes its routes. Run `box doctor` to check.
 
-Details: [architecture](docs/architecture.md), [to do](docs/todo.md), [phase 0 spike](docs/spikes/phase0-macos.md).
+See the [architecture](docs/architecture.md) for known limitations.
 
 ## Development
 
