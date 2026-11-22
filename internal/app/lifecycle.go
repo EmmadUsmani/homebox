@@ -25,16 +25,16 @@ func (s *Service) Start(ctx context.Context, name string) error {
 			return err
 		}
 		// Keys added with `box host init` since the last start reach the VM now.
-		endpoint, err := s.Driver.SSH(ctx, name)
+		endpoint, err := s.pinSSH(ctx, &box)
 		if err != nil {
 			return err
 		}
-		return s.authorizeHostKeys(ctx, name, endpoint)
+		return s.authorizeLaptopKeys(ctx, name, endpoint)
 	})
 }
 
-// authorizeHostKeys puts the host's laptop keys into the guest; it is idempotent.
-func (s *Service) authorizeHostKeys(ctx context.Context, name string, endpoint vm.Endpoint) error {
+// authorizeLaptopKeys puts the host's laptop keys into the guest; it is idempotent.
+func (s *Service) authorizeLaptopKeys(ctx context.Context, name string, endpoint vm.Endpoint) error {
 	host, err := s.Store.LoadHost()
 	if err != nil || len(host.AuthorizedKeys) == 0 {
 		return err
@@ -117,7 +117,10 @@ func (s *Service) Remove(ctx context.Context, name string) error {
 		if err := s.releaseIsolation(ctx, name); err != nil {
 			return err
 		}
-		return s.Store.Delete(name)
+		if err := s.Store.Delete(name); err != nil {
+			return err
+		}
+		return s.refreshLocalSSH()
 	})
 }
 

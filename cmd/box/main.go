@@ -73,6 +73,10 @@ func newService() (*app.Service, error) {
 		Isolation:     &isolation.Host{Store: store, Executable: exe},
 		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
 		LocalHostName: ssh.LocalHostName,
-		Progress:      os.Stderr,
+		OpenURL: func(ctx context.Context, url string) error {
+			_, err := runner.Run(ctx, execx.Cmd{Name: "open", Args: []string{url}})
+			return err
+		},
+		Progress: os.Stderr,
 	}, nil
 }

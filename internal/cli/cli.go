@@ -27,7 +27,8 @@ type Application interface {
 	List(context.Context) ([]app.Listing, error)
 	SSH(context.Context, string, []string) error
 	Ports(context.Context, string, app.PortOptions) ([]vm.PortForward, error)
-	SSHConfig(context.Context, string) (string, error)
+	SSHConfig(context.Context, app.SSHConfigOptions) (string, error)
+	Open(context.Context, string, string, bool) (string, error)
 	HostInit(context.Context, app.HostInitOptions) error
 	Doctor(context.Context, string) error
 }
@@ -77,6 +78,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 			return service.SSH(cmd.Context(), args[0], args[1:])
 		}},
 		sshConfigCommand(service),
+		openCommand(service),
 		&cobra.Command{Use: "doctor [NAME]", Short: "Check VM isolation", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			name := ""
 			if len(args) == 1 {
@@ -124,6 +126,7 @@ func hostCommand(service Application) *cobra.Command {
 		}
 		return service.HostInit(cmd.Context(), options)
 	}}
+	cmd.Flags().BoolVar(&options.SSHInclude, "ssh-include", false, "Add local VM aliases to ~/.ssh/config")
 	cmd.Flags().BoolVar(&lan, "lan", false, "Publish ports on the LAN")
 	cmd.Flags().BoolVar(&noLAN, "no-lan", false, "Publish ports on loopback only")
 	cmd.MarkFlagsMutuallyExclusive("lan", "no-lan")
@@ -161,16 +164,37 @@ func removeCommand(service Application, isTerminal func(io.Reader) bool) *cobra.
 }
 
 func sshConfigCommand(service Application) *cobra.Command {
-	var host string
+	var options app.SSHConfigOptions
 	cmd := &cobra.Command{Use: "ssh-config", Short: "Print laptop SSH aliases", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-		output, err := service.SSHConfig(cmd.Context(), host)
+		output, err := service.SSHConfig(cmd.Context(), options)
 		if err != nil {
 			return err
 		}
 		_, err = io.WriteString(cmd.OutOrStdout(), output)
 		return err
 	}}
-	cmd.Flags().StringVar(&host, "host", "", "Host address (default local mDNS name)")
+	cmd.Flags().StringVar(&options.Host, "host", "", "Host address (default local mDNS name)")
+	cmd.Flags().BoolVar(&options.KnownHosts, "known-hosts", false, "Print pinned laptop known_hosts entries")
+	cmd.Flags().BoolVar(&options.Include, "include", false, "Print the local SSH Include line")
+	cmd.MarkFlagsMutuallyExclusive("host", "known-hosts", "include")
+	return cmd
+}
+
+func openCommand(service Application) *cobra.Command {
+	var print bool
+	cmd := &cobra.Command{Use: "open NAME [GUEST_PORT]", Short: "Open a published dev server", Args: cobra.RangeArgs(1, 2), RunE: func(cmd *cobra.Command, args []string) error {
+		port := "8000"
+		if len(args) == 2 {
+			port = args[1]
+		}
+		url, err := service.Open(cmd.Context(), args[0], port, print)
+		if err != nil || url == "" {
+			return err
+		}
+		_, err = fmt.Fprintln(cmd.OutOrStdout(), url)
+		return err
+	}}
+	cmd.Flags().BoolVar(&print, "print", false, "Print the URL instead of opening it")
 	return cmd
 }
 

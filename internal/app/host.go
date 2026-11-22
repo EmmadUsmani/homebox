@@ -2,20 +2,20 @@ package app
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/binary"
 	"fmt"
 	"os"
 	"slices"
 	"strings"
 
+	"github.com/EmmadUsmani/homebox/internal/sshx"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
-// HostInitOptions updates LAN publishing and adds authorized key files.
+// HostInitOptions configures LAN publishing, laptop keys and the local SSH Include.
 type HostInitOptions struct {
 	LAN                *bool
+	SSHInclude         bool
 	AuthorizedKeyFiles []string
 }
 
@@ -33,7 +33,7 @@ func (s *Service) HostInit(ctx context.Context, options HostInitOptions) error {
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			key, ok := publicKey(line)
+			key, ok := sshx.PublicKey(line)
 			if !ok {
 				return fmt.Errorf("invalid authorized key line in %s", path)
 			}
@@ -66,6 +66,14 @@ func (s *Service) HostInit(ctx context.Context, options HostInitOptions) error {
 		if err := s.Store.SaveHost(host); err != nil {
 			return err
 		}
+		if options.SSHInclude {
+			if err := s.refreshLocalSSH(); err != nil {
+				return err
+			}
+			if err := sshx.InstallInclude(s.Store.SSHConfigPath()); err != nil {
+				return err
+			}
+		}
 		s.progress("Host initialized (published ports bind to %s)", state.HostIP(host.LAN))
 		if lanChanged || len(keys) > 0 {
 			s.warnRunning(instances)
@@ -86,21 +94,4 @@ func (s *Service) warnRunning(instances []vm.Instance) {
 				instance.Name, instance.Name, instance.Name)
 		}
 	}
-}
-
-// publicKey recognizes the OpenSSH public key file format and discards comments.
-func publicKey(line string) (string, bool) {
-	fields := strings.Fields(line)
-	if len(fields) < 2 || strings.ContainsAny(line, "\x00\r") {
-		return "", false
-	}
-	data, err := base64.StdEncoding.DecodeString(fields[1])
-	if err != nil || len(data) < 4 {
-		return "", false
-	}
-	length := binary.BigEndian.Uint32(data)
-	if uint64(length) >= uint64(len(data)-4) || string(data[4:4+int(length)]) != fields[0] {
-		return "", false
-	}
-	return fields[0] + " " + fields[1], true
 }

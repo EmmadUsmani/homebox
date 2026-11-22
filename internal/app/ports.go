@@ -59,7 +59,7 @@ func (s *Service) Ports(ctx context.Context, name string, options PortOptions) (
 			return errors.Join(err, s.Driver.SetForwards(context.WithoutCancel(ctx), name, previous))
 		}
 		forwards = box.Forwards
-		return nil
+		return s.refreshLocalSSH()
 	})
 	return forwards, err
 }

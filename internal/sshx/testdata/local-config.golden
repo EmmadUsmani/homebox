@@ -1,0 +1,15 @@
+Host main
+  HostName 127.0.0.1
+  Port 2201
+  User builder
+  IdentityFile "/test state/driver/id"
+  IdentitiesOnly yes
+  HostKeyAlias homebox-main
+  UserKnownHostsFile "/test state/ssh/known_hosts"
+  GlobalKnownHostsFile none
+  KnownHostsCommand none
+  StrictHostKeyChecking yes
+  VerifyHostKeyDNS no
+  UpdateHostKeys no
+  ForwardAgent no
+  ForwardX11 no

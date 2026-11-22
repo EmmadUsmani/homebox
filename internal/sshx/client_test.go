@@ -126,11 +126,11 @@ func TestConfigGoldenAndLocalHost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := RenderConfig([]ConfigEntry{
+	got, err := RenderConfig([]ConfigEntry{
 		{Name: "alpha", Host: "vm-host.example", Port: 2201, User: "developer"},
 		{Name: "beta", Host: "192.0.2.1", Port: 2202, User: "builder"},
-	})
-	if got != string(want) {
+	}, "~/.ssh/homebox_known_hosts")
+	if err != nil || got != string(want) {
 		t.Fatalf("config = %q, want %q", got, want)
 	}
 	fake := &execx.Fake{}
