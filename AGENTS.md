@@ -22,9 +22,11 @@ holds the requirements, the decisions already made and the phase order.
 
 ## Current status
 
-The owner said to start building on 2026-11-21. Work is on phases 0 and 1 (the
-Mac host). [docs/architecture.md](docs/architecture.md) holds the code layout
-and dependency rules; follow it.
+The owner said to start building on 2026-11-21. Phases 0 and 1 (the Mac host)
+are built and pass `HOMEBOX_E2E=1 go test ./e2e/...` on an M2 Mac; the owner
+still has to confirm SSH from a second machine on the LAN and agent logins.
+[docs/architecture.md](docs/architecture.md) holds the code layout, dependency
+rules and known limitations; follow it.
 
 ## Hard rules
 
