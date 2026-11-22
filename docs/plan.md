@@ -1,6 +1,6 @@
 # homebox: design (v5, 2026-11-21)
 
-Status: signed off by the owner on 2026-11-21. Nothing built yet.
+Status: signed off by the owner on 2026-11-21. Phases 0 and 1 built on 2026-11-22.
 
 **This document changes only with the owner's explicit consent.** See
 [AGENTS.md](../AGENTS.md).
@@ -58,7 +58,8 @@ Codex with full permissions, run any server, render and screenshot UI.
   a Docker account).
 - Repo: `homebox` (working name), public, under my GitHub account.
 - **Not decided yet:** the repo's license.
-- **The build hasn't started.** It starts when the owner says so.
+- **The build started on 2026-11-21** on the owner's word; phases 0 and 1 (the
+  Mac host) are built.
 
 ## Architecture
 
