@@ -17,30 +17,20 @@ in the architecture). Left to do:
 
 ## Harden the SSH relay
 
-The relay forwards the published SSH port to the hostagent's loopback port. While
-the VM is down that port is free, and any program on the Mac could listen there
-and receive the laptop's SSH connection. The laptop's host-key check catches it
-once the laptop knows the VM's key; a first connection would trust it.
+The relay now forwards only while the VM's host process runs, and laptops pin
+each VM's host keys, so an impostor on the driver's loopback port fails the
+host-key check. Left to do:
 
-- Pin host keys on the laptop: `box ssh-config` also prints the VM's host keys,
-  so there is no first-use trust (this also defeats a LAN man-in-the-middle).
-- Verify that the live host process owns the driver SSH listener before forwarding.
-
-## Using the VM on the host Mac itself
-
-A Must requirement since 2026-11-22 (design document). Today `box ssh NAME`
-works on the host, and the published ports work on `127.0.0.1`. Missing pieces:
-
-- `box ssh-config --local` (or an `Include` file box maintains), so plain
-  `ssh main`, `scp`, `rsync` and editors' remote-SSH modes work on the host
-  without authorizing another key.
-- `box open NAME PORT` (or memorable local names) for dev servers.
+- Verify that the live host process owns the driver SSH listener before
+  forwarding.
 
 ## Smaller
 
-- Reconnect the socket NIC after daemon failure without restarting the VM.
-- Run the CI workflow on GitHub; the Linux tests have only been cross-compiled
-  and vetted locally.
+- Reconnect the socket NIC after a daemon failure without restarting the VM.
+- Pass the gateway's MAC address and subnet to the guest from box instead of
+  repeating them in `guest/ubuntu/network.sh`.
+- Run the Linux process watcher (`internal/vmnet/host_process_linux.go`) on a
+  real Linux host; so far it is only cross-compiled and vetted.
 - NAT reflection: if the router reflects connections to its own public address
   into the LAN, the VM could reach a forwarded LAN port. Accepted; box could
   also deny the host's public address if it learned it without an outside
