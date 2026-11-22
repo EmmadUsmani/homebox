@@ -22,8 +22,9 @@ holds the requirements, the decisions already made and the phase order.
 
 ## Current status
 
-Nothing is built yet. Don't start building, or create code beyond what the owner
-asks for, until the owner says to start.
+The owner said to start building on 2026-11-21. Work is on phases 0 and 1 (the
+Mac host). [docs/architecture.md](docs/architecture.md) holds the code layout
+and dependency rules; follow it.
 
 ## Hard rules
 

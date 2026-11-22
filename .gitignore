@@ -1,0 +1,4 @@
+/box
+/dist/
+*.test
+coverage.out
