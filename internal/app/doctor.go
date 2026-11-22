@@ -86,10 +86,9 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	endpoint, guestErr := s.Driver.SSH(ctx, box.Name)
 	if guestErr == nil {
 		env := map[string]string{
-			"HOMEBOX_PROXY_URL":    box.ProxyURL,
-			"HOMEBOX_DNS":          box.DNS,
-			"HOMEBOX_DENY_TARGETS": strings.Join(targets, " "),
-			"HOMEBOX_PUBLIC_URL":   "https://example.com",
+			"HOMEBOX_BUILTIN_GATEWAY": instance.HostAddress,
+			"HOMEBOX_DENY_TARGETS":    strings.Join(targets, " "),
+			"HOMEBOX_PUBLIC_URL":      "https://example.com",
 		}
 		guestErr = s.GuestSSH.RunScript(ctx, endpoint, script, env, false, out, out)
 	}

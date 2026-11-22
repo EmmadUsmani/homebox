@@ -17,8 +17,7 @@ func TestRulesAllowOnlyTheVMsOwnPorts(t *testing.T) {
 	got := rules(box, vm.Instance{RuntimeDir: "/lima/main"})
 	want := confine.Rules{
 		RuntimeDir: "/lima/main",
-		ConnectTCP: []int{32203, 23003, 23103},
-		ConnectUDP: []int{23103},
+		ConnectTCP: []int{32203},
 		BindTCP:    []confine.Bind{{Port: 32203}, {Port: 10300}, {Port: 10301, LAN: true}},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -37,8 +36,8 @@ func TestDaemonConfigPublishesSSHOnTheLANOnlyWhenAsked(t *testing.T) {
 		if config.SSHPublish.Port != 2201 || config.SSHTarget != 32201 {
 			t.Errorf("lan=%v: SSH listen port = %d, target = %d", lan, config.SSHPublish.Port, config.SSHTarget)
 		}
-		if config.ProxyPort != 23001 || config.DNSPort != 23101 {
-			t.Errorf("lan=%v: proxy port = %d, DNS port = %d", lan, config.ProxyPort, config.DNSPort)
+		if config.Socket != "/state/boxes/main/run/net.sock" {
+			t.Errorf("gateway socket = %q", config.Socket)
 		}
 	}
 }

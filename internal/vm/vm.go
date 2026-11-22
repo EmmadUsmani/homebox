@@ -40,6 +40,14 @@ type PortForward struct {
 	HostIP    string // "127.0.0.1", or "0.0.0.0" when the host publishes on the LAN
 }
 
+// SocketAttachment is a host Unix stream carrying Ethernet frames for a guest NIC.
+type SocketAttachment struct {
+	Path        string
+	Interface   string
+	MAC         string
+	RouteMetric int
+}
+
 // Spec is everything a driver needs to create a VM.
 type Spec struct {
 	Name      string
@@ -50,6 +58,7 @@ type Spec struct {
 	User      string        // admin user created in the guest
 	SSHPort   int           // host loopback port the driver binds for the guest's sshd
 	Forwards  []PortForward // published ports other than SSH
+	Socket    SocketAttachment
 	// DNS, when set, replaces the guest's resolvers (e.g. a host-side resolver
 	// reachable through the VM's network). Empty keeps the driver's default.
 	DNS []string
@@ -75,7 +84,9 @@ type Instance struct {
 	// RuntimeDir is the driver's per-VM state directory on the host. The host
 	// confinement needs it, because the VM's host process talks over unix
 	// sockets kept there.
-	RuntimeDir string
+	RuntimeDir  string
+	HostPIDFile string // file maintained by the driver host process
+	Socket      SocketAttachment
 	// HostAddress is the guest-side address of the host's loopback, usable
 	// when the VM was created with Spec.HostGateway.
 	HostAddress string
@@ -86,7 +97,9 @@ type StartOptions struct {
 	// Wrap, when non-empty, is a command prefix the driver runs its start
 	// command under, e.g. ["sandbox-exec", "-f", profile]. Host confinement
 	// uses it so the VM's network process inherits the host's egress rules.
-	Wrap []string
+	Wrap   []string
+	Socket SocketAttachment // apply before booting, including existing VMs
+	DNS    []string         // bootstrap resolver addresses for the guest
 }
 
 // Driver is a VM layer: Lima today, perhaps Incus on Linux later.

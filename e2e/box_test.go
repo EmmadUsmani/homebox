@@ -15,6 +15,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/state"
 )
 
@@ -126,7 +127,63 @@ func TestBoxLifecycle(t *testing.T) {
 	if output := runOK("ssh", "-F", localConfig, name, "cmp scp-test rsync-test && cat scp-test"); output != "transfer verified\n" {
 		t.Fatalf("transferred contents = %q", output)
 	}
-	t.Log(box(2*time.Minute, "doctor", name))
+	diagnostics := box(2*time.Minute, "doctor", name)
+	t.Log(diagnostics)
+	for _, check := range []string{"public-tcp", "public-udp-dns", "public-udp-ntp", "public-icmp", "deny-tcp-", "deny-udp-", "deny-icmp-"} {
+		if !strings.Contains(diagnostics, "PASS "+check) {
+			t.Fatalf("doctor did not pass %s", check)
+		}
+	}
+	box(time.Minute, "ssh", name, "--", `set -eu
+curl -4 --noproxy '*' -fsS -m 8 -o /dev/null https://1.1.1.1
+if curl -6 --noproxy '*' -fsS -m 3 -o /dev/null 'https://[2606:4700:4700::1111]'; then
+    echo 'unexpected IPv6 egress' >&2
+    exit 1
+fi
+(
+    sudo ip route add 1.1.1.1/32 via 192.168.5.2 dev eth0
+    trap 'sudo ip route del 1.1.1.1/32 via 192.168.5.2 dev eth0' EXIT
+    if nc -z -w 2 1.1.1.1 443 ||
+        dig +time=1 +tries=1 +short @1.1.1.1 example.com A | grep -Eq '^[0-9]+\.' ||
+        ping -4 -c1 -W1 1.1.1.1; then
+        echo 'public egress escaped through the built-in NIC' >&2
+        exit 1
+    fi
+)
+`)
+	targets, checks, closeCanaries := (doctor.Host{}).Probe(t.Context(), "192.168.5.2", record.SSHPort, false)
+	var controls strings.Builder
+	if !doctor.Write(&controls, checks) {
+		closeCanaries()
+		t.Fatalf("Docker isolation controls failed:\n%s", controls.String())
+	}
+	defer closeCanaries()
+	box(2*time.Minute, "ssh", name, "--", `set -eu
+docker run -i --rm python:3.14-alpine python - `+strings.Join(targets, " ")+` 10.114.0.1:53 <<'PYTHON'
+import socket
+import subprocess
+import sys
+import urllib.request
+
+with urllib.request.urlopen("https://example.com", timeout=8) as response:
+    assert response.status == 200
+subprocess.run(["nslookup", "example.com", "9.9.9.9"], timeout=8, check=True)
+for target in sys.argv[1:]:
+    host, port = target.split(":")
+    for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+        with socket.socket(socket.AF_INET, kind) as conn:
+            conn.settimeout(1)
+            try:
+                conn.connect((host, int(port)))
+                if kind == socket.SOCK_DGRAM:
+                    conn.send(b"homebox doctor")
+                    conn.recv(128)
+            except OSError:
+                continue
+            raise AssertionError(f"container reached {target} via {kind.name}")
+PYTHON
+`)
+	closeCanaries()
 
 	box(time.Minute, "ssh", name, "--", `set -e
 dir=$(mktemp -d)

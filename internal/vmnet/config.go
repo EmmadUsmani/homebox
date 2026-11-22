@@ -18,21 +18,21 @@ type Endpoint struct {
 
 // Config identifies a VM and its host-side network and runtime files.
 type Config struct {
-	Name       string
-	ProxyPort  int
-	DNSPort    int
-	SSHPublish Endpoint
-	SSHTarget  int
-	LogFile    string
-	PIDFile    string
+	Name        string
+	Socket      string
+	HostPIDFile string
+	SSHPublish  Endpoint
+	SSHTarget   int
+	LogFile     string
+	PIDFile     string
 }
 
 // Args encodes the flags following the hidden _vmnet command.
 func (c Config) Args() []string {
 	return []string{
 		"--name=" + c.Name,
-		"--proxy-port=" + strconv.Itoa(c.ProxyPort),
-		"--dns-port=" + strconv.Itoa(c.DNSPort),
+		"--socket=" + c.Socket,
+		"--host-pid-file=" + c.HostPIDFile,
 		"--ssh-ip=" + c.SSHPublish.IP,
 		"--ssh-port=" + strconv.Itoa(c.SSHPublish.Port),
 		"--ssh-target=" + strconv.Itoa(c.SSHTarget),
@@ -47,8 +47,8 @@ func ParseArgs(args []string) (Config, error) {
 	flags := flag.NewFlagSet("_vmnet", flag.ContinueOnError)
 	flags.SetOutput(io.Discard)
 	flags.StringVar(&config.Name, "name", "", "VM name")
-	flags.IntVar(&config.ProxyPort, "proxy-port", 0, "loopback proxy port")
-	flags.IntVar(&config.DNSPort, "dns-port", 0, "loopback DNS port")
+	flags.StringVar(&config.Socket, "socket", "", "gateway socket path")
+	flags.StringVar(&config.HostPIDFile, "host-pid-file", "", "VM host process PID path")
 	flags.StringVar(&config.SSHPublish.IP, "ssh-ip", "", "SSH listen IPv4 address")
 	flags.IntVar(&config.SSHPublish.Port, "ssh-port", 0, "published SSH port")
 	flags.IntVar(&config.SSHTarget, "ssh-target", 0, "driver SSH port")
@@ -70,16 +70,22 @@ func (c Config) validate() error {
 	if c.SSHPublish.IP != "127.0.0.1" && c.SSHPublish.IP != "0.0.0.0" {
 		return fmt.Errorf("SSH listen address must be 127.0.0.1 or 0.0.0.0")
 	}
-	ports := make(map[int]bool, 4)
-	for _, port := range []int{c.ProxyPort, c.DNSPort, c.SSHPublish.Port, c.SSHTarget} {
+	ports := make(map[int]bool, 2)
+	for _, port := range []int{c.SSHPublish.Port, c.SSHTarget} {
 		if port < 1 || port > 65535 || ports[port] {
 			return fmt.Errorf("invalid or duplicate VM network port %d", port)
 		}
 		ports[port] = true
 	}
-	if !filepath.IsAbs(c.LogFile) || !filepath.IsAbs(c.PIDFile) ||
-		filepath.Clean(c.LogFile) == filepath.Clean(c.PIDFile) {
-		return fmt.Errorf("log and PID files must be distinct absolute paths")
+	paths := make(map[string]bool, 4)
+	for _, path := range []string{c.Socket, c.HostPIDFile, c.LogFile, c.PIDFile} {
+		if !filepath.IsAbs(path) || filepath.Clean(path) != path || paths[path] {
+			return fmt.Errorf("VM network paths must be distinct, clean absolute paths")
+		}
+		paths[path] = true
+	}
+	if filepath.Dir(c.Socket) != filepath.Dir(c.PIDFile) || filepath.Dir(c.Socket) != filepath.Dir(c.LogFile) {
+		return fmt.Errorf("gateway socket, daemon PID and log must share a private directory")
 	}
 	return nil
 }

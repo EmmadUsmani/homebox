@@ -112,3 +112,55 @@ func TestSeatbeltDaemonReexecProbe(t *testing.T) {
 		t.Fatalf("re-exec: expected sandbox denial, got %v", err)
 	}
 }
+
+func TestSeatbeltDaemonAllowsOnlyIPv4Outbound(t *testing.T) {
+	dir, err := os.MkdirTemp("/tmp", "hb-sandbox-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	dir, err = filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	addresses := []string{"127.0.0.1:0", "[::1]:0", filepath.Join(dir, "other.sock")}
+	for i, network := range []string{"tcp4", "tcp6", "unix"} {
+		listener, err := net.Listen(network, addresses[i])
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer listener.Close()
+		addresses[i] = listener.Addr().String()
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	wrap, err := Prepare(Rules{
+		Daemon: true, RuntimeDir: dir, Executable: exe,
+		GatewaySocket: filepath.Join(dir, "gateway.sock"), BindTCP: []Bind{{Port: 2201}},
+	}, dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	args := append([]string{exe, "-test.run=^TestSeatbeltDaemonNetworkProbe$", "--"}, addresses...)
+	sandbox(t, wrap, args...)
+}
+
+func TestSeatbeltDaemonNetworkProbe(t *testing.T) {
+	if len(os.Args) != 6 || os.Args[2] != "--" {
+		return
+	}
+	for i, network := range []string{"tcp4", "tcp6", "unix"} {
+		conn, err := net.DialTimeout(network, os.Args[i+3], time.Second)
+		if conn != nil {
+			conn.Close()
+		}
+		switch {
+		case i == 0 && err != nil:
+			t.Errorf("IPv4 dial failed: %v", err)
+		case i != 0 && !errors.Is(err, syscall.EPERM) && !errors.Is(err, syscall.EACCES):
+			t.Errorf("%s dial: expected sandbox denial, got %v", network, err)
+		}
+	}
+}

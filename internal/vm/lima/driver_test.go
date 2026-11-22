@@ -74,10 +74,10 @@ func TestListAndSSH(t *testing.T) {
 	ctx := t.Context()
 	got, err := driver.List(ctx)
 	want := []vm.Instance{
-		{Name: "test-lima", Status: vm.StatusRunning, RuntimeDir: "/fixture/lima/test-lima", HostAddress: hostAddress},
-		{Name: "test-uninitialized", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-uninitialized", HostAddress: hostAddress},
-		{Name: "test-stopped", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-stopped", HostAddress: hostAddress},
-		{Name: "test-broken", Status: vm.StatusBroken, RuntimeDir: "/fixture/lima/test-broken", HostAddress: hostAddress},
+		{Name: "test-lima", Status: vm.StatusRunning, RuntimeDir: "/fixture/lima/test-lima", HostPIDFile: "/fixture/lima/test-lima/ha.pid", HostAddress: hostAddress},
+		{Name: "test-uninitialized", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-uninitialized", HostPIDFile: "/fixture/lima/test-uninitialized/ha.pid", HostAddress: hostAddress},
+		{Name: "test-stopped", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-stopped", HostPIDFile: "/fixture/lima/test-stopped/ha.pid", HostAddress: hostAddress},
+		{Name: "test-broken", Status: vm.StatusBroken, RuntimeDir: "/fixture/lima/test-broken", HostPIDFile: "/fixture/lima/test-broken/ha.pid", HostAddress: hostAddress},
 	}
 	if err != nil || !reflect.DeepEqual(got, want) {
 		t.Fatalf("List = %#v, %v", got, err)

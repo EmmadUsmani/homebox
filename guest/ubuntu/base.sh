@@ -8,7 +8,7 @@ apt-get install -y --no-install-recommends \
     build-essential pkg-config ca-certificates curl wget git jq sqlite3 \
     ripgrep fd-find tmux unzip zip xz-utils zstd file less tree vim neovim \
     python3 python3-pip python3-venv pipx locales tzdata \
-    openssh-server openssh-client sudo lsof iproute2 iputils-ping \
+    openssh-server openssh-client sudo lsof iproute2 iputils-ping dnsutils \
     netcat-openbsd socat rsync psmisc btop ncdu man-db manpages-dev \
     bubblewrap dbus-user-session imagemagick ffmpeg
 

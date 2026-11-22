@@ -1,20 +1,15 @@
 // Package isolation confines a VM to the host-side services box runs for it.
 //
-// For each VM it starts the network daemon (egress proxy, DNS forwarder and
-// SSH relay; see internal/vmnet) and confines the driver's host process so
-// those loopback ports are the only things the VM can reach (internal/confine).
+// It starts the socket gateway and SSH relay and confines the driver's host process.
 // It implements app.Isolation.
 package isolation
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/confine"
@@ -39,9 +34,6 @@ var _ app.Isolation = (*Host)(nil)
 
 // Up starts the VM's network daemon and returns the confined launch command.
 func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.Session, error) {
-	if instance.HostAddress == "" {
-		return app.Session{}, errors.New("the VM driver reports no host address for the guest")
-	}
 	host, err := h.Store.LoadHost()
 	if err != nil {
 		return app.Session{}, err
@@ -59,7 +51,17 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	if err != nil {
 		return app.Session{}, err
 	}
+	if !filepath.IsAbs(instance.HostPIDFile) {
+		return app.Session{}, fmt.Errorf("VM driver did not report an absolute host process PID path")
+	}
+	pidDir, err := filepath.EvalSymlinks(filepath.Dir(instance.HostPIDFile))
+	if err != nil {
+		return app.Session{}, err
+	}
+	daemon := daemonConfig(box, dir, host.LAN)
+	daemon.HostPIDFile = filepath.Join(pidDir, filepath.Base(instance.HostPIDFile))
 	hostRules := rules(box, instance)
+	hostRules.GatewaySocket = daemon.Socket
 	hostRules.Home = home
 	hostRules.LimaHome = h.LimaHome
 	hostRules.Executable = limactl
@@ -68,17 +70,14 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 		return app.Session{}, err
 	}
 
-	daemon := daemonConfig(box, dir, host.LAN)
 	executable, err := filepath.EvalSymlinks(h.Executable)
 	if err != nil {
 		return app.Session{}, err
 	}
 	daemonWrap, err := confine.Prepare(confine.Rules{
 		Daemon: true, RuntimeDir: dir, Executable: executable,
-		BindTCP: []confine.Bind{{Port: daemon.ProxyPort}, {Port: daemon.DNSPort}, {
-			Port: daemon.SSHPublish.Port, LAN: host.LAN,
-		}},
-		BindUDP: []confine.Bind{{Port: daemon.DNSPort}},
+		GatewaySocket: daemon.Socket, HostPIDFile: daemon.HostPIDFile,
+		BindTCP: []confine.Bind{{Port: daemon.SSHPublish.Port, LAN: host.LAN}},
 	}, h.Store.BoxDir(box.Name))
 	if err != nil {
 		return app.Session{}, err
@@ -91,12 +90,11 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 		return app.Session{}, fmt.Errorf("start network daemon (log: %s): %w", daemon.LogFile, err)
 	}
 
-	return app.Session{
-		Start:    vm.StartOptions{Wrap: wrap},
-		ProxyURL: "http://" + net.JoinHostPort(instance.HostAddress, strconv.Itoa(daemon.ProxyPort)),
-		NoProxy:  "localhost,127.0.0.1,::1",
-		DNS:      net.JoinHostPort(instance.HostAddress, strconv.Itoa(daemon.DNSPort)),
-	}, nil
+	return app.Session{Start: vm.StartOptions{
+		Wrap:   wrap,
+		Socket: vm.SocketAttachment{Path: daemon.Socket, Interface: "lima0", MAC: "52:55:0a:72:00:15", RouteMetric: 100},
+		DNS:    []string{"9.9.9.9", "1.1.1.1"},
+	}}, nil
 }
 
 // Down stops the VM's network daemon. It is safe to call when none runs.
@@ -133,14 +131,20 @@ func (h *Host) prepareRunDir(name string) (string, error) {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return "", err
 	}
+	info, err := os.Lstat(dir)
+	if err != nil {
+		return "", err
+	}
+	if !info.IsDir() || info.Mode().Perm() != 0700 {
+		return "", fmt.Errorf("VM network directory must have mode 0700: %s", dir)
+	}
 	return filepath.EvalSymlinks(dir)
 }
 
 func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 	return vmnet.Config{
 		Name:       box.Name,
-		ProxyPort:  state.ProxyPort(box.Index),
-		DNSPort:    state.DNSPort(box.Index),
+		Socket:     filepath.Join(dir, "net.sock"),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
 		LogFile:    filepath.Join(dir, "vmnet.log"),
@@ -148,9 +152,7 @@ func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 	}
 }
 
-// rules lets the VM's host process reach only its own SSH forward, proxy and
-// DNS forwarder (UDP, and TCP for truncated answers), and listen only on its
-// SSH forward and published HTTP ports.
+// rules allows SSH and the box's configured inbound HTTP forwards.
 func rules(box state.Box, instance vm.Instance) confine.Rules {
 	sshTarget := state.DriverSSHPort(box.Index)
 	binds := []confine.Bind{{Port: sshTarget}}
@@ -159,8 +161,7 @@ func rules(box state.Box, instance vm.Instance) confine.Rules {
 	}
 	return confine.Rules{
 		RuntimeDir: instance.RuntimeDir,
-		ConnectTCP: []int{sshTarget, state.ProxyPort(box.Index), state.DNSPort(box.Index)},
-		ConnectUDP: []int{state.DNSPort(box.Index)},
+		ConnectTCP: []int{sshTarget},
 		BindTCP:    binds,
 	}
 }

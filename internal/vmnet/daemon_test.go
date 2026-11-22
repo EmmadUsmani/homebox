@@ -3,15 +3,14 @@
 package vmnet
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io"
 	"net"
-	"net/http"
-	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -32,38 +31,14 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func TestRun(t *testing.T) {
+func TestRelayFollowsHostProcess(t *testing.T) {
 	config, target := testConfig(t)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	upstream, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1)})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer upstream.Close()
-	go func() {
-		buffer := make([]byte, 512)
-		size, addr, err := upstream.ReadFromUDP(buffer)
-		if err == nil && size >= 12 {
-			buffer[2] = 0x80
-			upstream.WriteToUDP(buffer[:size], addr)
-		}
-	}()
-	target.SetDeadline(time.Now().Add(5 * time.Second))
-	go func() {
-		client, err := target.Accept()
-		if err == nil {
-			defer client.Close()
-			io.WriteString(client, "SSH-2.0-test\r\n")
-		}
-	}()
-
+	ctx, cancel := context.WithCancel(t.Context())
 	stopped := make(chan struct{})
 	var runErr error
 	go func() {
 		defer close(stopped)
-		runErr = run(ctx, config, []string{upstream.LocalAddr().String()})
+		runErr = Run(ctx, config)
 	}()
 	defer func() {
 		cancel()
@@ -71,29 +46,59 @@ func TestRun(t *testing.T) {
 		if runErr != nil {
 			t.Error(runErr)
 		}
-		if _, ok := Running(config.PIDFile); ok {
-			t.Error("daemon still running")
-		}
 	}()
 	waitReady(t, config, stopped)
-	checkProxy(t, config)
-	checkRelay(t, config)
+	assertRelayClosed(t, config)
+	command := exec.Command("/bin/sleep", "30")
+	if err := command.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer command.Wait()
+	defer command.Process.Kill()
+	if err := os.WriteFile(config.HostPIDFile, []byte(strconv.Itoa(command.Process.Pid)), 0600); err != nil {
+		t.Fatal(err)
+	}
+	go func() {
+		client, err := target.Accept()
+		if err == nil {
+			defer client.Close()
+			io.WriteString(client, "SSH-2.0-test\r\n")
+		}
+	}()
+	deadline := time.Now().Add(time.Second)
+	for {
+		conn, err := net.DialTimeout("tcp4", endpoint(config.SSHPublish.IP, config.SSHPublish.Port), 25*time.Millisecond)
+		if err == nil {
+			conn.SetReadDeadline(time.Now().Add(time.Second))
+			banner, err := io.ReadAll(conn)
+			conn.Close()
+			if err != nil || string(banner) != "SSH-2.0-test\r\n" {
+				t.Fatalf("SSH banner %q: %v", banner, err)
+			}
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("SSH relay did not start")
+		}
+		time.Sleep(pollInterval)
+	}
+	if err := command.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-stopped:
+	case <-time.After(time.Second):
+		t.Fatal("daemon did not close the relay after host process exit")
+	}
+	assertRelayClosed(t, config)
+}
 
-	dns, err := net.DialTimeout("udp4", endpoint("127.0.0.1", config.DNSPort), time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dns.Close()
-	dns.SetDeadline(time.Now().Add(2 * time.Second))
-	query := []byte{12, 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-	if _, err := dns.Write(query); err != nil {
-		t.Fatal(err)
-	}
-	query[2] = 0x80
-	answer := make([]byte, 512)
-	size, err := dns.Read(answer)
-	if err != nil || !bytes.Equal(answer[:size], query) {
-		t.Fatalf("DNS answer %x: %v", answer[:size], err)
+func assertRelayClosed(t *testing.T, config Config) {
+	t.Helper()
+	conn, err := net.DialTimeout("tcp4", endpoint(config.SSHPublish.IP, config.SSHPublish.Port), 50*time.Millisecond)
+	if err == nil {
+		conn.Close()
+		t.Fatal("relay listener is open without a live host process")
 	}
 }
 
@@ -108,6 +113,12 @@ func TestSpawnAndStop(t *testing.T) {
 	if _, err := os.Stat(config.PIDFile); !os.IsNotExist(err) {
 		t.Fatalf("stale PID file was not removed: %v", err)
 	}
+	stale, err := net.ListenUnix("unix", &net.UnixAddr{Name: config.Socket, Net: "unix"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale.SetUnlinkOnClose(false)
+	stale.Close()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +134,6 @@ func TestSpawnAndStop(t *testing.T) {
 	if _, err := Spawn(exe, []string{"_vmnet"}, config); err == nil {
 		t.Fatal("second daemon started")
 	}
-	checkProxy(t, config)
 	if err := Stop(config.PIDFile); err != nil {
 		t.Fatal(err)
 	}
@@ -132,62 +142,50 @@ func TestSpawnAndStop(t *testing.T) {
 	}
 }
 
-func TestSpawnBindFailure(t *testing.T) {
+func TestSpawnRefusesNonSocketPath(t *testing.T) {
 	config, _ := testConfig(t)
-	file, err := os.Create(config.LogFile)
-	if err != nil {
+	if err := os.WriteFile(config.Socket, []byte("preserve"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	if err := file.Truncate(11 << 20); err != nil {
-		file.Close()
-		t.Fatal(err)
-	}
-	if err := file.Close(); err != nil {
-		t.Fatal(err)
-	}
-	occupied, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(127, 0, 0, 1), Port: config.DNSPort})
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer occupied.Close()
 	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Spawn(exe, []string{"_vmnet"}, config); err == nil || !strings.Contains(err.Error(), "bind DNS") {
-		t.Fatalf("expected DNS bind failure, got %v", err)
+	if _, err := Spawn(exe, []string{"_vmnet"}, config); err == nil || !strings.Contains(err.Error(), "not a socket") {
+		t.Fatalf("expected socket path failure, got %v", err)
 	}
 	if _, ok := Running(config.PIDFile); ok {
 		t.Fatal("failed daemon published readiness")
 	}
-	proxy, err := net.Listen("tcp4", endpoint("127.0.0.1", config.ProxyPort))
-	if err != nil {
-		t.Fatalf("proxy socket leaked: %v", err)
+	if data, err := os.ReadFile(config.Socket); err != nil || string(data) != "preserve" {
+		t.Fatalf("path contents %q: %v", data, err)
 	}
-	proxy.Close()
 }
 
 func testConfig(t *testing.T) (Config, *net.TCPListener) {
 	t.Helper()
-	dir := t.TempDir()
-	listeners := make([]*net.TCPListener, 4)
-	ports := make([]int, len(listeners))
-	for index := range listeners {
-		listener, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
-		if err != nil {
-			t.Fatal(err)
-		}
-		t.Cleanup(func() { listener.Close() })
-		listeners[index] = listener
-		ports[index] = listener.Addr().(*net.TCPAddr).Port
+	dir, err := os.MkdirTemp("/tmp", "hb-net-")
+	if err != nil {
+		t.Fatal(err)
 	}
-	for _, listener := range listeners[:3] {
-		listener.Close()
+	t.Cleanup(func() { os.RemoveAll(dir) })
+	target, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
 	}
+	t.Cleanup(func() { target.Close() })
+	published, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := published.Addr().(*net.TCPAddr).Port
+	published.Close()
 	return Config{
-		Name: "test", ProxyPort: ports[0], DNSPort: ports[1], SSHPublish: Endpoint{"127.0.0.1", ports[2]},
-		SSHTarget: ports[3], PIDFile: filepath.Join(dir, "vmnet.pid"), LogFile: filepath.Join(dir, "vmnet log.json"),
-	}, listeners[3]
+		Name: "test", Socket: filepath.Join(dir, "net.sock"),
+		HostPIDFile: filepath.Join(dir, "host.pid"), SSHPublish: Endpoint{"127.0.0.1", port},
+		SSHTarget: target.Addr().(*net.TCPAddr).Port,
+		PIDFile:   filepath.Join(dir, "vmnet.pid"), LogFile: filepath.Join(dir, "vmnet.log"),
+	}, target
 }
 
 func waitReady(t *testing.T, config Config, stopped <-chan struct{}) {
@@ -207,34 +205,5 @@ func waitReady(t *testing.T, config Config, stopped <-chan struct{}) {
 			t.Fatal("daemon did not become ready")
 		case <-ticker.C:
 		}
-	}
-}
-
-func checkProxy(t *testing.T, config Config) {
-	t.Helper()
-	proxy := &url.URL{Scheme: "http", Host: endpoint("127.0.0.1", config.ProxyPort)}
-	transport := &http.Transport{Proxy: http.ProxyURL(proxy)}
-	defer transport.CloseIdleConnections()
-	client := &http.Client{Transport: transport, Timeout: 2 * time.Second}
-	response, err := client.Get("http://127.0.0.1/")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer response.Body.Close()
-	if response.StatusCode != http.StatusForbidden {
-		t.Fatalf("proxy status %d, want %d", response.StatusCode, http.StatusForbidden)
-	}
-}
-
-func checkRelay(t *testing.T, config Config) {
-	t.Helper()
-	conn, err := net.DialTimeout("tcp4", endpoint(config.SSHPublish.IP, config.SSHPublish.Port), time.Second)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer conn.Close()
-	conn.SetDeadline(time.Now().Add(2 * time.Second))
-	if banner, err := io.ReadAll(conn); err != nil || string(banner) != "SSH-2.0-test\r\n" {
-		t.Fatalf("SSH banner %q: %v", banner, err)
 	}
 }

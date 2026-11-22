@@ -62,10 +62,9 @@ func TestDoctor(t *testing.T) {
 		t.Fatalf("calls = %v, probes = %d, cleanups = %d", ssh.calls, probes, cleanups)
 	}
 	wantEnv := map[string]string{
-		"HOMEBOX_PROXY_URL":    "http://192.0.2.10:23020",
-		"HOMEBOX_DNS":          "192.0.2.10:23120",
-		"HOMEBOX_DENY_TARGETS": "192.0.2.10:12345 192.0.2.11:80",
-		"HOMEBOX_PUBLIC_URL":   "https://example.com",
+		"HOMEBOX_BUILTIN_GATEWAY": "192.0.2.10",
+		"HOMEBOX_DENY_TARGETS":    "192.0.2.10:12345 192.0.2.11:80",
+		"HOMEBOX_PUBLIC_URL":      "https://example.com",
 	}
 	if !reflect.DeepEqual(ssh.env, wantEnv) {
 		t.Fatalf("doctor environment = %v", ssh.env)

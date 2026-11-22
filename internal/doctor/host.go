@@ -2,6 +2,7 @@ package doctor
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -33,7 +34,7 @@ func (h Host) Probe(ctx context.Context, guestHost string, sshPort int, lan bool
 }
 
 func (h Host) probe(ctx context.Context, guestHost string, sshPort int, lan bool, addresses []string) (targets []string, checks []Check, closeCanaries func()) {
-	var servers []*http.Server
+	var servers []*canaryServer
 	closeCanaries = func() {
 		for _, server := range servers {
 			server.Close()
@@ -58,7 +59,7 @@ func (h Host) probe(ctx context.Context, guestHost string, sshPort int, lan bool
 	}
 
 	router, check := h.router(ctx)
-	if check.OK {
+	if router != "" {
 		targets = append(targets, router)
 	}
 	checks = append(checks, check, publishedSSH(ctx, loopback, sshPort, true))
@@ -83,7 +84,14 @@ func interfaceIPv4(addresses []net.Addr) []string {
 	return slices.Compact(result)
 }
 
-func canary(ctx context.Context, bind, guestAddress string) (target string, server *http.Server, err error) {
+type canaryServer struct {
+	tcp *http.Server
+	udp *net.UDPConn
+}
+
+func (s *canaryServer) Close() { s.tcp.Close(); s.udp.Close() }
+
+func canary(ctx context.Context, bind, guestAddress string) (target string, server *canaryServer, err error) {
 	if ip, err := netip.ParseAddr(guestAddress); err != nil || !ip.Is4() {
 		return "", nil, errors.New("missing or invalid guest-visible host IPv4 address")
 	}
@@ -91,11 +99,27 @@ func canary(ctx context.Context, bind, guestAddress string) (target string, serv
 	if err != nil {
 		return "", nil, err
 	}
-	server = &http.Server{
+	address := listener.Addr().(*net.TCPAddr)
+	udp, err := net.ListenUDP("udp4", &net.UDPAddr{IP: address.IP, Port: address.Port})
+	if err != nil {
+		listener.Close()
+		return "", nil, err
+	}
+	server = &canaryServer{udp: udp, tcp: &http.Server{
 		Handler:           http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }),
 		ReadHeaderTimeout: probeTimeout,
-	}
-	go server.Serve(listener)
+	}}
+	go server.tcp.Serve(listener)
+	go func() {
+		var data [128]byte
+		for {
+			size, peer, err := udp.ReadFromUDP(data[:])
+			if err != nil {
+				return
+			}
+			udp.WriteToUDP(data[:size], peer)
+		}
+	}()
 
 	transport := &http.Transport{DisableKeepAlives: true}
 	client := &http.Client{Transport: transport, Timeout: probeTimeout}
@@ -115,8 +139,33 @@ func canary(ctx context.Context, bind, guestAddress string) (target string, serv
 		server.Close()
 		return "", nil, err
 	}
-	port := listener.Addr().(*net.TCPAddr).Port
-	return net.JoinHostPort(guestAddress, strconv.Itoa(port)), server, nil
+	if err := checkUDPCanary(ctx, address.String()); err != nil {
+		server.Close()
+		return "", nil, err
+	}
+	return net.JoinHostPort(guestAddress, strconv.Itoa(address.Port)), server, nil
+}
+
+func checkUDPCanary(ctx context.Context, address string) error {
+	conn, err := (&net.Dialer{Timeout: probeTimeout}).DialContext(ctx, "udp4", address)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(probeTimeout))
+	message := []byte("homebox doctor")
+	if _, err := conn.Write(message); err != nil {
+		return err
+	}
+	var reply [128]byte
+	size, err := conn.Read(reply[:])
+	if err != nil {
+		return err
+	}
+	if !bytes.Equal(reply[:size], message) {
+		return errors.New("UDP canary returned an unexpected reply")
+	}
+	return nil
 }
 
 func (h Host) router(ctx context.Context) (string, Check) {
@@ -142,7 +191,7 @@ func (h Host) router(ctx context.Context) (string, Check) {
 		}
 	}
 	check.Detail = fmt.Sprintf("host could not reach %s on port 80 or 443", ip)
-	return "", check
+	return net.JoinHostPort(ip.String(), "80"), check
 }
 
 func publishedSSH(ctx context.Context, ip string, port int, wantReachable bool) Check {

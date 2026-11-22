@@ -4,29 +4,6 @@ Work agreed in principle but not built yet, roughly in priority order. Each item
 says why it matters and the approach we lean towards; a spike settles the
 details. Anything that changes the design document waits for the owner.
 
-## UDP and ICMP from the VM
-
-Today only TCP (through the proxy) and DNS leave the VM. QUIC/HTTP3 falls back
-to TCP, but WebRTC, NTP, mosh, Tailscale's direct paths, game and media servers,
-other DNS resolvers and `ping` don't work. A full development machine should
-have them.
-
-Seatbelt can't filter by address, so UDP needs a host-side policy like the TCP
-proxy. Options:
-
-1. **box owns the VM's network (preferred).** Give the VM a second network
-   interface on a unix socket that box's daemon serves (Lima's `networks:
-   - socket:`), and make it the default route. The daemon runs a userspace
-   TCP/IP stack (gVisor's netstack, as Lima's own user network does) and applies
-   the public-addresses-only policy per flow for TCP, UDP and ICMP (macOS allows
-   unprivileged ICMP datagram sockets). This replaces the guest's redsocks
-   redirect, and the guest can't bypass it: there is no other way out. Lima's
-   own interface stays confined by Seatbelt for SSH. Spike first: does `vz`
-   accept a socket network next to the built-in one, and how fast is it?
-2. **SOCKS5 UDP.** Add UDP ASSOCIATE to the daemon and a transparent UDP
-   redirect in the guest. Smaller, but UDP only (no ICMP), and it adds another
-   guest-side daemon.
-
 ## Tighten the host sandboxes further
 
 Both host processes now have file and process limits (see "macOS networking"
@@ -47,8 +24,7 @@ once the laptop knows the VM's key; a first connection would trust it.
 
 - Pin host keys on the laptop: `box ssh-config` also prints the VM's host keys,
   so there is no first-use trust (this also defeats a LAN man-in-the-middle).
-- Open the relay only while the hostagent runs, and check that the hostagent's
-  process owns the listening socket before forwarding.
+- Verify that the live host process owns the driver SSH listener before forwarding.
 
 ## Using the VM on the host Mac itself
 
@@ -62,8 +38,7 @@ works on the host, and the published ports work on `127.0.0.1`. Missing pieces:
 
 ## Smaller
 
-- Pass the guest network values (gateway address, proxy and DNS ports) from the
-  driver instead of hardcoding Lima's in the guest scripts.
+- Reconnect the socket NIC after daemon failure without restarting the VM.
 - Run the CI workflow on GitHub; the Linux tests have only been cross-compiled
   and vetted locally.
 - NAT reflection: if the router reflects connections to its own public address

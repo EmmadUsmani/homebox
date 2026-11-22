@@ -79,3 +79,20 @@ func TestValidateConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestSocketNetworkDisablesBuiltInHostServices(t *testing.T) {
+	spec := sampleSpec()
+	spec.HostGateway = true
+	spec.Socket = vm.SocketAttachment{
+		Path: "/fixture/network.sock", Interface: "lima0", MAC: "52:55:0a:72:00:15", RouteMetric: 100,
+	}
+	config, err := renderConfig(spec, "darwin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"socket: /fixture/network.sock", "interface: lima0", "metric: 100", "hostLoopback: false", "enabled: false"} {
+		if !bytes.Contains(config, []byte(expected)) {
+			t.Errorf("config missing %q", expected)
+		}
+	}
+}
