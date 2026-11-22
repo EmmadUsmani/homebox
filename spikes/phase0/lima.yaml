@@ -1,0 +1,31 @@
+base:
+- template:_images/ubuntu-24.04
+
+vmType: vz
+arch: aarch64
+cpus: 2
+memory: 2GiB
+disk: 20GiB
+plain: true
+
+user:
+  name: homebox
+  home: /home/homebox
+ssh:
+  localPort: 2201
+  forwardAgent: false
+  loadDotSSHPubKeys: false
+mounts: []
+containerd:
+  system: false
+  user: false
+propagateProxyEnv: false
+hostResolver:
+  enabled: false
+dns: [127.0.0.1]
+
+portForwards:
+- guestPort: 8000
+  hostPort: 20100
+  hostIP: 127.0.0.1
+  static: true

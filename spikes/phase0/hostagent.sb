@@ -1,0 +1,14 @@
+(version 1)
+(allow default)
+
+(deny network-outbound)
+(allow network-outbound
+  (remote tcp "localhost:@SSH_PORT@")
+  (remote tcp "localhost:@PROXY_PORT@")
+  (subpath "@INSTANCE_DIR@"))
+
+(deny network-bind)
+(allow network-bind
+  (local tcp "localhost:@SSH_PORT@")
+  (local tcp "@PUBLISH_HOST@:@HTTP_PORT@")
+  (subpath "@INSTANCE_DIR@"))
