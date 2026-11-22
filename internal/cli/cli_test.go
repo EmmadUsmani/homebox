@@ -48,6 +48,14 @@ func (s *stubApp) Ports(_ context.Context, name string, options app.PortOptions)
 	return []vm.PortForward{{GuestPort: 9000, HostPort: 30000, HostIP: "127.0.0.1"}}, nil
 }
 
+func (s *stubApp) Repin(_ context.Context, name string, confirm func(old, new []string) (bool, error)) error {
+	approved, err := confirm([]string{"ssh-ed25519 SHA256:old"}, []string{"ssh-ed25519 SHA256:new"})
+	if approved {
+		s.name = name
+	}
+	return err
+}
+
 func (s *stubApp) SSHConfig(_ context.Context, options app.SSHConfigOptions) (string, error) {
 	s.sshOptions = options
 	return "Host main\n", nil
@@ -66,6 +74,7 @@ func TestSSHConfigAndOpenFlags(t *testing.T) {
 	service := &stubApp{}
 	for flag, options := range map[string]app.SSHConfigOptions{
 		"--include":     {Include: true},
+		"--installer":   {Installer: true},
 		"--known-hosts": {KnownHosts: true},
 	} {
 		_, _, err := execute(t, service, false, "", "ssh-config", flag)
@@ -184,5 +193,40 @@ func TestListAndVersionOutput(t *testing.T) {
 	out, _, err = execute(t, service, false, "", "version")
 	if err != nil || out != "v0.0.1-test\n" {
 		t.Fatalf("version = %q, %v", out, err)
+	}
+}
+
+func TestRepinConfirmation(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		terminal bool
+		input    string
+		yes      bool
+		saves    bool
+	}{
+		{name: "requires --yes"},
+		{name: "explicit flag", yes: true, saves: true},
+		{name: "interactive approval", terminal: true, input: "yes\n", saves: true},
+		{name: "interactive decline", terminal: true, input: "no\n"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			service := &stubApp{}
+			args := []string{"repin", "main"}
+			if test.yes {
+				args = append(args, "--yes")
+			}
+			_, output, err := execute(t, service, test.terminal, test.input, args...)
+			if !test.terminal && !test.yes {
+				if err == nil || !strings.Contains(err.Error(), "--yes") || service.name != "" {
+					t.Fatalf("non-interactive repin: %q, %v", service.name, err)
+				}
+				return
+			}
+			if err != nil || (service.name == "main") != test.saves ||
+				!strings.Contains(output, "SHA256:old") || !strings.Contains(output, "SHA256:new") ||
+				strings.Contains(output, "ssh-config --installer") != test.saves {
+				t.Fatalf("repin = %q, %q, %v", service.name, output, err)
+			}
+		})
 	}
 }

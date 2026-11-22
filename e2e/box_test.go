@@ -150,17 +150,33 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 			t.Fatalf("ssh-config is missing %q:\n%s", want, config)
 		}
 	}
-	laptopConfig := filepath.Join(dir, "laptop-config")
-	laptopPins := filepath.Join(dir, "laptop-known-hosts")
-	pins := box(time.Minute, "ssh-config", "--known-hosts")
-	loopbackConfig := box(time.Minute, "ssh-config", "--host", "127.0.0.1")
-	for path, contents := range map[string]string{laptopConfig: loopbackConfig, laptopPins: pins} {
-		if err := os.WriteFile(path, []byte(contents), 0600); err != nil {
+	laptopHome := filepath.Join(dir, "laptop")
+	laptopSSH := filepath.Join(laptopHome, ".ssh")
+	installer := box(time.Minute, "ssh-config", "--installer", "--host", "127.0.0.1")
+	scriptPath := filepath.Join(dir, "homebox-ssh.sh")
+	if err := os.WriteFile(scriptPath, []byte(installer), 0600); err != nil {
+		t.Fatal(err)
+	}
+	runOK("env", "HOME="+laptopHome, "sh", scriptPath)
+	laptopConfig := filepath.Join(laptopSSH, "config")
+	laptopPins := filepath.Join(laptopSSH, "homebox_known_hosts")
+	pins, err := os.ReadFile(laptopPins)
+	if err != nil || string(pins) != box(time.Minute, "ssh-config", "--known-hosts") {
+		t.Fatalf("installed laptop pins differ from the export: %v", err)
+	}
+	// OpenSSH expands ~ using the account's home, regardless of HOME.
+	// Point the test client at the sandbox copies of the installed files.
+	for _, path := range []string{laptopConfig, filepath.Join(laptopSSH, "homebox_config")} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		data = []byte(strings.ReplaceAll(string(data), "~/.ssh/", laptopSSH+"/"))
+		if err := os.WriteFile(path, data, 0600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	laptopArgs := []string{"-F", laptopConfig, "-o", "UserKnownHostsFile=" + laptopPins, "-o", "BatchMode=yes",
-		"-o", "IdentitiesOnly=yes", "-i", laptopKey, name, "true"}
+	laptopArgs := []string{"-F", laptopConfig, "-o", "BatchMode=yes", "-o", "IdentitiesOnly=yes", "-i", laptopKey, name, "true"}
 	runOK("ssh", laptopArgs...)
 	// The test laptop's public key is a valid key that cannot match the VM's key.
 	wrongKey, err := os.ReadFile(laptopKey + ".pub")

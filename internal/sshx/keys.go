@@ -2,6 +2,7 @@ package sshx
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -35,17 +36,33 @@ func (c Client) HostKeys(ctx context.Context, ep vm.Endpoint) ([]string, error) 
 
 // PublicKey recognizes the OpenSSH public key file format and discards comments.
 func PublicKey(line string) (string, bool) {
+	key, _, ok := parsePublicKey(line)
+	return key, ok
+}
+
+// Fingerprint formats a public key fingerprint as OpenSSH does.
+func Fingerprint(line string) (string, error) {
+	key, data, ok := parsePublicKey(line)
+	if !ok {
+		return "", errors.New("invalid SSH public key")
+	}
+	kind, _, _ := strings.Cut(key, " ")
+	digest := sha256.Sum256(data)
+	return kind + " SHA256:" + base64.RawStdEncoding.EncodeToString(digest[:]), nil
+}
+
+func parsePublicKey(line string) (string, []byte, bool) {
 	fields := strings.Fields(line)
 	if len(fields) < 2 || strings.ContainsAny(line, "\x00\r") {
-		return "", false
+		return "", nil, false
 	}
 	data, err := base64.StdEncoding.DecodeString(fields[1])
 	if err != nil || len(data) < 4 {
-		return "", false
+		return "", nil, false
 	}
 	length := binary.BigEndian.Uint32(data)
 	if uint64(length) >= uint64(len(data)-4) || string(data[4:4+int(length)]) != fields[0] {
-		return "", false
+		return "", nil, false
 	}
-	return fields[0] + " " + fields[1], true
+	return fields[0] + " " + fields[1], data, true
 }
