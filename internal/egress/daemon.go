@@ -50,15 +50,6 @@ func Run(ctx context.Context, config Config) error {
 
 	ctx, cancel := signal.NotifyContext(ctx, syscall.SIGTERM, os.Interrupt)
 	defer cancel()
-	proxy := NewProxy(ProxyOptions{Logger: logger})
-	proxy.denial = hostDenialReason
-	server := &http.Server{
-		Handler: proxy,
-		// Only the header read is bounded; bodies and tunnels may be long.
-		ReadHeaderTimeout: 10 * time.Second,
-		IdleTimeout:       60 * time.Second,
-		BaseContext:       func(net.Listener) context.Context { return ctx },
-	}
 	if config.PIDFile != "" {
 		file, err := os.OpenFile(config.PIDFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 		if err != nil {
@@ -73,6 +64,25 @@ func Run(ctx context.Context, config Config) error {
 	if config.Lifeline != nil {
 		go watchLifeline(ctx, config.Lifeline, cancel)
 	}
+	return Serve(ctx, listener, logger)
+}
+
+// Serve runs the egress proxy on an already-bound IPv4 loopback listener.
+func Serve(ctx context.Context, listener *net.TCPListener, logger *slog.Logger) error {
+	if listener.Addr().(*net.TCPAddr).AddrPort().Addr().Unmap() != netip.MustParseAddr("127.0.0.1") {
+		return fmt.Errorf("egress listener must be on 127.0.0.1")
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	proxy := NewProxy(ProxyOptions{Logger: logger})
+	proxy.denial = hostDenialReason
+	server := &http.Server{
+		Handler: proxy,
+		// Only the header read is bounded; bodies and tunnels may be long.
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       60 * time.Second,
+		BaseContext:       func(net.Listener) context.Context { return ctx },
+	}
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
@@ -84,7 +94,7 @@ func Run(ctx context.Context, config Config) error {
 		}
 		proxy.stopTunnels()
 	}()
-	err = server.Serve(listener)
+	err := server.Serve(listener)
 	cancel()
 	<-done
 	if errors.Is(err, http.ErrServerClosed) {
