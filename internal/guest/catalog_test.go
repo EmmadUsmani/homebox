@@ -125,3 +125,24 @@ func TestEmbeddedProfiles(t *testing.T) {
 		}
 	}
 }
+
+func TestEmbeddedDoctorScript(t *testing.T) {
+	catalog, err := guest.NewCatalog(guestfs.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	const path = "common/doctor.sh"
+	script, err := catalog.ReadScript(path)
+	if err != nil || !strings.HasPrefix(string(script), "#!/bin/sh\nset -eu\n") {
+		t.Fatalf("%s: expected an embedded POSIX shell script, read error: %v", path, err)
+	}
+	profile, err := catalog.Get(guest.DefaultProfile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range profile.Steps {
+		if step.Script == path {
+			t.Fatalf("%s must run separately from provisioning", path)
+		}
+	}
+}

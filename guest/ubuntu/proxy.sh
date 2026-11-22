@@ -30,33 +30,31 @@ else
 fi
 install -m 0644 "$temporary" /etc/environment
 
-# Merge the managed Docker client keys without replacing unrelated settings.
-sudo -H -u "$admin" python3 - "$proxy" "$bypass" <<'PY'
+# Remove legacy proxy injection from containers, which use transparent TCP.
+sudo -H -u "$admin" python3 - <<'PY'
 import json
 import sys
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-proxy, bypass = sys.argv[1:]
 path = Path.home() / ".docker" / "config.json"
-if not proxy and not path.exists():
+if not path.exists():
     sys.exit(0)
 
-config = json.loads(path.read_text()) if path.exists() else {}
-proxies = config.setdefault("proxies", {})
-defaults = proxies.setdefault("default", {})
-for key, value in (("httpProxy", proxy), ("httpsProxy", proxy), ("noProxy", bypass)):
-    if proxy:
-        defaults[key] = value
-    else:
-        defaults.pop(key, None)
+config = json.loads(path.read_text())
+proxies = config.get("proxies", {})
+defaults = proxies.get("default", {})
+keys = ("httpProxy", "httpsProxy", "noProxy")
+if not any(key in defaults for key in keys):
+    sys.exit(0)
+for key in keys:
+    defaults.pop(key, None)
 if not defaults:
     proxies.pop("default")
 if not proxies:
     config.pop("proxies")
 
 if config:
-    path.parent.mkdir(mode=0o700, exist_ok=True)
     with NamedTemporaryFile(mode="w", dir=path.parent, delete=False) as temporary:
         temporary.write(json.dumps(config, indent=2) + "\n")
     Path(temporary.name).replace(path)

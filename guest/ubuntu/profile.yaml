@@ -10,6 +10,7 @@ images:
     digest: sha256:5645d0318ad21f643ebb1ac4567514620e9893380b07b0201fda163baa5b7eb5
 steps:
   - {name: Proxy, script: ubuntu/proxy.sh, root: true}
+  - {name: Network, script: ubuntu/network.sh, root: true}
   - {name: Base packages, script: ubuntu/base.sh, root: true}
   - {name: Docker Engine, script: ubuntu/docker.sh, root: true}
   - {name: mise and languages, script: common/mise.sh, root: false}
