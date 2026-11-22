@@ -53,10 +53,9 @@ func Run(ctx context.Context, config Config) error {
 	proxy := NewProxy(ProxyOptions{Logger: logger})
 	proxy.denial = hostDenialReason
 	server := &http.Server{
-		Handler:           proxy,
+		Handler: proxy,
+		// Only the header read is bounded; bodies and tunnels may be long.
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       2 * time.Minute,
-		WriteTimeout:      2 * time.Minute,
 		IdleTimeout:       60 * time.Second,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 	}

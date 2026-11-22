@@ -50,7 +50,8 @@ type Proxy struct {
 	tunnels       sync.WaitGroup
 }
 
-// NewProxy constructs a proxy. The default limit is 64 concurrent tunnels.
+// NewProxy constructs a proxy. The default limit is 1024 concurrent tunnels:
+// one dev VM running npm or a browser easily holds hundreds of connections.
 func NewProxy(options ProxyOptions) *Proxy {
 	if options.Resolver == nil {
 		options.Resolver = net.DefaultResolver
@@ -62,7 +63,7 @@ func NewProxy(options ProxyOptions) *Proxy {
 		options.Logger = slog.Default()
 	}
 	if options.MaxTunnels <= 0 {
-		options.MaxTunnels = 64
+		options.MaxTunnels = 1024
 	}
 	denial := DenialReason
 	if options.Policy != nil {
@@ -263,9 +264,8 @@ func (proxy *Proxy) stopTunnels() {
 }
 
 func (proxy *Proxy) forward(w http.ResponseWriter, r *http.Request, pinned string, entry *decision) {
-	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
-	defer cancel()
-	out := r.Clone(ctx)
+	// No overall deadline: plain-HTTP downloads (apt) can take many minutes.
+	out := r.Clone(r.Context())
 	out.RequestURI = ""
 	out.Host = out.URL.Host
 	out.Close = false
