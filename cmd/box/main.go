@@ -13,6 +13,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/execx"
 	"github.com/EmmadUsmani/homebox/internal/guest"
+	"github.com/EmmadUsmani/homebox/internal/hostinfo"
 	"github.com/EmmadUsmani/homebox/internal/isolation"
 	"github.com/EmmadUsmani/homebox/internal/sshx"
 	"github.com/EmmadUsmani/homebox/internal/state"
@@ -74,6 +75,7 @@ func newService() (*app.Service, error) {
 		GuestSSH:      ssh,
 		Isolation:     &isolation.Host{Store: store, Executable: exe, LimaHome: limaHome, Limactl: limactl},
 		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
+		HostCapacity:  hostinfo.System{},
 		LocalHostName: ssh.LocalHostName,
 		OpenURL: func(ctx context.Context, url string) error {
 			_, err := runner.Run(ctx, execx.Cmd{Name: "open", Args: []string{url}})

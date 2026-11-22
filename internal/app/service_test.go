@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -106,6 +107,15 @@ func (i *testIsolation) Down(ctx context.Context, name string) error {
 
 func (i *testIsolation) Running(name string) bool { return i.up[name] }
 
+type testHostCapacity struct {
+	cpus      int
+	memoryGiB uint64
+}
+
+func (h testHostCapacity) Capacity() (int, uint64, error) {
+	return h.cpus, h.memoryGiB << 30, nil
+}
+
 func fixture(t *testing.T) (*Service, *vmtest.Driver, *testSSH, *testIsolation) {
 	t.Helper()
 	driver := &vmtest.Driver{Errors: map[string]error{}}
@@ -114,8 +124,62 @@ func fixture(t *testing.T) (*Service, *vmtest.Driver, *testSSH, *testIsolation) 
 	return &Service{
 		Driver: testDriver{driver}, Profiles: testProfiles{}, Store: &state.Store{Root: t.TempDir()}, GuestSSH: ssh,
 		Isolation: isolation, Progress: &bytes.Buffer{},
+		HostCapacity:  testHostCapacity{cpus: 8, memoryGiB: 16},
 		LocalHostName: func(context.Context) (string, error) { return "example.local", nil },
 	}, driver, ssh, isolation
+}
+
+func TestNewSizesVMForHost(t *testing.T) {
+	for _, tc := range []struct {
+		host     testHostCapacity
+		wantCPUs int
+		wantRAM  int
+	}{
+		{testHostCapacity{cpus: 8, memoryGiB: 8}, 4, 4},
+		{testHostCapacity{cpus: 8, memoryGiB: 16}, 4, 8},
+		{testHostCapacity{cpus: 16, memoryGiB: 64}, 4, 8},
+		{testHostCapacity{cpus: 2, memoryGiB: 4}, 2, 2},
+		{testHostCapacity{cpus: 4, memoryGiB: 7}, 4, 3},
+		{testHostCapacity{cpus: 2, memoryGiB: 2}, 2, 2},
+	} {
+		t.Run(strconv.FormatUint(tc.host.memoryGiB, 10)+"GiB", func(t *testing.T) {
+			service, driver, _, _ := fixture(t)
+			service.HostCapacity = tc.host
+			if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
+				t.Fatal(err)
+			}
+			spec := driver.Specs["main"]
+			if spec.CPUs != tc.wantCPUs || spec.MemoryGiB != tc.wantRAM {
+				t.Errorf("VM size = %d CPUs and %d GiB, want %d CPUs and %d GiB",
+					spec.CPUs, spec.MemoryGiB, tc.wantCPUs, tc.wantRAM)
+			}
+		})
+	}
+}
+
+func TestNewRejectsSizesAboveHostCapacityBeforeCreating(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		options NewOptions
+		wantErr string
+	}{
+		{"memory", NewOptions{Name: "main", MemoryGiB: 7}, "host limit of 6 GiB (8 GiB RAM"},
+		{"CPU", NewOptions{Name: "main", CPUs: 9}, "exceeds the host's 8 CPUs"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service, driver, _, isolation := fixture(t)
+			service.HostCapacity = testHostCapacity{cpus: 8, memoryGiB: 8}
+			if err := service.New(t.Context(), tc.options); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("New error = %v, want %q", err, tc.wantErr)
+			}
+			if _, err := service.Store.Load("main"); !errors.Is(err, os.ErrNotExist) {
+				t.Errorf("expected no box record, Load error = %v", err)
+			}
+			if len(driver.Specs) != 0 || len(isolation.calls) != 0 {
+				t.Error("oversized VM reached the driver or isolation setup")
+			}
+		})
+	}
 }
 
 func TestNewProvisionListAndSSH(t *testing.T) {
