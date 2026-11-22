@@ -9,7 +9,7 @@ two disagree, plan.md wins.
 ```
 cmd/box            main: wires concrete pieces together; no logic
 internal/cli       commands, flags, output; calls app, nothing else
-internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
+internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config, open,
                    doctor, host init); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
@@ -27,7 +27,7 @@ internal/dnsfwd    forwards guest DNS queries to public resolvers
 internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
-                   renders the laptop ~/.ssh/config snippet
+                   reads guest public host keys and renders OpenSSH config and pins
 internal/doctor    host-side controls and reporting for isolation checks
 internal/execx     a small process-runner interface, so code that shells out
                    can be tested with a fake
@@ -51,13 +51,16 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 
 ## Host state
 
-Everything box writes on the host lives under `~/.homebox` (`HOMEBOX_HOME`
-overrides it):
+Box stores its host state under `~/.homebox` (`HOMEBOX_HOME` overrides it).
+The opt-in SSH installer adds an Include to `~/.ssh/config` and backs up the
+original if it exists.
 
 ```
 ~/.homebox/
   host.json             host settings (LAN publishing, laptop SSH keys)
-  boxes/NAME/box.json   one VM's record: profile, size, index, ports
+  boxes/NAME/box.json   one VM's record: profile, size, index, ports, SSH pins
+  ssh/config           local OpenSSH aliases (opt in via an Include)
+  ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, proxy pid/log)
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
@@ -118,7 +121,13 @@ Known limitations, accepted for now ([to do](todo.md) has the planned fixes):
   and isn't sandboxed.
 - The SSH relay forwards to the driver's loopback SSH port; if the VM is down
   and another program takes that port, the relay would forward to it. The
-  laptop's host-key check catches that once it knows the VM's key.
+  generated local and laptop configs require the guest's pinned host keys
+  even on the first connection.
+
+Box reads public SSH host keys over the driver's verified SSH connection
+during start and provisioning. It stores them in the box record along with
+the driver's identity path, and rebuilds the local OpenSSH files from those
+records. Laptop exports use the same pins and the laptop's own identity.
 
 ## Testing
 
