@@ -34,15 +34,16 @@ import (
 )
 
 const (
-	// 1,536 TCP flows × (2 × 256 KiB netstack queues + 2 × 32 KiB
-	// copy buffers) ≈ 864 MiB of buffer budget. UDP uses about 160 KiB
+	// 1,536 TCP flows × (512 KiB send + 128 KiB receive + 2 × 32 KiB
+	// copy buffers) ≈ 1,056 MiB of buffer budget. UDP uses about 160 KiB
 	// per flow (32 KiB receive queue + two 64 KiB buffers). Kernel socket
 	// buffers and per-packet and endpoint overhead are separate.
-	maxFlows          = 1536
-	newFlowsPerSecond = 500
-	newFlowBurst      = maxFlows
-	tcpBufferMax      = 256 << 10
-	tcpCopyBuffer     = 32 << 10
+	maxFlows            = 1536
+	newFlowsPerSecond   = 500
+	newFlowBurst        = maxFlows
+	tcpReceiveBufferMax = 128 << 10
+	tcpSendBufferMax    = 512 << 10
+	tcpCopyBuffer       = 32 << 10
 )
 
 type flows struct {
@@ -111,7 +112,7 @@ func (f *flows) allowed(protocol string, id stack.TransportEndpointID) bool {
 }
 
 func (f *flows) install() {
-	tcpForward := tcp.NewForwarder(f.network, tcpBufferMax, maxFlows, f.forwardTCP)
+	tcpForward := tcp.NewForwarder(f.network, tcpReceiveBufferMax, maxFlows, f.forwardTCP)
 	f.network.SetTransportProtocolHandler(tcp.ProtocolNumber, tcpForward.HandlePacket)
 	f.network.SetTransportProtocolHandler(udp.ProtocolNumber, f.forwardUDP)
 	f.network.SetTransportProtocolHandler(icmp.ProtocolNumber4, f.forwardICMP)

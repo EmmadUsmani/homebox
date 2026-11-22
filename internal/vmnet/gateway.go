@@ -88,10 +88,10 @@ func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger) err
 			AddressWithPrefix: tcpip.AddressWithPrefix{Address: gatewayAddress, PrefixLen: subnet.Bits()},
 		}, stack.AddressProperties{}),
 		network.SetTransportProtocolOption(tcp.ProtocolNumber, &tcpip.TCPSendBufferSizeRangeOption{
-			Min: tcp.MinBufferSize, Default: tcpBufferMax, Max: tcpBufferMax,
+			Min: tcp.MinBufferSize, Default: tcpSendBufferMax, Max: tcpSendBufferMax,
 		}),
 		network.SetTransportProtocolOption(tcp.ProtocolNumber, &tcpip.TCPReceiveBufferSizeRangeOption{
-			Min: tcp.MinBufferSize, Default: tcpBufferMax, Max: tcpBufferMax,
+			Min: tcp.MinBufferSize, Default: tcpReceiveBufferMax, Max: tcpReceiveBufferMax,
 		}),
 		network.SetSpoofing(networkNIC, true),
 		network.SetPromiscuousMode(networkNIC, true),
