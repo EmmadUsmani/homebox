@@ -9,7 +9,7 @@ two disagree, plan.md wins.
 ```
 cmd/box            main: wires concrete pieces together; no logic
 internal/cli       commands, flags, output; calls app, nothing else
-internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config, open,
+internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
