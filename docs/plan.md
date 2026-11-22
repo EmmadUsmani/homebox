@@ -1,6 +1,8 @@
-# homebox: design (v5, 2026-11-21)
+# homebox: design (v6, 2026-11-22)
 
 Status: signed off by the owner on 2026-11-21. Phases 0 and 1 built on 2026-11-22.
+v6 (owner, 2026-11-22) adds images, sleep and resume, and macOS guests, after
+comparing [localbox](alternatives.md#localbox).
 
 **This document changes only with the owner's explicit consent.** See
 [AGENTS.md](../AGENTS.md).
@@ -34,10 +36,13 @@ Codex with full permissions, run any server, render and screenshot UI.
 | Host tooling needs no language runtime on the host | Must |
 | HTTP from my laptop to servers in the VM | Nice |
 | Several VMs per host | Nice, don't design it out |
+| Images: save a VM as an image and start new VMs from it | Nice, phase 2 |
+| Images stay on the host that made them; moving one to another host is a manual copy | Constraint |
+| Sleep and resume: an idle VM pauses, then resumes with its processes still running | Later |
 | Remote access from outside my network via Tailscale (approved) | Later |
 | Desktop + remote desktop | Later |
 | GPU on a Linux host (gaming PC, separate drive, RTX 3080 Ti) | Later, design for it |
-| Android / iOS, Windows guests | Later, keep possible |
+| Android; macOS guests (for iOS and Mac apps); Windows guests | Later, keep possible |
 | No server of my own, no paid service, no WSL2 | Constraint |
 | Nothing served to the public internet; outside access only through Tailscale | Constraint |
 | Build on established open source; borrow ideas from young projects, don't depend on them | Constraint |
@@ -57,6 +62,9 @@ Codex with full permissions, run any server, render and screenshot UI.
 - devvm (MIT) is design reference only; exeuntu (Apache-2.0) is the package-list
   reference. Neither is a dependency. Docker Sandboxes is out (closed source, needs
   a Docker account).
+- **Images are local to their host.** No relay, sync service or peer-to-peer
+  copying between hosts; an image moves by exporting it to a file and copying
+  that by hand (owner, 2026-11-22).
 - Repo: `homebox` (working name), public, under my GitHub account.
 - **Not decided yet:** the repo's license.
 - **The build started on 2026-11-21** on the owner's word; phases 0 and 1 (the
@@ -84,13 +92,18 @@ Runs on the host. Draft commands:
 | `box ports NAME` | Show or change published ports |
 | `box ssh-config` | Prints the snippet for a laptop's `~/.ssh/config` (`ssh main`) |
 | `box doctor` | Checks isolation: VM can reach the internet, not the host or LAN |
+| `box image save NAME IMAGE` / `image ls` / `image rm` | Saves a VM as an image; lists or deletes images (phase 2) |
+| `box new NAME --image IMAGE` | Creates a VM from an image instead of provisioning from scratch (phase 2) |
+| `box image export IMAGE FILE` / `image import FILE` | Writes an image to one file, or reads one back, for copying to another host by hand (phase 2) |
+| `box sleep` / `wake` NAME | Pauses a VM with its memory saved, and resumes it (later) |
 
 Later option: exe.dev-style `ssh mini new proj3` from the laptop, through a
 dedicated host account whose SSH login can only run `box` (`ForceCommand`), never a
 shell. Without it, creating a VM means being at the host.
 
 **Drivers.** `box` talks to the VM layer through a small interface: create, start,
-stop, delete, list, SSH endpoint, port forwards. The Lima driver writes Lima configs
+stop, delete, list, SSH endpoint, port forwards; later, save and restore images,
+and sleep and wake. The Lima driver writes Lima configs
 and calls `limactl`; nothing else in `box` knows about Lima.
 
 **Language: Go** (confirmed by the owner). One static binary per OS (macOS, Windows, Linux),
@@ -120,6 +133,19 @@ guest/
 - Ubuntu profile: exeuntu's package list plus Node, Playwright and browsers, Xvfb,
   Docker, Claude Code, Codex, Tailscale (off by default). Optional desktop layer later.
 
+### Images
+
+- An image is a saved VM disk plus the record `box` needs to start it (profile,
+  size). Images live on the host under box's own state, never on a shared or
+  cloud store.
+- A VM made from an image gets a fresh machine ID, hostname and SSH host keys on
+  first boot, and box pins the new keys, so two VMs from one image never share
+  an identity.
+- An image carries whatever was on the disk, including agent logins and tokens.
+  `box image save` says so; every VM made from it starts signed in.
+- Isolation is unchanged: a VM from an image gets the same egress rules, ports
+  and no-mounts config as a freshly provisioned one.
+
 ### Isolation and networking
 
 - VM config: no mounts, no SSH agent forwarding, no host loopback access.
@@ -140,11 +166,11 @@ guest/
 |---|---|---|
 | 0 | **Spikes on the Mac** (about a day): Lima config, SSH published on the LAN, Seatbelt egress rule | SSH into a VM from the MacBook; it reaches the internet but not the Mini, its loopback or my router |
 | 1 | Mac, done properly: `box` with the Lima driver, Ubuntu profile, host init, ssh-config, doctor, CI | From the MacBook: `ssh main`, agents run with full permissions on my accounts, Playwright screenshots a dev server I also open on the laptop; the same `ssh main` and dev server from the Mac itself; `box doctor` passes |
-| 2 | Multiple VMs, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side; SSH from off my network; desktop from the laptop |
+| 2 | Multiple VMs, images, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side, the second started from an image of the first; SSH from off my network; desktop from the laptop |
 | 3 | Credential proxy | Agent tokens unreadable inside the VM |
 | 4 | Windows host, when Lima's HCS driver is ready | Phase 1's exit criterion on the Windows PC |
 | 5 | Linux GPU box: Lima with the 3080 Ti passed through; Incus driver if Lima can't | `nvidia-smi` and a CUDA job in an isolated VM |
-| 6 | Later | `box`-only SSH account, more guest profiles, Android, iOS via a macOS guest, Windows guests |
+| 6 | Later | Sleep and resume, `box`-only SSH account, more guest profiles, Android, macOS guests (iOS and Mac apps), Windows guests |
 
 ## Open risks
 
@@ -155,3 +181,12 @@ guest/
   a driver plugin, unverified); Incus is the fallback.
 - **Seatbelt on macOS** is deprecated-but-working Apple tech; devvm relies on it too.
 - Nested virtualization needs an M3+ Mac, so Android waits for hardware or the Linux box.
+- **Images on Lima:** `limactl clone` copies a stopped VM; whether box clones
+  through it or copies the disk itself, and how fast that is on each driver, is
+  for a spike. At first box saves images from a stopped VM.
+- **Sleep and resume on Lima** has no `limactl` command; Apple's framework can
+  save a running VM's state (macOS 14+), and Lima's `vz` driver links that API,
+  but whether Lima exposes it is unverified. QEMU has its own save and restore.
+- **macOS guests:** Lima 2.3 ships macOS guest templates (`vz` only). Apple's
+  licence allows two running per Mac. Setting a macOS guest up without clicking
+  through Apple's setup screens is unexplored here (localbox shows it can be done).
