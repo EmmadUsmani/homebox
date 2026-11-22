@@ -102,6 +102,17 @@ behind them:
 The VM layer is never trusted to enforce anything: the sandbox and the proxy
 are both on the host.
 
+Known limitations, accepted for now:
+
+- Only TCP (through the proxy) and DNS leave the VM; ICMP and other UDP don't.
+- The proxy denies private ranges and every network attached to the host, but
+  a router with NAT reflection could pass a connection to its own public IP
+  back to a LAN port forward.
+- Seatbelt limits only the VM process's network. A compromised Lima hostagent
+  could still read and write the host user's files (devvm has the same gap).
+- The SSH relay forwards to the driver's loopback SSH port; if the VM is down
+  and another program takes that port, the relay would forward to it.
+
 ## Testing
 
 - `go test ./...` runs unit tests only; they need no VM, network or Lima.
