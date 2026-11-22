@@ -18,9 +18,12 @@ var ErrNotFound = errors.New("vm not found")
 type Status string
 
 const (
+	// StatusRunning indicates that the VM is running.
 	StatusRunning Status = "running"
+	// StatusStopped indicates that the VM exists and is stopped.
 	StatusStopped Status = "stopped"
-	StatusBroken  Status = "broken" // exists, but the driver can't tell or can't use it
+	// StatusBroken indicates that the VM exists in an unknown or unusable state.
+	StatusBroken Status = "broken"
 )
 
 // Image is a bootable disk image for one CPU architecture.

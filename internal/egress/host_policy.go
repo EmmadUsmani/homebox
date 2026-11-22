@@ -11,12 +11,12 @@ type hostPolicy struct {
 	localNetworks func() ([]netip.Prefix, error)
 }
 
-func (policy hostPolicy) denialReason(address netip.Addr) string {
+func (p hostPolicy) denialReason(address netip.Addr) string {
 	if reason := DenialReason(address); reason != "" {
 		return reason
 	}
 	address = address.WithZone("").Unmap()
-	networks, err := policy.localNetworks()
+	networks, err := p.localNetworks()
 	if err != nil {
 		return "cannot verify host interface networks"
 	}
