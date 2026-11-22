@@ -22,6 +22,7 @@ Codex with full permissions, run any server, render and screenshot UI.
 | Hosts: macOS (Mac Mini, M1/M2 assumed), then Windows, then Linux (GPU box) | Must, Mac first |
 | Full, general-purpose Linux VM: Docker, any language, servers | Must |
 | SSH straight into the VM from another machine on my home network | Must |
+| Use the VM from the host machine itself: ssh, editors' remote-SSH, dev servers in a local browser | Must |
 | Agents render UI and take screenshots (headless browser, Xvfb for headed apps) | Must |
 | Claude Code and Codex on my own accounts, full-permission mode | Must |
 | Strong isolation: nothing in the VM reaches my host's files, accounts, keys or apps | Must, beats GPU |
@@ -138,7 +139,7 @@ guest/
 | # | Goal | Exit criterion |
 |---|---|---|
 | 0 | **Spikes on the Mac** (about a day): Lima config, SSH published on the LAN, Seatbelt egress rule | SSH into a VM from the MacBook; it reaches the internet but not the Mini, its loopback or my router |
-| 1 | Mac, done properly: `box` with the Lima driver, Ubuntu profile, host init, ssh-config, doctor, CI | From the MacBook: `ssh main`, agents run with full permissions on my accounts, Playwright screenshots a dev server I also open on the laptop; `box doctor` passes |
+| 1 | Mac, done properly: `box` with the Lima driver, Ubuntu profile, host init, ssh-config, doctor, CI | From the MacBook: `ssh main`, agents run with full permissions on my accounts, Playwright screenshots a dev server I also open on the laptop; the same `ssh main` and dev server from the Mac itself; `box doctor` passes |
 | 2 | Multiple VMs, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side; SSH from off my network; desktop from the laptop |
 | 3 | Credential proxy | Agent tokens unreadable inside the VM |
 | 4 | Windows host, when Lima's HCS driver is ready | Phase 1's exit criterion on the Windows PC |
