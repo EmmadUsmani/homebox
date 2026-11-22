@@ -113,7 +113,7 @@ func TestMacGatewayAndRouterControl(t *testing.T) {
 		t.Fatalf("commands %v, connections %v", runner.Commands(), attempts)
 	}
 	host.dialRouter = func(context.Context, string, string) (net.Conn, error) { return nil, errors.New("unreachable") }
-	if target, check := host.router(t.Context()); target != "" || !check.Skipped || check.OK {
+	if target, check := host.router(t.Context()); target != gateway+":80" || !check.Skipped || check.OK {
 		t.Fatalf("unreachable router = %q, %+v", target, check)
 	}
 }

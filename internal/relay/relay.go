@@ -31,6 +31,9 @@ func (r Relay) Bind() (*net.TCPListener, error) {
 
 // Run binds and serves the relay until cancellation.
 func (r Relay) Run(ctx context.Context) error {
+	if ctx.Err() != nil {
+		return nil
+	}
 	listener, err := r.Bind()
 	if err != nil {
 		return err

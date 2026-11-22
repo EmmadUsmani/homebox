@@ -18,11 +18,10 @@ guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
   ubuntu/          Ubuntu LTS: image, apt packages, services
 internal/state     box's own records (one file per VM) and port allocation
-internal/egress    egress policy (which addresses a VM may reach) and the
-                   host-side proxy that enforces it
+internal/egress    public-address policy and host interface checks
 internal/confine   OS-specific sandbox profiles for the VM's host process and
                    network daemon (macOS: Seatbelt; Linux: later)
-internal/vmnet     runs the per-VM network daemon and manages its process
+internal/vmnet     per-VM network daemon, IPv4 gateway and process monitoring
 internal/dnsfwd    forwards guest DNS queries to public resolvers
 internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
@@ -61,7 +60,7 @@ original if it exists.
   boxes/NAME/box.json   one VM's record: profile, size, index, ports, SSH pins
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
-  boxes/NAME/...        per-VM runtime files (sandbox profile, proxy pid/log)
+  boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```
@@ -69,71 +68,61 @@ original if it exists.
 ## Ports
 
 Each VM gets a small index `n` (1–99) when created. All its host ports derive
-from `n`, so they stay the same across restarts and the guest's proxy and DNS
-settings can be written once, at provisioning:
+from `n`, so they stay the same across restarts:
 
 | Port | Bound on | Serves |
 |---|---|---|
 | `2200+n` | `127.0.0.1`, or `0.0.0.0` with LAN publishing | SSH, via box's relay to the driver's SSH port |
 | `10000+100n …` | same | HTTP: guest ports `8000 …`, one static driver forward each |
 | `32200+n` | `127.0.0.1` | the driver's own SSH forward (internal) |
-| `23000+n` | `127.0.0.1` | the VM's egress proxy (HTTP + CONNECT) |
-| `23100+n` | `127.0.0.1` | the VM's DNS forwarder (UDP + TCP) |
 
 LAN publishing is a host setting (`box host init --lan`).
 
 ## Networking and isolation (macOS)
 
-From the [phase 0 spike](spikes/phase0-macos.md). Seatbelt can only tell
-"localhost" from "anywhere", so it can't express "internet but not the LAN".
-Instead the VM is confined to a few loopback ports, and box enforces the policy
-behind them:
+The [macOS networking spike](spikes/udp-macos.md) established the two-NIC
+design. Lima's built-in NIC handles inbound SSH and static HTTP forwards.
+The second NIC connects to box's IPv4 gateway over a Unix socket.
 
-1. `box start` starts the VM's **host daemon** (`box _vmnet NAME`) under its
-   own Seatbelt profile. It serves the egress proxy, public DNS forwarder and
-   SSH relay, and can bind only those ports. It can read its binary, runtime
-   files and the system paths it needs. It writes only in its run directory
-   and cannot fork or execute programs after launch.
-2. Box starts the driver under a separate Seatbelt profile with
-   `sandbox-exec` (`vm.StartOptions.Wrap`). The driver's network process can
-   connect only to its proxy, DNS and SSH ports on loopback, and bind only
-   its SSH and published HTTP ports. In the home directory it can read only
-   Lima's shared config (its SSH key), its own instance directory and its
-   executable, so not other VMs' disks. Writes are limited to its instance
-   directory (except `lima.yaml`, which the next start reads), Lima's network
-   config and `/dev/null`. It can execute Lima, OpenSSH and the system helpers
-   Lima needs at startup. Both profiles block LaunchServices, the pasteboard,
-   AppleEvents and launchd job creation. `box doctor` uses the generated profile files to
-   verify that both reject out-of-scope home reads and writes.
-3. In the guest, provisioning points everything at `192.168.5.2` (the host's
-   loopback as the VM sees it): proxy env and apt/Docker proxy config, DNS,
-   and a transparent redirect (redsocks) so tools that ignore proxy settings
-   still get out. Root in the guest can undo the guest side, but that only
-   breaks its own access; the host side still holds.
-4. `box stop` stops the VM, then its host daemon.
+1. Box starts `box _vmnet NAME` under its own Seatbelt profile. The daemon
+   binds an owner-only Unix socket in the VM's run directory and accepts
+   one attachment. It provides DHCP and uses gVisor netstack to terminate
+   guest TCP and UDP and handle IPv4 echo. Every new flow checks the numeric
+   destination against the shared egress policy and the host's current
+   interface networks before opening a host socket. The daemon bounds flow
+   count, connection attempts, idle time and denial logs.
+2. Box starts Lima under a separate Seatbelt profile. Lima can connect to
+   its own SSH forward, its runtime sockets and the gateway's exact Unix
+   socket. It can bind only its SSH, HTTP forward and runtime sockets.
+   Host loopback and Lima's host DNS are disabled. Both processes retain
+   file and execution restrictions. The daemon can additionally read
+   the driver's exact host process PID file.
+3. Ubuntu uses the second NIC for IPv4 egress and contacts public DNS
+   resolvers directly. Provisioning removes the old proxy settings,
+   redirects and Docker resolver override. The built-in NIC remains
+   confined if guest root changes its routing. The socket daemon discards
+   IPv6 Ethernet frames and creates IPv4 host sockets only.
+4. The daemon opens the published SSH relay after observing the driver
+   host process. On macOS it closes the listener and active forwards on
+   a kqueue process-exit notification. `box stop` stops the guest before
+   releasing the daemon.
 
-The VM layer is never trusted to enforce anything: the sandbox and the proxy
-are both on the host.
+Known limitations ([to do](todo.md) tracks follow-ups):
 
-Known limitations, accepted for now ([to do](todo.md) has the planned fixes):
-
-- Only TCP (through the proxy) and DNS leave the VM; ICMP and other UDP don't.
-- The proxy denies private ranges and every network attached to the host, but
-  a router with NAT reflection could pass a connection to its own public IP
-  back to a LAN port forward. Accepted: turn NAT reflection off on such routers.
-- The network daemon still needs broad outbound network access to enforce
-  the egress policy itself. A compromise of that daemon could bypass its
-  address policy. The hostagent can still modify its own instance files
-  (disks, logs) and Lima's `networks.yaml`, which only matters for
-  Lima-managed networks that box never configures. Both profiles still allow
-  other system services and reads outside the home directory. The VM itself
-  runs in Apple's separately sandboxed Virtualization process.
-  Apple marks `sandbox-exec` deprecated. It still works on the tested macOS
-  host.
-- The SSH relay forwards to the driver's loopback SSH port; if the VM is down
-  and another program takes that port, the relay would forward to it. The
-  generated local and laptop configs require the guest's pinned host keys
-  even on the first connection.
+- Public egress supports IPv4 TCP, UDP and ICMP echo. IPv6 and other IP
+  protocols are outside this gateway's scope.
+- A router with NAT reflection can reflect connections to its public IP
+  back to a LAN port forward. Turn off NAT reflection on such routers.
+- Restart the VM to reconnect its socket NIC after daemon failure. The
+  built-in NIC cannot take over public egress.
+- The daemon has outbound IPv4 access so it can enforce the destination
+  policy. A compromise of the daemon could bypass that policy. Already
+  established flows retain their admission decision until they close.
+- The separately sandboxed Virtualization process runs the VM. The driver's
+  host process can modify its own instance files, including disks and logs,
+  and Lima's shared `networks.yaml`. Apple marks `sandbox-exec` deprecated.
+- Lima's virtual gateway may answer ICMP echo within its userspace stack.
+  Doctor uses TCP and UDP loopback canaries to test access to host services.
 
 Box reads public SSH host keys over the driver's verified SSH connection
 during start and provisioning. It stores them in the box record along with

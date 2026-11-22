@@ -139,11 +139,7 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 			Name: box.Name, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,
-			// The host isolation limits the gateway to the VM's proxy and DNS ports.
-			HostGateway: true,
-			// The confined host process can't resolve names for the guest, so the
-			// driver's resolver is replaced by a placeholder until provisioning
-			// points the guest at box's DNS forwarder (HOMEBOX_DNS).
+			// Keep the built-in host resolver unused until the guest configures public DNS.
 			DNS: []string{"127.0.0.1"},
 		}); err != nil {
 			return err
@@ -152,6 +148,21 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	}
 	if err != nil {
 		return err
+	}
+	// Existing guests need a boot with the new NIC before provisioning can
+	// remove their proxy configuration and install the new resolver settings.
+	if instance.Status == vm.StatusRunning && instance.HostPIDFile != "" && instance.Socket.Path == "" {
+		s.progress("Restarting %s to attach the egress network", box.Name)
+		if err := s.Driver.Stop(ctx, box.Name); err != nil {
+			return err
+		}
+		if err := s.releaseIsolation(ctx, box.Name); err != nil {
+			return err
+		}
+		instance, err = s.Driver.Get(ctx, box.Name)
+		if err != nil {
+			return err
+		}
 	}
 	if err := s.start(ctx, &box, instance); err != nil {
 		return err
@@ -163,10 +174,7 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
 		return err
 	}
-	env := map[string]string{
-		"HOMEBOX_PROXY_URL": box.ProxyURL, "HOMEBOX_NO_PROXY": box.NoProxy,
-		"HOMEBOX_DNS": box.DNS, "HOMEBOX_USER": box.User,
-	}
+	env := map[string]string{"HOMEBOX_USER": box.User}
 	for _, step := range profile.Steps {
 		s.progress("Provisioning %s: %s", box.Name, step.Name)
 		script, err := s.Profiles.ReadScript(step.Script)

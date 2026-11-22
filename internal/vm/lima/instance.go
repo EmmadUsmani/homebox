@@ -20,7 +20,8 @@ type instanceRecord struct {
 	Status       string `json:"status"`
 	SSHLocalPort int    `json:"sshLocalPort"`
 	Config       struct {
-		User struct {
+		Networks []networkConfig `json:"networks"`
+		User     struct {
 			Name string `json:"name"`
 		} `json:"user"`
 	} `json:"config"`
@@ -34,7 +35,17 @@ func (r instanceRecord) instance() vm.Instance {
 	case "Stopped", "Uninitialized":
 		status = vm.StatusStopped
 	}
-	return vm.Instance{Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress}
+	instance := vm.Instance{
+		Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
+		HostPIDFile: filepath.Join(r.Dir, "ha.pid"),
+	}
+	for _, network := range r.Config.Networks {
+		if network.Socket != "" {
+			instance.Socket = vm.SocketAttachment{Path: network.Socket, Interface: network.Interface, MAC: network.MAC, RouteMetric: network.Metric}
+			break
+		}
+	}
+	return instance
 }
 
 // List reports all instances in the driver's Lima home.

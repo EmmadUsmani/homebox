@@ -130,7 +130,7 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 	if spec.CPUs != 4 || spec.MemoryGiB != 8 || spec.DiskGiB != 50 {
 		t.Errorf("default VM size = %d CPUs, %d GiB memory, %d GiB disk", spec.CPUs, spec.MemoryGiB, spec.DiskGiB)
 	}
-	if spec.SSHPort != 32201 || !spec.HostGateway {
+	if spec.SSHPort != 32201 || spec.HostGateway {
 		t.Errorf("driver SSH port = %d, host gateway enabled = %t", spec.SSHPort, spec.HostGateway)
 	}
 	if !guestUser.MatchString(spec.User) {
@@ -152,10 +152,7 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 		t.Errorf("unexpected authorized keys: %v", ssh.keys)
 	}
 	wantEnv := map[string]string{
-		"HOMEBOX_PROXY_URL": "http://proxy.example",
-		"HOMEBOX_NO_PROXY":  "localhost",
-		"HOMEBOX_DNS":       "192.0.2.53:53",
-		"HOMEBOX_USER":      spec.User,
+		"HOMEBOX_USER": spec.User,
 	}
 	if !reflect.DeepEqual(ssh.env, wantEnv) {
 		t.Errorf("provision env = %v, want %v", ssh.env, wantEnv)

@@ -70,10 +70,28 @@ func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 // Start starts an existing VM under the optional command prefix.
 func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) error {
 	// Lima treats a missing bare instance name as a request to create from its default template.
-	if _, err := d.Get(ctx, name); err != nil {
+	instance, err := d.Get(ctx, name)
+	if err != nil {
 		return err
 	}
-	_, err := d.run(ctx, opts.Wrap, "start", "--tty=false", name)
+	if opts.Socket.Path != "" && instance.Socket != opts.Socket && instance.Status != vm.StatusRunning {
+		networks, err := json.Marshal([]networkConfig{socketNetwork(opts.Socket)})
+		if err != nil {
+			return err
+		}
+		changes := ".networks = " + string(networks) + " | .networkOpts.hostLoopback = false | .hostResolver.enabled = false"
+		if len(opts.DNS) > 0 {
+			resolvers, err := json.Marshal(opts.DNS)
+			if err != nil {
+				return err
+			}
+			changes += " | .dns = " + string(resolvers)
+		}
+		if _, err := d.run(ctx, nil, "edit", "--tty=false", "--set", changes, name); err != nil {
+			return err
+		}
+	}
+	_, err = d.run(ctx, opts.Wrap, "start", "--tty=false", name)
 	return err
 }
 

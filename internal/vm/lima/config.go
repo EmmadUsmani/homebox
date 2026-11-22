@@ -27,7 +27,19 @@ type config struct {
 	User         userConfig      `yaml:"user"`
 	PortForwards []portRule      `yaml:"portForwards"`
 	HostResolver *resolverConfig `yaml:"hostResolver,omitempty"`
+	Networks     []networkConfig `yaml:"networks,omitempty"`
 	DNS          []string        `yaml:"dns,omitempty"`
+}
+
+type networkConfig struct {
+	Socket    string `yaml:"socket" json:"socket"`
+	Interface string `yaml:"interface" json:"interface"`
+	MAC       string `yaml:"macAddress" json:"macAddress"`
+	Metric    int    `yaml:"metric" json:"metric"`
+}
+
+func socketNetwork(socket vm.SocketAttachment) networkConfig {
+	return networkConfig{Socket: socket.Path, Interface: socket.Interface, MAC: socket.MAC, Metric: socket.RouteMetric}
 }
 
 type image struct {
@@ -91,6 +103,11 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 	if len(spec.DNS) > 0 {
 		settings.HostResolver = &resolverConfig{Enabled: false}
 		settings.DNS = spec.DNS
+	}
+	if spec.Socket.Path != "" {
+		settings.Networks = []networkConfig{socketNetwork(spec.Socket)}
+		settings.NetworkOpts.HostLoopback = false
+		settings.HostResolver = &resolverConfig{Enabled: false}
 	}
 	return yaml.Marshal(settings)
 }

@@ -16,15 +16,17 @@ const DaemonProfileName = "vmnet.sb"
 
 // Rules describes the VM process's permitted network operations.
 type Rules struct {
-	RuntimeDir string
-	Home       string
-	LimaHome   string
-	Executable string
-	Daemon     bool
-	ConnectTCP []int
-	ConnectUDP []int
-	BindTCP    []Bind
-	BindUDP    []Bind
+	RuntimeDir    string
+	Home          string
+	LimaHome      string
+	Executable    string
+	Daemon        bool
+	GatewaySocket string
+	HostPIDFile   string
+	ConnectTCP    []int
+	ConnectUDP    []int
+	BindTCP       []Bind
+	BindUDP       []Bind
 }
 
 // Bind permits a TCP listener on loopback or on the LAN.
@@ -64,6 +66,14 @@ func render(rules Rules) (string, error) {
 	if !rules.Daemon {
 		fmt.Fprintf(&profile, "  (subpath %s))\n", socketPath)
 	} else {
+		if rules.GatewaySocket != "" {
+			gateway, err := profilePath(rules.GatewaySocket)
+			if err != nil {
+				return "", err
+			}
+			fmt.Fprintf(&profile, "  (literal %s)\n", gateway)
+
+		}
 		profile.WriteString(")\n")
 	}
 	if err := writeFilesAndProcesses(&profile, rules, socketPath); err != nil {
@@ -84,6 +94,13 @@ func writeOutbound(profile *strings.Builder, rules Rules, socketPath string) err
 			}
 			fmt.Fprintf(profile, "  (remote %s \"localhost:%d\")\n", remote.protocol, port)
 		}
+	}
+	if rules.GatewaySocket != "" {
+		gateway, err := profilePath(rules.GatewaySocket)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(profile, "  (literal %s)\n", gateway)
 	}
 	fmt.Fprintf(profile, "  (subpath %s))\n\n", socketPath)
 	return nil
@@ -127,6 +144,17 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 		profile.WriteString("(allow file-read-metadata (literal \"/tmp\"))\n")
 		for _, target := range []string{rules.RuntimeDir, rules.Executable} {
 			for parent := path.Dir(target); parent != "/"; parent = path.Dir(parent) {
+				quoted, _ := profilePath(parent)
+				fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
+			}
+		}
+		if rules.HostPIDFile != "" {
+			pidFile, err := profilePath(rules.HostPIDFile)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(profile, "(allow file-read* (literal %s))\n", pidFile)
+			for parent := path.Dir(rules.HostPIDFile); parent != "/"; parent = path.Dir(parent) {
 				quoted, _ := profilePath(parent)
 				fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
 			}
