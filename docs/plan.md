@@ -2,7 +2,8 @@
 
 Status: signed off by the owner on 2026-11-21. Phases 0 and 1 built on 2026-11-22.
 v6 (owner, 2026-11-22) adds images, sleep and resume, and macOS guests, after
-comparing [localbox](alternatives.md#localbox).
+comparing [localbox](alternatives.md#localbox), and restarting VMs after the host
+restarts.
 
 **This document changes only with the owner's explicit consent.** See
 [AGENTS.md](../AGENTS.md).
@@ -39,6 +40,7 @@ Codex with full permissions, run any server, render and screenshot UI.
 | Images: save a VM as an image and start new VMs from it | Nice, phase 2 |
 | Images stay on the host that made them; moving one to another host is a manual copy | Constraint |
 | Sleep and resume: an idle VM pauses, then resumes with its processes still running | Later |
+| VMs that were running start again, isolated as usual, when the host restarts | Later |
 | Remote access from outside my network via Tailscale (approved) | Later |
 | Desktop + remote desktop | Later |
 | GPU on a Linux host (gaming PC, separate drive, RTX 3080 Ti) | Later, design for it |
@@ -96,6 +98,13 @@ Runs on the host. Draft commands:
 | `box new NAME --image IMAGE` | Creates a VM from an image instead of provisioning from scratch (phase 2) |
 | `box image export IMAGE FILE` / `image import FILE` | Writes an image to one file, or reads one back, for copying to another host by hand (phase 2) |
 | `box sleep` / `wake` NAME | Pauses a VM with its memory saved, and resumes it (later) |
+| `box autostart on` / `off` | Adds or removes a host login item that starts again every VM that was running when the host went down (later) |
+
+**Autostart.** `box start` marks a VM as one that should be running and `box stop`
+clears the mark; a host shutdown or crash leaves it set. At login, the autostart
+item runs box, which starts every marked VM the normal way, isolation first. (A
+VM put to sleep would be woken instead, once sleep exists.) Lima's own
+`limactl autostart` isn't used: it would start the VM without box's isolation.
 
 Later option: exe.dev-style `ssh mini new proj3` from the laptop, through a
 dedicated host account whose SSH login can only run `box` (`ForceCommand`), never a
@@ -170,7 +179,7 @@ guest/
 | 3 | Credential proxy | Agent tokens unreadable inside the VM |
 | 4 | Windows host, when Lima's HCS driver is ready | Phase 1's exit criterion on the Windows PC |
 | 5 | Linux GPU box: Lima with the 3080 Ti passed through; Incus driver if Lima can't | `nvidia-smi` and a CUDA job in an isolated VM |
-| 6 | Later | Sleep and resume, `box`-only SSH account, more guest profiles, Android, macOS guests (iOS and Mac apps), Windows guests |
+| 6 | Later | Sleep and resume, autostart after a host restart, `box`-only SSH account, more guest profiles, Android, macOS guests (iOS and Mac apps), Windows guests |
 
 ## Open risks
 
@@ -187,6 +196,10 @@ guest/
 - **Sleep and resume on Lima** has no `limactl` command; Apple's framework can
   save a running VM's state (macOS 14+), and Lima's `vz` driver links that API,
   but whether Lima exposes it is unverified. QEMU has its own save and restore.
+- **Autostart before login:** a login item runs only once the owner logs in. A
+  headless Mac Mini needs automatic login, or a boot-time launchd job run as the
+  owner, and FileVault blocks both until the disk is unlocked. Which one box
+  uses is for a spike.
 - **macOS guests:** Lima 2.3 ships macOS guest templates (`vz` only). Apple's
   licence allows two running per Mac. Setting a macOS guest up without clicking
   through Apple's setup screens is unexplored here (localbox shows it can be done).

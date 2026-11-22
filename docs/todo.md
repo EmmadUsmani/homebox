@@ -49,3 +49,13 @@ which loses the VM's contents. Add `box resize NAME [--cpus N] [--memory GiB]
   into the LAN, the VM could reach a forwarded LAN port. Accepted; box could
   also deny the host's public address if it learned it without an outside
   service.
+
+## Start VMs again after the host restarts
+
+The owner wants VMs back without logging in to the host after a restart or power
+cut (design: "Autostart" in [plan.md](plan.md); a later phase, not urgent).
+Approach: a mark in each box record, set by `box start` and cleared by `box
+stop`, and `box autostart on`, which installs a login item that starts every
+marked VM through box. Don't use `limactl autostart`: it skips box's isolation.
+The spike settles login item versus boot-time launchd job, and how FileVault
+and automatic login affect a headless Mac Mini.
