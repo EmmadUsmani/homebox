@@ -57,6 +57,10 @@ GUI checks run locally.
 The transcript below records the original spike. The current
 [`verify.swift`](../../desktop/scripts/verify.swift) checks the VM inventory
 and can drive the local lifecycle and log views with the scratch VM.
+Set `HOMEBOX_VERIFY_BUSY_LOGS=1` when running the verifier with
+`scratch-j` in a disposable `~/.hb-j-*` state directory. It appends 2,400
+marked entries to that VM's network log and times the Guest filter's
+Accessibility lookup and press once those entries are visible.
 
 From the root, run `node desktop/scripts/verify.js`. It builds the production
 bundle, opens it with `open` and a fresh scratch state directory, waits for

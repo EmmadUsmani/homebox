@@ -4,9 +4,12 @@ import type { LocalStatus, VMDetail } from "../types";
 
 const gib = 1024 ** 3;
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
+const footprint = new Intl.NumberFormat(undefined, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 
-function StorageCard({ title, used, total }: { title: string; used?: number; total?: number }) {
+function StorageCard({ title, used, total, detail }: {
+    title: string; used?: number; total?: number; detail?: string;
+}) {
     return (
         <section className="card">
             <div className="muted">{title}</div>
@@ -15,6 +18,7 @@ function StorageCard({ title, used, total }: { title: string; used?: number; tot
             </div>
             {used !== undefined && total !== undefined && total > 0 &&
                 <progress aria-label={title} max={total} value={Math.min(total, used)} />}
+            {detail && <div className="muted metric-detail">{detail}</div>}
         </section>
     );
 }
@@ -34,6 +38,10 @@ export function OverviewTab(props: OverviewProps) {
     const memory = status.guest?.memory;
     const processes = status.guest?.processes ?? [];
     const containers = status.containers ?? [];
+    const hostMemory = local?.host?.memory_bytes;
+    const agentMemory = local?.hostagent?.memory_bytes;
+    const memoryDetail = hostMemory !== undefined ? `${footprint.format(hostMemory / gib)} GiB on this Mac`
+        : agentMemory !== undefined ? `${footprint.format(agentMemory / gib)} GiB on this Mac (Lima hostagent)` : undefined;
 
     async function openPort(port: number) {
         setOpenError("");
@@ -53,9 +61,7 @@ export function OverviewTab(props: OverviewProps) {
                     <div className="metric">{local ? usage ? `${number.format(usage.cpu_percent)}%` : "—" : load?.toFixed(2) ?? "—"}</div>
                     {local && <div className="muted">{local.cpus} cores{load !== undefined && ` · load ${load.toFixed(2)}`}</div>}
                 </section>
-                <StorageCard title={local?.hostagent && !local.host ? "Memory (Lima hostagent)" : "Memory"}
-                    used={local ? usage?.memory_bytes : memory?.used_bytes}
-                    total={local ? local.memory_gib * gib : memory?.total_bytes} />
+                <StorageCard title="Memory" used={memory?.used_bytes} total={memory?.total_bytes} detail={memoryDetail} />
                 <StorageCard title="Disk" used={status.guest?.disk?.used_bytes} total={status.guest?.disk?.total_bytes} />
                 <section className="card">
                     <div className="muted">Coding agents</div>

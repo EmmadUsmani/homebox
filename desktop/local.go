@@ -35,8 +35,7 @@ type Local struct {
 
 type localStatus struct {
 	app.VMStatus
-	CPUs      int `json:"cpus"`
-	MemoryGiB int `json:"memory_gib"`
+	CPUs int `json:"cpus"`
 }
 
 func (l *Local) ServiceStartup(ctx context.Context, _ application.ServiceOptions) error {
@@ -61,7 +60,7 @@ func (l *Local) Status(ctx context.Context, name string) (localStatus, error) {
 		return localStatus{}, err
 	}
 	box, err := l.load(name)
-	return localStatus{VMStatus: status, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB}, err
+	return localStatus{VMStatus: status, CPUs: box.CPUs}, err
 }
 
 func (l *Local) Start(ctx context.Context, name string) error {

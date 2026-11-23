@@ -108,6 +108,8 @@ export default function App() {
                         <h2>This Mac</h2>
                         {localVMs.map((entry) => <VMRow key={entry.name} name={entry.name} state={entry.state}
                             selected={local?.name === entry.name} select={() => select({ kind: "local", name: entry.name })} />)}
+                        {inventory && !inventory.error && localVMs.length === 0 &&
+                            <p className="sidebar-hint">No VMs here. Create one with <code>box new NAME</code>.</p>}
                         {inventory?.error && <p className="notice" role="status">{inventory.error}</p>}
                         <h2>Other hosts</h2>
                         {remoteHosts.vms.map((entry) => <VMRow key={entry.id} id={`remote-row-${entry.id}`} name={entry.name}
@@ -121,7 +123,7 @@ export default function App() {
                     {remote && remote.check?.state !== "reachable"
                         ? <RemoteView key={remote.id} vm={remote} checkAgain={() => void remoteHosts.check(remote.id)} />
                         : vm && current ? <>
-                        <header className="vm-header">
+                        <header className="vm-header" role="group" aria-label="VM status and actions" id="vm-header">
                             <h1>{current.name}</h1>
                             <span className={`pill ${pill.tone}`}>
                                 <Dot tone={pill.tone} />{pill.label}
@@ -141,7 +143,7 @@ export default function App() {
                         {local?.provisioning?.step && <p className="notice header-notice" role="status">
                             {local.provisioning.step}{local.provisioning.error && ` · ${local.provisioning.error}`}
                         </p>}
-                        <div className="tabs" role="tablist" aria-label="VM views">
+                        <div className="tabs" id="vm-tabs" role="tablist" aria-label="VM views">
                             {tabs.map((item) => <button key={item} id={`tab-${item}`} aria-controls="vm-view"
                                 role="tab" aria-selected={tab === item} onClick={() => item === "Logs" ? showLogs("") : setTab(item)}>{item}</button>)}
                         </div>
