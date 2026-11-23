@@ -12,14 +12,14 @@ import (
 	"time"
 )
 
-func TestSeatbeltCompiles(t *testing.T) {
+func TestSeatbeltHostAgentResolvesCacheDirectory(t *testing.T) {
 	root := t.TempDir()
 	instance := filepath.Join(root, `quotes " and slash \`)
 	if err := os.Mkdir(instance, 0700); err != nil {
 		t.Fatal(err)
 	}
 	wrap, err := Prepare(Rules{
-		RuntimeDir: instance, Home: root, LimaHome: root, Executable: "/usr/bin/true",
+		RuntimeDir: instance, Home: root, LimaHome: root, Executable: "/usr/bin/getconf",
 		ConnectTCP: []int{32201},
 		ConnectUDP: []int{23101},
 		BindTCP:    []Bind{{Port: 32201}, {Port: 10100, LAN: true}},
@@ -27,7 +27,7 @@ func TestSeatbeltCompiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sandbox(t, wrap, "/usr/bin/true")
+	sandbox(t, wrap, "/usr/bin/getconf", "DARWIN_USER_CACHE_DIR")
 }
 
 func TestSeatbeltConnections(t *testing.T) {

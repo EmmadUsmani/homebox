@@ -38,9 +38,13 @@ network, and can't undo the rules that stop it.
 - **The host processes are confined.** Lima's process for the VM and box's
   per-VM network daemon each run under a Seatbelt profile
   ([`internal/confine`](internal/confine)). These profiles limit which network
-  addresses they can connect to and listen on, deny file writes outside their
-  runtime directory, and deny starting other programs. If the VM escaped into
-  one of these processes, it would still be boxed in.
+  addresses they can connect to and listen on, which files they can read or
+  write, and which executables they can run. Read access covers required
+  macOS libraries and configuration, VM state, and the process executables.
+  Ordinary files on mounted volumes, in `/Users/Shared`, and in host temporary
+  directories are outside that allowlist. Only Lima can look up named Mach
+  services, for Virtualization.framework, its cache directory lookup and local
+  account resolution.
 - **The host takes no SSH logins for box.** You SSH into the VM, never into
   the Mac.
 
@@ -79,10 +83,12 @@ Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-
 
 `box doctor NAME` tests the boundary from inside a running VM. It checks that
 the VM reaches the internet but not the host's loopback services, its LAN
-interfaces or the router, and that the confined host processes can't read or
-write a canary file in your home folder. The `ssh-relay-target-owner` check
-verifies the driver SSH listener on the host. Run doctor after any change to
-the host or the VM's network.
+interfaces or the router. It also checks both installed profiles for denied
+home reads and writes, reads from `/Volumes`, `/Users/Shared` and host temporary
+directories, and lookup of the macOS notification service, and the
+`ssh-relay-target-owner` check verifies the driver SSH listener on the host.
+Run it after any change to the host or the VM's network. Restart running VMs
+after upgrading box so their host processes pick up the current profiles.
 
 `box status` and `box top` pull data over the existing SSH connection with
 bounded output and timeouts. The guest's answers are untrusted and used only
