@@ -17,12 +17,10 @@ remote VMs, overview, logs, terminal, files and editor). Left:
 
 ## Tighten the host sandboxes further
 
-Both host processes now have file and process limits (see "macOS networking"
-in the architecture). Left to do:
+Both host processes now allow-list file reads and Mach service lookups. See
+[networking and isolation](architecture.md#networking-and-isolation-macos).
+Left to do:
 
-- Allow-list system services (`mach-lookup`) instead of denying a few by
-  name, and limit reads outside the home directory (`/Volumes`,
-  `/Users/Shared`, other apps' temp files).
 - Run the VMs as a separate macOS user, so Unix permissions protect the
   owner's files even if a sandbox has a gap.
 

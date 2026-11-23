@@ -3,6 +3,7 @@ package doctor
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/EmmadUsmani/homebox/internal/confine"
@@ -24,8 +25,8 @@ func TestProbeSandboxRequiresFileDenials(t *testing.T) {
 	}
 
 	checks := (Host{}).ProbeSandbox(t.Context(), profileDir)
-	if len(checks) != 4 {
-		t.Fatalf("expected four checks, got %+v", checks)
+	if len(checks) != 14 {
+		t.Fatalf("expected fourteen checks, got %+v", checks)
 	}
 	for _, check := range checks {
 		if !check.OK {
@@ -38,8 +39,8 @@ func TestProbeSandboxRequiresFileDenials(t *testing.T) {
 		t.Fatal(err)
 	}
 	checks = (Host{}).ProbeSandbox(t.Context(), profileDir)
-	for _, check := range checks[2:] {
-		if check.OK {
+	for _, check := range checks {
+		if strings.HasPrefix(check.Name, "vmnet-") && check.OK {
 			t.Errorf("permissive profile passed: %+v", check)
 		}
 	}

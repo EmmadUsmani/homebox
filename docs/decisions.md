@@ -73,6 +73,12 @@ undone by root in the VM.
 networking. Settled by the spikes: see [phase 0](spikes/phase0-macos.md) and
 [UDP and ICMP](spikes/udp-macos.md).
 
+**Default-deny file reads and Mach lookup in the macOS host profiles**
+(implementation, 2026-11-22). The allowlists preserve access to VM state and
+macOS runtime dependencies. Lima gets two exact Mach service names for
+virtualization and account resolution. The network daemon uses no Mach
+services. See [networking and isolation](architecture.md#networking-and-isolation-macos).
+
 **LAN publishing is opt-in per host** (owner), so a laptop-only setup exposes
 nothing on the network.
 

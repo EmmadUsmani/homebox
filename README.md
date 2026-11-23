@@ -96,7 +96,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
 | `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
 | `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
-| `box doctor [NAME]` | Checks isolation and saves the latest result for `box status` and `box ls` |
+| `box doctor [NAME]` | Checks guest networking and host sandbox isolation, then saves the result for `box status` and `box ls` |
 
 Each VM gets an index `n`: SSH on host port `2200+n`, and guest ports
 `8000–8099` on host ports `10000+100n …`. So for the first VM, a dev server on

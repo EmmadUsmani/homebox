@@ -154,6 +154,13 @@ func TestBoxLifecycle(t *testing.T) {
 			t.Fatalf("doctor did not pass %s", check)
 		}
 	}
+	for _, process := range []string{"hostagent", "vmnet"} {
+		for _, probe := range []string{"home-read", "home-write", "volumes-read", "shared-read", "app-temp-read", "shared-temp-read", "mach-lookup"} {
+			if check := process + "-" + probe; !strings.Contains(diagnostics, "PASS "+check) {
+				t.Fatalf("doctor did not pass %s", check)
+			}
+		}
+	}
 	box(time.Minute, "ssh", name, "--", `set -eu
 curl -4 --noproxy '*' -fsS -m 8 -o /dev/null https://1.1.1.1
 if curl -6 --noproxy '*' -fsS -m 3 -o /dev/null 'https://[2606:4700:4700::1111]'; then

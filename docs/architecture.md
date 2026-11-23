@@ -123,9 +123,15 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
 2. Box starts Lima under a separate Seatbelt profile. Lima can connect to
    its own SSH forward, its runtime sockets and the gateway's exact Unix
    socket. It can bind only its SSH, HTTP forward and runtime sockets.
-   Host loopback and Lima's host DNS are disabled. Both processes retain
-   file and execution restrictions. The daemon can additionally read
-   the driver's exact host process PID file.
+   Host loopback and Lima's host DNS are disabled.
+   [Both profiles](../internal/confine/profile.go) default-deny file reads
+   and Mach lookups. Lima can look up Virtualization.framework and the
+   directory service's account-info endpoint. The network daemon has no
+   Mach lookup exceptions and can read the driver's exact PID file.
+   Lima's `TMPDIR` is inside its own instance directory. System library
+   paths include the dyld caches and exclude the APFS Data volume alias.
+   [Doctor](../internal/doctor/sandbox_darwin.go) probes the installed
+   profiles against host files and the notification service.
 3. Ubuntu uses the second NIC for IPv4 egress and contacts public DNS
    resolvers directly. Provisioning removes the old proxy settings,
    redirects and Docker resolver override. The built-in NIC remains
@@ -150,6 +156,8 @@ Known limitations ([to do](todo.md) tracks follow-ups):
 - The separately sandboxed Virtualization process runs the VM. The driver's
   host process can modify its own instance files, including disks and logs,
   and Lima's shared `networks.yaml`. Apple marks `sandbox-exec` deprecated.
+  Apple can change service names and system paths across releases. The
+  current allowlist was exercised on macOS 15.5 with Lima 2.3.0.
 - Lima's virtual gateway may answer ICMP echo within its userspace stack.
   Doctor uses TCP and UDP loopback canaries to test access to host services.
 
