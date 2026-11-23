@@ -111,27 +111,36 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 }
 
 func (s *Service) sizeNewBox(options *NewOptions) error {
+	defaults, err := s.checkHostSize(options.CPUs, options.MemoryGiB)
+	if err != nil {
+		return err
+	}
+	options.CPUs = sizeOrDefault(options.CPUs, defaults.CPUs)
+	options.MemoryGiB = sizeOrDefault(options.MemoryGiB, defaults.MemoryGiB)
+	return nil
+}
+
+func (s *Service) checkHostSize(requestCPUs, requestMemoryGiB int) (vm.Size, error) {
 	const bytesPerGiB = 1 << 30
 	cpus, memory, err := s.HostCapacity.Capacity()
 	if err != nil {
-		return fmt.Errorf("determine host capacity: %w", err)
+		return vm.Size{}, fmt.Errorf("determine host capacity: %w", err)
 	}
-	if options.CPUs > cpus {
-		return fmt.Errorf("--cpus %d exceeds the host's %d CPUs", options.CPUs, cpus)
+	if requestCPUs > cpus {
+		return vm.Size{}, fmt.Errorf("--cpus %d exceeds the host's %d CPUs", requestCPUs, cpus)
 	}
-	options.CPUs = sizeOrDefault(options.CPUs, min(4, cpus))
+	defaults := vm.Size{CPUs: min(4, cpus), MemoryGiB: 8}
 	if memory == 0 {
-		options.MemoryGiB = sizeOrDefault(options.MemoryGiB, 8)
-		return nil
+		return defaults, nil
 	}
 	hostGiB := int(memory / bytesPerGiB)
 	maxExplicitGiB := max(0, hostGiB-2)
-	if options.MemoryGiB > maxExplicitGiB {
-		return fmt.Errorf("--memory %d GiB exceeds the host limit of %d GiB (%g GiB RAM on the host, with 2 GiB reserved)",
-			options.MemoryGiB, maxExplicitGiB, float64(memory)/bytesPerGiB)
+	if requestMemoryGiB > maxExplicitGiB {
+		return vm.Size{}, fmt.Errorf("--memory %d GiB exceeds the host limit of %d GiB (%g GiB RAM on the host, with 2 GiB reserved)",
+			requestMemoryGiB, maxExplicitGiB, float64(memory)/bytesPerGiB)
 	}
-	options.MemoryGiB = sizeOrDefault(options.MemoryGiB, max(2, min(8, hostGiB/2)))
-	return nil
+	defaults.MemoryGiB = max(2, min(8, hostGiB/2))
+	return defaults, nil
 }
 
 func sizeOrDefault(value, fallback int) int {

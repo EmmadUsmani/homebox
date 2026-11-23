@@ -77,10 +77,18 @@ type Endpoint struct {
 	KnownHosts   string // file with the guest's host keys, if the driver keeps one
 }
 
+// Size is the configured VM allocation.
+type Size struct {
+	CPUs      int
+	MemoryGiB int
+	DiskGiB   int
+}
+
 // Instance is a VM as the driver sees it.
 type Instance struct {
 	Name   string
 	Status Status
+	Size   Size
 	// RuntimeDir is the driver's per-VM state directory on the host. The host
 	// confinement needs it, because the VM's host process talks over unix
 	// sockets kept there.
@@ -111,6 +119,9 @@ type Driver interface {
 	Create(ctx context.Context, spec Spec) error
 	Start(ctx context.Context, name string, opts StartOptions) error
 	Stop(ctx context.Context, name string) error
+	// Resize replaces a stopped VM's configured size. Disk growth applies on boot.
+	// On error the VM configuration remains unchanged.
+	Resize(ctx context.Context, name string, size Size) error
 	// Delete removes the VM and its disks. Deleting a missing VM is not an error.
 	Delete(ctx context.Context, name string) error
 	// Get returns ErrNotFound when the VM doesn't exist.

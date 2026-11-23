@@ -75,7 +75,7 @@ func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instanc
 // Stop stops the guest before tearing down isolation.
 func (s *Service) Stop(ctx context.Context, name string) error {
 	return s.Store.WithLock(func() error {
-		if _, err := s.load(name); err != nil {
+		if _, err := s.loadRecord(name); err != nil {
 			return err
 		}
 		instance, err := s.Driver.Get(ctx, name)
@@ -95,7 +95,7 @@ func (s *Service) Stop(ctx context.Context, name string) error {
 // Remove stops and deletes the VM, releases isolation and deletes its record.
 func (s *Service) Remove(ctx context.Context, name string) error {
 	return s.Store.WithLock(func() error {
-		if _, err := s.load(name); err != nil {
+		if _, err := s.loadRecord(name); err != nil {
 			return err
 		}
 		instance, err := s.Driver.Get(ctx, name)

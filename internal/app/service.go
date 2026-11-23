@@ -99,6 +99,14 @@ func (s *Service) progress(format string, args ...any) {
 }
 
 func (s *Service) load(name string) (state.Box, error) {
+	box, err := s.loadRecord(name)
+	if err == nil && box.PendingResize != nil {
+		err = pendingResizeError(name)
+	}
+	return box, err
+}
+
+func (s *Service) loadRecord(name string) (state.Box, error) {
 	box, err := s.Store.Load(name)
 	if err == nil && box.Driver != s.Driver.Name() {
 		err = fmt.Errorf("box %q uses driver %q, current driver is %q", name, box.Driver, s.Driver.Name())
@@ -129,6 +137,9 @@ func (s *Service) List(ctx context.Context) ([]Listing, error) {
 	}
 	out := make([]Listing, 0, len(boxes))
 	for _, box := range boxes {
+		if box.PendingResize != nil {
+			return nil, pendingResizeError(box.Name)
+		}
 		instance := byName[box.Name]
 		current := instance.Status
 		if current == "" || box.Driver != s.Driver.Name() {

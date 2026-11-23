@@ -18,6 +18,9 @@ type instanceRecord struct {
 	Name         string `json:"name"`
 	Dir          string `json:"dir"`
 	Status       string `json:"status"`
+	CPUs         int    `json:"cpus"`
+	Memory       int64  `json:"memory"`
+	Disk         int64  `json:"disk"`
 	SSHLocalPort int    `json:"sshLocalPort"`
 	Config       struct {
 		Networks []networkConfig `json:"networks"`
@@ -38,6 +41,10 @@ func (r instanceRecord) instance() vm.Instance {
 	instance := vm.Instance{
 		Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
 		HostPIDFile: filepath.Join(r.Dir, "ha.pid"),
+	}
+	const gib = 1 << 30
+	if r.Memory%gib == 0 && r.Disk%gib == 0 {
+		instance.Size = vm.Size{CPUs: r.CPUs, MemoryGiB: int(r.Memory / gib), DiskGiB: int(r.Disk / gib)}
 	}
 	if r.Dir != "" {
 		instance.HostLog = filepath.Join(r.Dir, "ha.stderr.log")

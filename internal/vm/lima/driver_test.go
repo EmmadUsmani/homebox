@@ -74,7 +74,7 @@ func TestListAndSSH(t *testing.T) {
 	ctx := t.Context()
 	got, err := driver.List(ctx)
 	want := []vm.Instance{
-		{Name: "test-lima", Status: vm.StatusRunning, RuntimeDir: "/fixture/lima/test-lima", HostPIDFile: "/fixture/lima/test-lima/ha.pid", HostLog: "/fixture/lima/test-lima/ha.stderr.log", HostAddress: hostAddress},
+		{Name: "test-lima", Status: vm.StatusRunning, Size: vm.Size{CPUs: 2, MemoryGiB: 2, DiskGiB: 10}, RuntimeDir: "/fixture/lima/test-lima", HostPIDFile: "/fixture/lima/test-lima/ha.pid", HostLog: "/fixture/lima/test-lima/ha.stderr.log", HostAddress: hostAddress},
 		{Name: "test-uninitialized", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-uninitialized", HostPIDFile: "/fixture/lima/test-uninitialized/ha.pid", HostLog: "/fixture/lima/test-uninitialized/ha.stderr.log", HostAddress: hostAddress},
 		{Name: "test-stopped", Status: vm.StatusStopped, RuntimeDir: "/fixture/lima/test-stopped", HostPIDFile: "/fixture/lima/test-stopped/ha.pid", HostLog: "/fixture/lima/test-stopped/ha.stderr.log", HostAddress: hostAddress},
 		{Name: "test-broken", Status: vm.StatusBroken, RuntimeDir: "/fixture/lima/test-broken", HostPIDFile: "/fixture/lima/test-broken/ha.pid", HostLog: "/fixture/lima/test-broken/ha.stderr.log", HostAddress: hostAddress},
