@@ -15,7 +15,8 @@ Step 1, the CLI (`box status`, `box top`, `box logs`, a richer `box ls` and
 2. Desktop app with Wails: local VMs, remote VMs through the laptop's SSH
    (unreachable, not running and host key changed shown as hints), an SSH
    terminal, a file browser and a light Monaco editor. Keep its web-view
-   dependencies out of the `box` binary.
+   dependencies out of the `box` binary. The look is approved
+   ([design/desktop-app.md](design/desktop-app.md)); React with TypeScript.
 3. Remote desktop, with phase 2's desktop in the VM: a spike picks the server
    (KasmVNC favoured, against TigerVNC with noVNC and Selkies) for latency and
    bandwidth, then `box desktop NAME` and the app's desktop tab.
