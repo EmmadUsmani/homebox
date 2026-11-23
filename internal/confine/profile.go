@@ -16,17 +16,18 @@ const DaemonProfileName = "vmnet.sb"
 
 // Rules describes the VM process's permitted network operations.
 type Rules struct {
-	RuntimeDir    string
-	Home          string
-	LimaHome      string
-	Executable    string
-	Daemon        bool
-	GatewaySocket string
-	HostPIDFile   string
-	ConnectTCP    []int
-	ConnectUDP    []int
-	BindTCP       []Bind
-	BindUDP       []Bind
+	RuntimeDir      string
+	Home            string
+	LimaHome        string
+	Executable      string
+	executableAlias string
+	Daemon          bool
+	GatewaySocket   string
+	HostPIDFile     string
+	ConnectTCP      []int
+	ConnectUDP      []int
+	BindTCP         []Bind
+	BindUDP         []Bind
 }
 
 // Bind permits a TCP listener on loopback or on the LAN.
@@ -113,54 +114,97 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	}
 	profile.WriteString(`
 (deny file-write*)
-(deny file-read-data file-write-data (literal "/dev/dtracehelper") (with no-log))
+(deny file-read*)
 (deny process-exec*)
 (deny appleevent-send job-creation)
-(deny mach-lookup
-  (global-name-regex #"^com[.]apple[.](lsd|launchservices|coreservices[.]launchservicesd|runningboard|pasteboard)([.]|$)"))
+(deny mach-lookup)
+
+; System libraries, framework resources and dyld shared caches.
+(allow file-read*
+  (subpath "/System/Library")
+  (subpath "/System/Cryptexes/OS")
+  (subpath "/System/Volumes/Preboot/Cryptexes/OS")
+  (subpath "/usr/lib")
+  (literal "/")
+  (literal "/dev/null")
+  (literal "/dev/urandom")
+  (literal "/etc")
+  (literal "/var")
+  (literal "/private/etc/localtime")
+  (subpath "/private/var/db/timezone")
+  (subpath "/usr/share/zoneinfo"))
+(allow file-read-metadata
+  (literal "/System")
+  (literal "/usr")
+  (literal "/usr/share")
+  (literal "/private")
+  (literal "/private/etc")
+  (literal "/private/var")
+  (literal "/private/var/db")
+  (literal "/tmp"))
+; Suppress the optional dyld tracing-device probe.
+(deny file-read-data file-write-data (literal "/dev/dtracehelper") (with no-log))
 `)
 	// The platform-signed sandbox-exec can launch the entrypoint, but the
 	// daemon cannot use that exception to re-execute itself.
-	profile.WriteString("(define entrypoint (param \"BOX_PROBE\"))\n")
+	profile.WriteString("(define entrypoint (param \"BOX_PROBE\"))\n(allow file-read* (literal entrypoint))\n")
 	profile.WriteString("(allow process-exec (require-all (process-attribute is-platform-binary) (literal entrypoint)))\n")
 	fmt.Fprintf(profile, "(allow file-write* (subpath %s))\n", runtimeDir)
 	if rules.Daemon {
-		profile.WriteString(`(deny process-fork)
-(deny file-read*)
-(allow file-read*
-  (subpath "/System")
-  (literal "/")
-  (literal "/etc")
-  (literal "/var")
-  (subpath "/usr/lib")
-  (subpath "/private/etc")
-  (subpath "/private/var/db/timezone")
-  (subpath "/usr/share/zoneinfo")
-  (literal "/dev/null")
-  (literal "/dev/urandom")
-  (literal entrypoint))
-`)
+		profile.WriteString("(deny process-fork)\n")
 		fmt.Fprintf(profile, "(allow file-read* (subpath %s) (literal %s))\n", runtimeDir, executable)
-		profile.WriteString("(allow file-read-metadata (literal \"/tmp\"))\n")
-		for _, target := range []string{rules.RuntimeDir, rules.Executable} {
-			for parent := path.Dir(target); parent != "/"; parent = path.Dir(parent) {
-				quoted, _ := profilePath(parent)
-				fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
-			}
-		}
+		allowParents(profile, path.Dir(rules.RuntimeDir))
+		allowParents(profile, path.Dir(rules.Executable))
 		if rules.HostPIDFile != "" {
 			pidFile, err := profilePath(rules.HostPIDFile)
 			if err != nil {
 				return err
 			}
 			fmt.Fprintf(profile, "(allow file-read* (literal %s))\n", pidFile)
-			for parent := path.Dir(rules.HostPIDFile); parent != "/"; parent = path.Dir(parent) {
-				quoted, _ := profilePath(parent)
-				fmt.Fprintf(profile, "(allow file-read-metadata (literal %s))\n", quoted)
-			}
+			allowParents(profile, path.Dir(rules.HostPIDFile))
 		}
 		return nil
 	}
+	profile.WriteString(`
+; Virtualization.framework starts the VM through its XPC service.
+(allow mach-lookup (global-name "com.apple.Virtualization.VirtualMachine"))
+; Newer Virtualization.framework uses dirhelper to resolve the user cache directory.
+(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))
+; The cache-directory lookup also resolves the user's group membership.
+(allow mach-lookup (global-name "com.apple.system.opendirectoryd.membership"))
+; macOS account resolution supplies the local user to Lima and OpenSSH.
+(allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))
+
+; Lima resolves these executables on PATH and spawns them in this profile.
+(define host-tools
+  (list "/usr/bin/ssh" "/usr/bin/sw_vers" "/usr/sbin/ioreg"
+        "/usr/sbin/system_profiler" "/bin/sh" "/bin/bash"))
+(allow process-exec (apply literal host-tools))
+(allow file-read*
+  (apply literal host-tools)
+  (literal "/bin")
+  (literal "/sbin")
+  (literal "/usr/bin")
+  (literal "/usr/sbin")
+  (literal "/dev/tty")
+  (literal "/private/etc/resolv.conf")
+  (literal "/private/var/run/resolv.conf")
+  (literal "/private/etc/ssh/ssh_config")
+  (subpath "/private/etc/ssh/ssh_config.d")
+  (subpath "/usr/share/icu")
+  (subpath "/usr/share/locale"))
+(allow file-read-metadata (literal "/private/var/run") (literal "/private/etc/ssh"))
+`)
+	allowParents(profile, path.Dir(rules.Executable))
+	if rules.executableAlias != "" {
+		alias, err := profilePath(rules.executableAlias)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(profile, "(allow file-read* (literal %s))\n", alias)
+		allowParents(profile, path.Dir(rules.executableAlias))
+	}
+
 	home, err := profilePath(rules.Home)
 	if err != nil {
 		return fmt.Errorf("home: %w", err)
@@ -201,7 +245,7 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	// The next start reads the VM's config outside this VM's control, so the
 	// hostagent must not be able to add mounts or forwards to it.
 	fmt.Fprintf(profile, "(deny file-write* (literal %s))\n", limaYAML)
-	fmt.Fprintf(profile, "(allow process-exec (literal %s) (literal \"/usr/bin/ssh\") (literal \"/usr/bin/sw_vers\") (literal \"/usr/sbin/ioreg\") (literal \"/usr/sbin/system_profiler\") (literal \"/bin/sh\") (literal \"/bin/bash\"))\n", executable)
+	fmt.Fprintf(profile, "(allow process-exec (literal %s))\n", executable)
 	return nil
 }
 

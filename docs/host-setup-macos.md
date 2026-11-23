@@ -77,3 +77,48 @@ box start main
 - macOS updates can restart the Mac, which stops its VMs. Until autostart
   exists, install updates when you can start the VMs afterwards.
 - Lima: `brew upgrade lima`, then restart the VMs.
+
+## Check sandbox compatibility
+
+From the checkout you want to test, run this block on the macOS host. It builds
+box, provisions a 2 GiB VM using index 21, runs doctor before and after restart,
+and prints Sandbox denials for `limactl` and `box` from the run. Use it when
+upgrading macOS or Lima. The index must be free on this host. The scratch state
+lives under your home directory and is removed when the check exits. If VM
+removal fails, the block prints the scratch path and keeps it for recovery.
+Review the log output for host paths and addresses before sharing it.
+
+```sh
+(
+    set -eu
+    scratch=$(mktemp -d "$HOME/.hb-sb-XXXXXX")
+    export HOMEBOX_HOME="$scratch/state" HOMEBOX_FIRST_INDEX=21
+    binary="$scratch/box"
+    vm=sandbox-check
+    started=$(date '+%Y-%m-%d %H:%M:%S')
+    cleanup() {
+        check_status=$?
+        if [ -f "$HOMEBOX_HOME/boxes/$vm/box.json" ] &&
+            ! "$binary" rm -f "$vm"; then
+            printf 'Scratch state kept at %s\n' "$scratch" >&2
+            check_status=1
+        else
+            rm -r -- "$scratch" || check_status=1
+        fi
+        /usr/bin/log show --start "$started" --style compact --predicate \
+            'sender == "Sandbox" AND (eventMessage BEGINSWITH "Sandbox: limactl(" OR eventMessage BEGINSWITH "Sandbox: box(") AND eventMessage CONTAINS " deny("' ||
+            check_status=1
+        exit "$check_status"
+    }
+    trap cleanup EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    go build -o "$binary" ./cmd/box
+    "$binary" host init
+    "$binary" new "$vm" --cpus 2 --memory 2 --disk 20
+    "$binary" doctor "$vm"
+    "$binary" stop "$vm"
+    "$binary" start "$vm"
+    "$binary" doctor "$vm"
+)
+```

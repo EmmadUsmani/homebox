@@ -14,7 +14,8 @@ func Prepare(rules Rules, dir string) ([]string, error) {
 	if !filepath.IsAbs(dir) {
 		return nil, fmt.Errorf("profile directory must be absolute")
 	}
-	driverBin := filepath.Dir(rules.Executable)
+	installedExecutable := rules.Executable
+	driverBin := filepath.Dir(installedExecutable)
 	var err error
 	name := ProfileName
 	if rules.Daemon {
@@ -29,6 +30,9 @@ func Prepare(rules Rules, dir string) ([]string, error) {
 		return nil, err
 	}
 	if !rules.Daemon {
+		if installedExecutable != rules.Executable {
+			rules.executableAlias = installedExecutable
+		}
 		rules.Home, err = filepath.EvalSymlinks(rules.Home)
 		if err != nil {
 			return nil, err

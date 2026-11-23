@@ -155,9 +155,16 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 	diagnostics := box(2*time.Minute, "doctor", name)
 	t.Log(diagnostics)
-	for _, check := range []string{"public-tcp", "public-udp-dns", "public-udp-ntp", "public-icmp", "deny-tcp-", "deny-udp-", "deny-icmp-"} {
+	for _, check := range []string{"ssh-relay-target-owner", "public-tcp", "public-udp-dns", "public-udp-ntp", "public-icmp", "deny-tcp-", "deny-udp-", "deny-icmp-"} {
 		if !strings.Contains(diagnostics, "PASS "+check) {
 			t.Fatalf("doctor did not pass %s", check)
+		}
+	}
+	for _, process := range []string{"hostagent", "vmnet"} {
+		for _, probe := range []string{"home-read", "home-write", "volumes-read", "shared-read", "app-temp-read", "shared-temp-read", "mach-lookup"} {
+			if check := process + "-" + probe; !strings.Contains(diagnostics, "PASS "+check) {
+				t.Fatalf("doctor did not pass %s", check)
+			}
 		}
 	}
 	box(time.Minute, "ssh", name, "--", `set -eu

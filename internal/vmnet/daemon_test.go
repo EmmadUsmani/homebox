@@ -32,6 +32,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestRelayFollowsHostProcess(t *testing.T) {
+	testRelayHostProcess(t, true)
+}
+
+func TestRelayRefusesWrongListenerOwner(t *testing.T) {
+	testRelayHostProcess(t, false)
+}
+
+func testRelayHostProcess(t *testing.T, ownsTarget bool) {
+	t.Helper()
 	config, target := testConfig(t)
 	ctx, cancel := context.WithCancel(t.Context())
 	stopped := make(chan struct{})
@@ -50,6 +59,14 @@ func TestRelayFollowsHostProcess(t *testing.T) {
 	waitReady(t, config, stopped)
 	assertRelayClosed(t, config)
 	command := exec.Command("/bin/sleep", "30")
+	if ownsTarget {
+		listenerFile, err := target.File()
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer listenerFile.Close()
+		command.ExtraFiles = []*os.File{listenerFile}
+	}
 	if err := command.Start(); err != nil {
 		t.Fatal(err)
 	}
@@ -58,13 +75,15 @@ func TestRelayFollowsHostProcess(t *testing.T) {
 	if err := os.WriteFile(config.HostPIDFile, []byte(strconv.Itoa(command.Process.Pid)), 0600); err != nil {
 		t.Fatal(err)
 	}
-	go func() {
-		client, err := target.Accept()
-		if err == nil {
-			defer client.Close()
-			io.WriteString(client, "SSH-2.0-test\r\n")
-		}
-	}()
+	if ownsTarget {
+		go func() {
+			client, err := target.Accept()
+			if err == nil {
+				defer client.Close()
+				io.WriteString(client, "SSH-2.0-test\r\n")
+			}
+		}()
+	}
 	deadline := time.Now().Add(time.Second)
 	for {
 		conn, err := net.DialTimeout("tcp4", endpoint(config.SSHPublish.IP, config.SSHPublish.Port), 25*time.Millisecond)
@@ -72,8 +91,24 @@ func TestRelayFollowsHostProcess(t *testing.T) {
 			conn.SetReadDeadline(time.Now().Add(time.Second))
 			banner, err := io.ReadAll(conn)
 			conn.Close()
-			if err != nil || string(banner) != "SSH-2.0-test\r\n" {
+			if ownsTarget && (err != nil || string(banner) != "SSH-2.0-test\r\n") {
 				t.Fatalf("SSH banner %q: %v", banner, err)
+			}
+			if !ownsTarget {
+				if len(banner) != 0 {
+					t.Fatalf("unexpected SSH banner %q", banner)
+				}
+				target.SetDeadline(time.Now().Add(50 * time.Millisecond))
+				if upstream, err := target.AcceptTCP(); err == nil {
+					upstream.Close()
+					t.Fatal("relay dialed a listener owned by another process")
+				} else if timeout, ok := err.(net.Error); !ok || !timeout.Timeout() {
+					t.Fatal(err)
+				}
+				log, err := os.ReadFile(config.LogFile)
+				if err != nil || !strings.Contains(string(log), "SSH relay refused unverified target owner") {
+					t.Fatalf("missing refusal warning: %v", err)
+				}
 			}
 			break
 		}

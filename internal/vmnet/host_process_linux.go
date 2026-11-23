@@ -12,25 +12,32 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func watchHostProcess(parent context.Context, pid int, written time.Time) (context.Context, func(), error) {
-	descriptor, err := unix.PidfdOpen(pid, 0)
+func identifyHostProcess(pid int, written time.Time) (hostProcess, error) {
+	start := processStart(pid)
+	if start == 0 {
+		return hostProcess{}, nil
+	}
+	var uptime unix.Timespec
+	if err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &uptime); err != nil {
+		return hostProcess{}, err
+	}
+	// Linux exposes process start time in USER_HZ units (100 per second).
+	started := time.Now().Add(-time.Duration(uptime.Nano()) + time.Duration(start)*10*time.Millisecond)
+	if started.After(written.Add(10 * time.Millisecond)) {
+		return hostProcess{}, nil
+	}
+	return hostProcess{pid: pid, start: start}, nil
+}
+
+func watchHostProcess(parent context.Context, process hostProcess) (context.Context, func(), error) {
+	descriptor, err := unix.PidfdOpen(process.pid, 0)
 	switch {
 	case errors.Is(err, unix.ESRCH):
 		return nil, nil, nil
 	case err != nil && !errors.Is(err, unix.ENOSYS) && !errors.Is(err, unix.EINVAL):
 		return nil, nil, err
 	}
-	start, alive := linuxProcessStart(pid)
-	var uptime unix.Timespec
-	if err := unix.ClockGettime(unix.CLOCK_BOOTTIME, &uptime); err != nil {
-		if descriptor >= 0 {
-			unix.Close(descriptor)
-		}
-		return nil, nil, err
-	}
-	// Linux exposes process start time in USER_HZ units (100 per second).
-	started := time.Now().Add(-time.Duration(uptime.Nano()) + time.Duration(start)*10*time.Millisecond)
-	if !alive || started.After(written.Add(10*time.Millisecond)) {
+	if !process.current() {
 		if descriptor >= 0 {
 			unix.Close(descriptor)
 		}
@@ -43,7 +50,7 @@ func watchHostProcess(parent context.Context, pid int, written time.Time) (conte
 		defer close(exited)
 		defer cancel()
 		if descriptor < 0 {
-			waitLinuxProcess(ctx, pid, start)
+			waitLinuxProcess(ctx, process)
 			return
 		}
 		defer unix.Close(descriptor)
@@ -58,7 +65,7 @@ func watchHostProcess(parent context.Context, pid int, written time.Time) (conte
 	return ctx, func() { cancel(); <-exited }, nil
 }
 
-func waitLinuxProcess(ctx context.Context, pid int, start uint64) {
+func waitLinuxProcess(ctx context.Context, process hostProcess) {
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 	for {
@@ -66,25 +73,24 @@ func waitLinuxProcess(ctx context.Context, pid int, start uint64) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			current, alive := linuxProcessStart(pid)
-			if !alive || start != current {
+			if !process.current() {
 				return
 			}
 		}
 	}
 }
 
-func linuxProcessStart(pid int) (uint64, bool) {
+func processStart(pid int) uint64 {
 	data, err := os.ReadFile(fmt.Sprintf("/proc/%d/stat", pid))
 	if err != nil {
-		return 0, false
+		return 0
 	}
 	// The parenthesized command can include spaces and parentheses.
 	stat := string(data)
 	fields := strings.Fields(stat[strings.LastIndexByte(stat, ')')+1:])
 	if len(fields) < 20 || fields[0] == "Z" || fields[0] == "X" {
-		return 0, false
+		return 0
 	}
-	start, err := strconv.ParseUint(fields[19], 10, 64)
-	return start, err == nil
+	start, _ := strconv.ParseUint(fields[19], 10, 64)
+	return start
 }
