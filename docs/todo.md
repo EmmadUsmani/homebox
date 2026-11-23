@@ -4,6 +4,22 @@ Work agreed in principle but not built yet, roughly in priority order. Each item
 says why it matters and the approach we lean towards; a spike settles the
 details. Anything that changes the design document waits for the owner.
 
+## Observability and the desktop app (phase 1b, next)
+
+Agreed by the owner on 2026-11-22; design in [observability.md](observability.md).
+In order:
+
+1. CLI: `box status`, `box top`, `box logs NAME [-f]` (provision, host, net and
+   guest sources) and `--json` on these and `box ls`. Status types live in
+   `internal/app`; the host pulls guest data over SSH and treats it as untrusted.
+2. Desktop app with Wails: local VMs, remote VMs through the laptop's SSH
+   (unreachable, not running and host key changed shown as hints), an SSH
+   terminal, a file browser and a light Monaco editor. Keep its web-view
+   dependencies out of the `box` binary.
+3. Remote desktop, with phase 2's desktop in the VM: a spike picks the server
+   (KasmVNC favoured, against TigerVNC with noVNC and Selkies) for latency and
+   bandwidth, then `box desktop NAME` and the app's desktop tab.
+
 ## Tighten the host sandboxes further
 
 Both host processes now have file and process limits (see "macOS networking"

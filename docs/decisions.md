@@ -91,6 +91,47 @@ would need someone to log in after a restart. `limactl autostart` would start
 the VM without box's isolation. Hosts using autostart don't use FileVault, which
 holds the boot until someone types the password.
 
+## Observability and the desktop app
+
+Design: [observability.md](observability.md).
+
+**One core, two views** (owner, 2026-11-22). Status, health and logs are built
+once in box's core; the CLI and the desktop app only display them, so both
+always show the same thing.
+
+**The host pulls status from the VM over SSH** (2026-11-22). A guest agent that
+reports to the host would open the VM→host channel that isolation blocks, and
+guest-reported data is untrusted anyway, so box only displays it.
+
+**Other hosts' VMs: only through the laptop's SSH to each VM** (owner,
+2026-11-22). The app checks each saved host and shows unreachable, not running
+or host key changed as hints. It can't start or stop VMs on another host.
+
+- *A status-only SSH login to the host:* rejected (owner). A second login to set
+  up per laptop and host, and SSH turned on for the host itself, which adds
+  attack surface.
+- *A box service on the LAN, found by Bonjour:* rejected (owner). Needs its own
+  pairing and sign-in, adds a network service to defend, and is the most work.
+
+**A desktop app, not a page in the browser** (owner, 2026-11-22).
+
+**Wails for the desktop app** (owner, 2026-11-22). Its Go backend calls box's
+core directly, and it runs on macOS, Windows and Linux like the hosts will.
+
+- *Tauri or Electron:* not chosen. The Go core would need a bundled sidecar
+  process and a bridge to it.
+- *SwiftUI:* not chosen. macOS only.
+
+**Build the app from source; no signed builds** (owner, 2026-11-22). homebox
+isn't sold, so there's no Apple developer account (a paid service). Apps built
+on your own Mac open normally.
+
+**Remote desktop: low latency and bandwidth first** (owner, 2026-11-22), over
+image quality and extra features. One server in the VM, reached over SSH, with
+one web client used by the browser and the app. KasmVNC is favoured, pending a
+spike against TigerVNC with noVNC and Selkies. macOS Screen Sharing is nice to
+have (owner), and KasmVNC doesn't support it.
+
 ## Outside projects
 
 **devvm: ideas only** (owner, 2026-11-21). MIT-licensed, and the source of the

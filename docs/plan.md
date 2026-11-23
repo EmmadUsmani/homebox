@@ -1,9 +1,11 @@
-# homebox: design (v6, 2026-11-22)
+# homebox: design (v7, 2026-11-22)
 
 Status: signed off by the owner on 2026-11-21. Phases 0 and 1 built on 2026-11-22.
 v6 (owner, 2026-11-22) adds images, sleep and resume, and macOS guests, after
 comparing [localbox](alternatives.md#localbox); restarting VMs when the host
 boots; and base images, so new VMs start from an image instead of provisioning.
+v7 (owner, 2026-11-22) adds observability (status, health, live logs) in `box`
+and a desktop app, as phase 1b; design in [observability.md](observability.md).
 
 **This document changes only with the owner's explicit consent.** See
 [AGENTS.md](../AGENTS.md).
@@ -36,6 +38,9 @@ Codex with full permissions, run any server, render and screenshot UI.
 | Guest distro pluggable; Ubuntu primary; no systemd requirement | Must (architecture); only Ubuntu shipped |
 | Host tooling needs no language runtime on the host | Must |
 | HTTP from my laptop to servers in the VM | Nice |
+| See each VM's state, health, resource use, refused connections and live logs, from `box` | Nice, phase 1b |
+| A desktop app (laptop and host): VM list, SSH terminal, file browser with light editing, later the remote desktop | Nice, phase 1b |
+| VMs on other hosts are seen only through the laptop's own SSH to each VM: no host login, no service on the LAN | Constraint (owner) |
 | Several VMs per host | Nice, don't design it out |
 | Images: save a VM as an image and start new VMs from it | Nice, phase 2 |
 | Images stay on the host that made them; moving one to another host is a manual copy | Constraint |
@@ -67,6 +72,12 @@ Codex with full permissions, run any server, render and screenshot UI.
 - devvm (MIT) is design reference only; exeuntu (Apache-2.0) is the package-list
   reference. Neither is a dependency. Docker Sandboxes is out (closed source, needs
   a Docker account).
+- **Observability and the desktop app** (owner, 2026-11-22): built once in
+  box's core and shown by the CLI and by a desktop app made with Wails. The
+  host pulls status from the VM over SSH; nothing in the VM reports to the
+  host. Other hosts' VMs are seen only through the laptop's SSH to each VM.
+  The remote desktop favours low latency and bandwidth. See
+  [observability.md](observability.md).
 - **Images are local to their host.** No relay, sync service or peer-to-peer
   copying between hosts; an image moves by exporting it to a file and copying
   that by hand (owner, 2026-11-22).
@@ -97,6 +108,8 @@ Runs on the host. Draft commands:
 | `box ports NAME` | Show or change published ports |
 | `box ssh-config` | Prints the snippet for a laptop's `~/.ssh/config` (`ssh main`) |
 | `box doctor` | Checks isolation: VM can reach the internet, not the host or LAN |
+| `box status NAME` / `box top` / `box logs NAME [-f]` | Health, resource use and live logs; `--json` on these and `box ls` (phase 1b) |
+| `box desktop NAME` | Opens the VM's remote desktop in the browser, over SSH (phase 2) |
 | `box image save NAME IMAGE` / `image ls` / `image rm` | Saves a VM as an image; lists or deletes images (phase 2) |
 | `box new NAME --image IMAGE` | Creates a VM from an image instead of provisioning from scratch (phase 2) |
 | `box image rebuild [--profile P]` | Rebuilds a profile's base image from its scripts (phase 2) |
@@ -178,6 +191,8 @@ guest/
 ### Isolation and networking
 
 - VM config: no mounts, no SSH agent forwarding, no host loopback access.
+- **Status flows one way:** the host or laptop pulls it from the VM over SSH;
+  nothing in the VM connects to the host to report.
 - **Egress rules, enforced on the host** (root in the VM can't undo them): the VM
   reaches the public internet, not the host or private address ranges.
   Mac: a Seatbelt profile around Lima's network process (devvm's approach).
@@ -195,7 +210,8 @@ guest/
 |---|---|---|
 | 0 | **Spikes on the Mac** (about a day): Lima config, SSH published on the LAN, Seatbelt egress rule | SSH into a VM from the MacBook; it reaches the internet but not the Mini, its loopback or my router |
 | 1 | Mac, done properly: `box` with the Lima driver, Ubuntu profile, host init, ssh-config, doctor, CI | From the MacBook: `ssh main`, agents run with full permissions on my accounts, Playwright screenshots a dev server I also open on the laptop; the same `ssh main` and dev server from the Mac itself; `box doctor` passes |
-| 2 | Multiple VMs, images and base images, Tailscale, desktop (Xfce over VNC or RDP) | Two VMs side by side, the second started from an image of the first; a new VM from the base image skips the full scripts; SSH from off my network; desktop from the laptop |
+| 1b | Observability and the desktop app: `box status`, `top`, `logs -f`, `--json`; a Wails app with the VM list, terminal, files and a light editor | On the Mini, `box status` and `box logs -f main` show health and live logs; from the MacBook, the app lists the Mini's VMs, marks unreachable ones, opens a terminal into `main` and edits a file there |
+| 2 | Multiple VMs, images and base images, Tailscale, desktop (Xfce, remote display over SSH in the browser and the app; KasmVNC favoured) | Two VMs side by side, the second started from an image of the first; a new VM from the base image skips the full scripts; SSH from off my network; desktop from the laptop |
 | 3 | Credential proxy | Agent tokens unreadable inside the VM |
 | 4 | Windows host, when Lima's HCS driver is ready | Phase 1's exit criterion on the Windows PC |
 | 5 | Linux GPU box: Lima with the 3080 Ti passed through; Incus driver if Lima can't | `nvidia-smi` and a CUDA job in an isolated VM |

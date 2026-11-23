@@ -1,0 +1,218 @@
+# Observability and the desktop app
+
+Design, not built yet. The owner agreed this design on 2026-11-22; the
+decisions and what was turned down are also in
+[decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
+it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
+
+The goal: see what each VM is doing (whether it's running, healthy, how busy it
+is, what it's serving and what it tried to reach) and work with it, from the
+`box` command and from a desktop app, without running a server of our own.
+
+## One core, two views
+
+All of this is built once, in `internal/app`, and shown twice:
+
+```
+            ┌── internal/cli     (box status, box logs -f, --json)
+internal/app┤
+            └── desktop app      (Wails: Go backend, web frontend)
+```
+
+- `internal/app` gains read-only use cases that return plain data: `Status`,
+  `Logs` (a stream), `Top`, and a stream of events (started, stopped,
+  provisioning step, doctor result, network denial). The CLI prints them as a
+  table or as JSON; the app draws them. Neither view holds any logic of its own.
+- Behind the use cases sits a **source**: where the data comes from.
+  - The *local source* reads this host: box's records, the driver, the host
+    process and daemon logs, and the guest over box's own SSH.
+  - The *SSH source* reads a VM on another host through the laptop's existing
+    SSH login to that VM (see [other hosts](#vms-on-other-hosts)).
+
+  Both return the same types, so the app's list of VMs and its detail screens
+  don't care where a VM lives.
+- The JSON that `box ... --json` prints is these same types. There is no
+  separate format to keep in step.
+
+## VMs on this host
+
+What box can show, and where each fact comes from:
+
+| What | Source |
+|---|---|
+| State: running, stopped, broken, provisioning (and which step) | box's records and the driver (`box ls` already does part of this) |
+| CPU and memory used, seen from the host | the VM's host process (Apple's Virtualization process on macOS) |
+| Load, memory, disk, top processes | a short read-only command in the guest, over SSH |
+| Servers listening, and which are published on which host port | `ss` in the guest, matched against the VM's port forwards |
+| Docker containers | `docker ps` in the guest |
+| Coding agents running (`claude`, `codex`) and their sessions | the guest's process list |
+| What the VM tried to reach and was refused | the network daemon's log, which already records denials |
+| Isolation health | `box doctor`; the last result is kept with its time |
+| Logs | see [live logs](#live-logs) |
+
+### Commands
+
+| Command | Does |
+|---|---|
+| `box ls [--json]` | Adds health, uptime and resource use to today's list |
+| `box status NAME [--json]` | Everything in the table above for one VM |
+| `box top [NAME]` | Live view of resource use, refreshed every few seconds |
+| `box logs NAME [-f] [--source S]` | Prints or follows logs (below) |
+
+### Live logs
+
+`box logs NAME -f` follows logs as they're written, like `tail -f`; the app
+shows the same stream. Sources:
+
+| Source | Where it lives | Notes |
+|---|---|---|
+| `provision` | box's record of the last provisioning run | Kept per run, so a failed step can be read later |
+| `host` | the driver's host-process log (Lima's `ha.stderr.log`) | Boot, SSH readiness, port forwards |
+| `net` | the network daemon's log | Denials and refusals; already rate-limited |
+| `guest` | the guest's journal (`journalctl -f`), over SSH | Optionally one systemd unit, e.g. a dev server |
+
+Following a host file has to survive rotation and truncation. Following the
+guest keeps one SSH session open and reconnects if the VM restarts. With no
+`--source`, box interleaves all of them, labelled and ordered by time.
+
+### Trust rules
+
+These keep observability from weakening isolation:
+
+- **The host pulls; the VM never pushes.** Everything from the guest comes over
+  an SSH session that the host or laptop opens. Nothing in the VM connects to
+  the host, and box adds no listener the VM could reach. A guest agent that
+  reports to the host would open exactly the VM→host channel the isolation
+  exists to block.
+- **Guest data is untrusted.** A compromised VM can lie about itself, so box
+  only displays guest-reported values and never acts on them. Box strips
+  terminal escape sequences before printing and escapes HTML before the app
+  renders anything. Sizes and timeouts are bounded, so a hostile guest can't
+  hang or flood the viewer.
+- **Read-only by default.** Status commands change nothing. The guest probe
+  runs as the VM's user and needs no root.
+
+## VMs on other hosts
+
+There's no server of our own and no service on the LAN, so box sees VMs on
+other machines only through what a laptop already has: its SSH login to each
+VM, set up by the [laptop installer](../README.md). Call this level A; it's the
+only level adopted. Two others were explored and turned down (below).
+
+**Which VMs:** the hosts in `~/.ssh/homebox_config` (written by the installer),
+plus any the user adds in the app.
+
+**What the app can tell about each one.** box checks each host on a timer and
+reports what it found as a hint, not a diagnosis:
+
+| What happened | Shown as | Likely meaning |
+|---|---|---|
+| The host name doesn't resolve, or the connection times out | Unreachable | The host is off, asleep or off this network |
+| Connection refused | VM not running | The host is up, but box's SSH relay only listens while the VM's host process runs, so the VM is probably stopped |
+| TCP connects but the SSH handshake fails | Connection broken | sshd in the VM is down or still booting |
+| The host key doesn't match the pinned key | **Host key changed** | A warning, never a silent reconnect: the VM was rebuilt, or something is impersonating it (`box repin` on the host fixes the first case) |
+| The login succeeds | Reachable | The same guest status as for a local VM, over this session |
+
+**What level A can't do:** start, stop or create VMs on another host; show the
+host's own resources; tell a stopped VM from a deleted one; or list VMs the
+laptop has no SSH entry for. Those need box on the host, which only that host
+can reach.
+
+### Explored and not adopted
+
+- **Level B: a status-only SSH login to the host.** The laptop would hold a
+  second key that the host restricts to running `box remote --json`. Turned
+  down (owner, 2026-11-22): it means a second login to set up per laptop and
+  per host, and it turns on SSH to the host itself, which adds attack surface.
+  The plan's separate "later" idea of a `box`-only SSH account for creating VMs
+  remotely is unaffected by this decision and still unbuilt.
+- **Level C: a box service on the LAN.** A host-side service that announces
+  itself (Bonjour) and answers status requests. Turned down (owner,
+  2026-11-22): it needs its own pairing and sign-in, it's a new network service
+  with its own attack surface, and it's the most work. It would also have to
+  be proven unreachable from every VM.
+
+## The desktop app
+
+A full desktop app (owner), built with **Wails**: a Go backend that calls
+`internal/app` directly, and a web frontend in the OS's own web view. The same
+code runs on the laptop and on a host; on a host it also sees the local VMs.
+
+| Screen | What it does |
+|---|---|
+| VM list | Local VMs and remote ones (level A), with state, health and a reachability badge |
+| VM detail | Status, resource use, published ports (open one in the browser), recent network denials, last doctor result; start, stop and doctor for local VMs |
+| Logs | The live log stream, filterable by source |
+| Terminal | An SSH session in a tab: xterm.js in the frontend, Go's SSH client in the backend |
+| Files | Browse, view, upload and download over SFTP, on the same SSH connection |
+| Editor | Light editing with Monaco (VS Code's editor component): open, edit and save over SFTP |
+| Desktop | The VM's remote desktop, once phase 2 adds one (below) |
+
+- **SSH in the app** obeys the same rules as box's SSH config: it uses only the
+  pinned host keys from `homebox_known_hosts` (or box's local ones for VMs on
+  this host), and it never forwards the SSH agent or X11. Keys come from the
+  user's `~/.ssh` and are never copied anywhere.
+- **Saving in the editor** refuses to overwrite a file that changed since it
+  was opened (by size and modification time), so a quick edit never clobbers
+  an agent's work. It's for small changes; VS Code or Cursor over Remote-SSH
+  stays the tool for real editing.
+- **Distribution: build from source.** No signed or notarized builds, so no
+  Apple developer account (owner, 2026-11-22). An app built on your own Mac
+  isn't quarantined, so it opens normally. The README will explain how to build
+  it.
+- **Wails version:** v3 if it's out of beta when the work starts, otherwise v2.
+- **Layout:** the app's web-view dependencies (cgo, WebKit on Linux) must not
+  reach the `box` binary, which stays one static file with nothing to install.
+  The first step of the build decides between a nested Go module and a
+  separate command with build tags.
+
+## Remote desktop (phase 2)
+
+The plan's phase 2 adds a desktop to the VM (Xfce). The display design is
+modular: one server in the VM, reached over SSH, with any client.
+
+```
+VM: Xfce ── display server (guest loopback only)
+                 ▲
+                 │ SSH port forward (pinned keys; works over Tailscale too)
+                 │
+   ┌─────────────┴──────────────┐
+   browser (box desktop NAME)    desktop app (same web client, in its window)
+```
+
+- **The server listens only on the guest's loopback.** No new published port;
+  the SSH forward is the only way in, so it reuses the pinned SSH login.
+- **One web client** serves both the browser and the app. `box desktop NAME`
+  opens the forward and the browser; the app opens the same page in its window.
+- **Priority: low latency and low bandwidth** over image quality and extra
+  features (owner). A basic, responsive keyboard and mouse matter most.
+- **Favoured server: KasmVNC.** It's built for the browser. It mixes JPEG and
+  WebP and drops quality in areas with lots of motion, to save bandwidth. It
+  doesn't support ordinary VNC viewers, so macOS Screen Sharing wouldn't work.
+  The owner rates Screen Sharing as nice to have, not required.
+- **A spike decides** between KasmVNC, TigerVNC with noVNC (works with Screen
+  Sharing), and Selkies (WebRTC with a video codec; likely the least bandwidth
+  for motion, but heavier). It measures input latency, bandwidth (idle,
+  scrolling, video) and guest CPU on a 4 GiB VM.
+- **Clipboard and file transfer** are data channels between the VM and the
+  laptop. Copying from the VM to the laptop is off by default, or at least
+  always visible, so a compromised VM can't plant something you then paste.
+
+## Build order
+
+1. **CLI.** `box status`, `box logs [-f]`, `box top`, a richer `box ls`, and
+   `--json` on each. This settles the data types the app will use.
+2. **Desktop app.** Local VMs, level A for remote ones, terminal, files and
+   the light editor.
+3. **Remote desktop.** With phase 2's desktop in the VM: `box desktop NAME` and
+   the app's desktop tab, after the display-server spike.
+
+## Open questions
+
+- Whether `box doctor` runs on a schedule (and how often) or only on demand
+  with its last result kept.
+- How often the app checks remote hosts, and whether it backs off for hosts
+  that stay unreachable.
+- Where the app keeps its own settings (added hosts, window state), outside
+  box's host state.
+- Wails v2 or v3, and the module layout (above).
