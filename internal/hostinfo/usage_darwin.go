@@ -46,23 +46,20 @@ func (p ProcessUsage) Sample(ctx context.Context, instances []vm.Instance) map[s
 	}
 
 	var vmPIDs map[string]int
-	var starts map[int]unix.Timeval
-	if len(disks) > 0 {
-		starts = processStarts()
-		if len(starts) > 0 {
-			lsofCtx, stopLsof := context.WithTimeout(ctx, 600*time.Millisecond)
-			result, err := p.Runner.Run(lsofCtx, execx.Cmd{
-				Name: "/usr/sbin/lsof",
-				Args: []string{"-nP", "-F0pcfDin", "-c", "com.apple.Virtualization"},
-				Env:  []string{"LC_ALL=C"},
-			})
-			stopLsof()
-			if err == nil {
-				vmPIDs = virtualizationPIDs(result.Stdout, disks)
-				for path, pid := range vmPIDs {
-					if diskCounts[path] == 1 && starts[pid].Sec != 0 {
-						pids[pid] = struct{}{}
-					}
+	starts := processStarts()
+	if len(disks) > 0 && len(starts) > 0 {
+		lsofCtx, stopLsof := context.WithTimeout(ctx, 600*time.Millisecond)
+		result, err := p.Runner.Run(lsofCtx, execx.Cmd{
+			Name: "/usr/sbin/lsof",
+			Args: []string{"-nP", "-F0pcfDin", "-c", "com.apple.Virtualization"},
+			Env:  []string{"LC_ALL=C"},
+		})
+		stopLsof()
+		if err == nil {
+			vmPIDs = virtualizationPIDs(result.Stdout, disks)
+			for path, pid := range vmPIDs {
+				if diskCounts[path] == 1 && starts[pid].Sec != 0 {
+					pids[pid] = struct{}{}
 				}
 			}
 		}
@@ -71,7 +68,8 @@ func (p ProcessUsage) Sample(ctx context.Context, instances []vm.Instance) map[s
 	samples := make(map[string]UsageSample, len(targets))
 	for name, target := range targets {
 		sample := UsageSample{}
-		if agent, ok := processes[target.agentPID]; ok && hostagentCommand(agent.command, target.pidFile) {
+		if agent, ok := processes[target.agentPID]; ok && hostagentCommand(agent.command, target.pidFile) &&
+			sameProcess(starts[target.agentPID], processStart(target.agentPID)) {
 			agent.usage.Source = "hostagent"
 			sample.HostAgent = &agent.usage
 		}
@@ -148,7 +146,7 @@ func (p ProcessUsage) metrics(ctx context.Context, pids map[int]struct{}) map[in
 	}
 	slices.Sort(ids)
 	result, err := p.Runner.Run(ctx, execx.Cmd{
-		Name: "/bin/ps", Args: []string{"-ww", "-p", strings.Join(ids, ","), "-o", "pid=,%cpu=,rss=,etime=,command="},
+		Name: "/bin/ps", Args: []string{"-ww", "-p", strings.Join(ids, ","), "-o", "pid=,%cpu=,etime=,command="},
 		Env: []string{"LC_ALL=C"},
 	})
 	if err != nil {
@@ -157,21 +155,20 @@ func (p ProcessUsage) metrics(ctx context.Context, pids map[int]struct{}) map[in
 	processes := make(map[int]processMetrics, len(pids))
 	for line := range strings.SplitSeq(string(result.Stdout), "\n") {
 		fields := strings.Fields(line)
-		if len(fields) < 5 {
+		if len(fields) < 4 {
 			continue
 		}
 		pid, pidErr := strconv.Atoi(fields[0])
 		cpu, cpuErr := strconv.ParseFloat(fields[1], 64)
-		rss, rssErr := strconv.ParseUint(fields[2], 10, 54)
-		uptime, ok := elapsedSeconds(fields[3])
-		if pidErr != nil || cpuErr != nil || math.IsNaN(cpu) || math.IsInf(cpu, 0) || cpu < 0 || rssErr != nil || !ok {
+		uptime, ok := elapsedSeconds(fields[2])
+		if _, wanted := pids[pid]; !wanted || pidErr != nil || cpuErr != nil || math.IsNaN(cpu) || math.IsInf(cpu, 0) || cpu < 0 || !ok {
 			continue
 		}
 		command := strings.TrimLeft(line, " 	")
-		for _, field := range fields[:4] {
+		for _, field := range fields[:3] {
 			command = strings.TrimLeft(command[len(field):], " 	")
 		}
-		processes[pid] = processMetrics{Usage{PID: pid, CPUPercent: cpu, ResidentBytes: rss * 1024, UptimeSeconds: uptime}, command}
+		processes[pid] = processMetrics{Usage{PID: pid, CPUPercent: cpu, MemoryBytes: physicalFootprint(pid), UptimeSeconds: uptime}, command}
 	}
 	return processes
 }

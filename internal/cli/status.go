@@ -39,17 +39,23 @@ func printStatus(out io.Writer, status app.VMStatus) error {
 		}
 	}
 	if run := status.Provisioning; run != nil {
-		fmt.Fprintf(table, "Provisioning step\t%s\n", run.Step)
-		if run.Error != "" {
-			fmt.Fprintf(table, "Provisioning error\t%s\n", run.Error)
+		if run.FinishedAt != nil && run.Error == "" && status.State != "provision-failed" {
+			fmt.Fprintf(table, "Provisioned\t%s\n", run.FinishedAt.Local().Format("2006-01-02 15:04:05 MST"))
+		} else {
+			if run.Step != "" {
+				fmt.Fprintf(table, "Provisioning step\t%s\n", run.Step)
+			}
+			if run.Error != "" {
+				fmt.Fprintf(table, "Provisioning error\t%s\n", run.Error)
+			}
 		}
 	}
 	if status.Host != nil {
 		cpu, memory := hostUsage(status.Host)
-		fmt.Fprintf(table, "Host (%s)\t%s CPU, %s resident\n", hostSource(status), cpu, memory)
+		fmt.Fprintf(table, "Host (%s)\t%s CPU, %s footprint\n", hostSource(status), cpu, memory)
 		if status.HostAgent != nil {
 			cpu, memory = hostUsage(status.HostAgent)
-			fmt.Fprintf(table, "Hostagent\t%s CPU, %s resident\n", cpu, memory)
+			fmt.Fprintf(table, "Hostagent\t%s CPU, %s footprint\n", cpu, memory)
 		}
 	}
 	if status.Guest != nil {
@@ -65,7 +71,14 @@ func printStatus(out io.Writer, status app.VMStatus) error {
 		if port.Published {
 			publishing = port.HostURL
 		}
-		fmt.Fprintf(table, "TCP listener\t%s port %d, %s %s\n", port.Address, port.GuestPort, publishing, port.Process)
+		owners := make([]string, 0, len(port.Processes))
+		for _, process := range port.Processes {
+			owners = append(owners, fmt.Sprintf("%s (pid %d)", process.Name, process.PID))
+		}
+		if len(owners) > 0 {
+			publishing += " " + strings.Join(owners, ", ")
+		}
+		fmt.Fprintf(table, "TCP listener\t%s port %d, %s\n", port.Address, port.GuestPort, publishing)
 	}
 	for _, container := range status.Containers {
 		fmt.Fprintf(table, "Container\t%s %s %s (%s)\n", container.ID, container.Name, container.Image, container.Status)
@@ -105,7 +118,11 @@ func hostUsage(usage *hostinfo.Usage) (cpu, memory string) {
 	if usage == nil {
 		return "-", "-"
 	}
-	return fmt.Sprintf("%.1f%%", usage.CPUPercent), fmt.Sprintf("%.1f MiB", float64(usage.ResidentBytes)/(1<<20))
+	memory = "-"
+	if usage.MemoryBytes != nil {
+		memory = fmt.Sprintf("%.1f MiB", float64(*usage.MemoryBytes)/(1<<20))
+	}
+	return fmt.Sprintf("%.1f%%", usage.CPUPercent), memory
 }
 
 func hostSource(status app.VMStatus) string {

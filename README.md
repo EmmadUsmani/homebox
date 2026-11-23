@@ -104,7 +104,7 @@ guest port 8000 is `http://<mac>:10100` from the laptop.
 
 For example, run `box status main` to see which guest listeners have a
 published URL, or `box top main` to watch CPU, memory, load and disk usage.
-On macOS, host CPU and resident memory come from the Virtualization process.
+On macOS, host CPU and physical memory footprint come from the Virtualization process.
 `box status` also shows Lima's hostagent separately. If box cannot identify
 the VM process, it labels the hostagent-only measurements. Guest resource
 readings come from SSH.
