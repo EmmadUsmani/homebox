@@ -28,12 +28,9 @@ in the architecture). Left to do:
 
 ## Harden the SSH relay
 
-The relay now forwards only while the VM's host process runs, and laptops pin
-each VM's host keys, so an impostor on the driver's loopback port fails the
-host-key check. Left to do:
-
-- Verify that the live host process owns the driver SSH listener before
-  forwarding.
+Done. The relay verifies that the live host process owns the driver's SSH
+listener before dialing and checks that the same listener still belongs to
+that process before forwarding. `box doctor` records the ownership check.
 
 ## Resize a VM
 

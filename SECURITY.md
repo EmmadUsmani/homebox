@@ -63,7 +63,10 @@ Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-
 ### Your laptop and the VM
 
 - SSH lands in the VM, through a relay box runs only while the VM's host process
-  is alive. The VM's sshd drops a client that stops answering (within about
+  is alive. Before it dials the driver's loopback listener and again before
+  it forwards traffic, box checks the listener and host process identities.
+  Unverified ownership closes the connection and produces a rate-limited daemon
+  warning. The VM's sshd drops a client that stops answering (within about
   two minutes), so a laptop that sleeps, leaves or crashes doesn't leave
   sessions open in the VM. Lima's port forwarder doesn't pass a closed
   connection on to the guest, so without this they would stay open forever.
@@ -77,7 +80,9 @@ Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-
 `box doctor NAME` tests the boundary from inside a running VM. It checks that
 the VM reaches the internet but not the host's loopback services, its LAN
 interfaces or the router, and that the confined host processes can't read or
-write a canary file in your home folder. Run it after any change to the host or the VM's network.
+write a canary file in your home folder. The `ssh-relay-target-owner` check
+verifies the driver SSH listener on the host. Run doctor after any change to
+the host or the VM's network.
 
 `box status` and `box top` pull data over the existing SSH connection with
 bounded output and timeouts. The guest's answers are untrusted and used only

@@ -15,6 +15,9 @@ import (
 type Relay struct {
 	Listen string
 	Target string
+	// TargetListenerID returns zero when ownership cannot be verified.
+	TargetListenerID func(netip.AddrPort) uint64
+	TargetRefused    func(netip.AddrPort)
 }
 
 // Bind opens the relay's listener before serving any traffic.
@@ -72,19 +75,32 @@ func (r Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
 			}
 			return err
 		}
-		workers.Go(func() { forward(ctx, client, target) })
+		workers.Go(func() { r.forward(ctx, client, target) })
 	}
 }
 
-func forward(ctx context.Context, client *net.TCPConn, target netip.AddrPort) {
+func (r Relay) forward(ctx context.Context, client *net.TCPConn, target netip.AddrPort) {
 	defer client.Close()
 	dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
 	dialer := net.Dialer{}
 	var upstream net.Conn
 	for {
+		var listenerID uint64
+		if r.TargetListenerID != nil {
+			listenerID = r.TargetListenerID(target)
+			if listenerID == 0 {
+				r.refuse(target)
+				return
+			}
+		}
 		conn, err := dialer.DialContext(dialCtx, "tcp4", target.String())
 		if err == nil {
+			if r.TargetListenerID != nil && r.TargetListenerID(target) != listenerID {
+				conn.Close()
+				r.refuse(target)
+				return
+			}
 			upstream = conn
 			break
 		}
@@ -105,6 +121,12 @@ func forward(ctx context.Context, client *net.TCPConn, target netip.AddrPort) {
 	copies.Go(func() { pipe(server, client) })
 	pipe(client, server)
 	copies.Wait()
+}
+
+func (r Relay) refuse(target netip.AddrPort) {
+	if r.TargetRefused != nil {
+		r.TargetRefused(target)
+	}
 }
 
 func pipe(destination, source *net.TCPConn) {

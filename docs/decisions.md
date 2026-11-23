@@ -91,6 +91,13 @@ would need someone to log in after a restart. `limactl autostart` would start
 the VM without box's isolation. Hosts using autostart don't use FileVault, which
 holds the boot until someone types the password.
 
+**Verify the SSH listener in the relay process** (worker P, implementation,
+2026-11-22). Use the kernel's socket identity before and after dialing so a
+replacement listener cannot receive relayed bytes. The macOS check uses
+`proc_info` inside the existing Seatbelt profile, which denies forking and
+executing a tool such as `lsof`. See
+[networking and isolation](architecture.md#networking-and-isolation-macos).
+
 ## Observability and the desktop app
 
 Design: [observability.md](observability.md).

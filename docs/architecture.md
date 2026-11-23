@@ -132,9 +132,12 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
    confined if guest root changes its routing. The socket daemon discards
    IPv6 Ethernet frames and creates IPv4 host sockets only.
 4. The daemon opens the published SSH relay after observing the driver
-   host process. On macOS it closes the listener and active forwards on
-   a kqueue process-exit notification. `box stop` stops the guest before
-   releasing the daemon.
+   host process. It checks the listener and the watched process's kernel
+   start time before and after each upstream dial. On macOS the check reads
+   the host process's socket descriptors using `proc_info` inside Seatbelt.
+   The Linux implementation matches the listener inode to descriptors in
+   `/proc`. On macOS a kqueue process-exit notification closes the listener
+   and active forwards. `box stop` stops the guest before releasing the daemon.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
