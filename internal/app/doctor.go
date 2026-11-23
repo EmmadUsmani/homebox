@@ -82,6 +82,11 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		Name: "network-daemon", OK: s.Isolation.Running(box.Name),
 		Detail: "network daemon is not running",
 	})
+	if relay, ok := s.DoctorHost.(interface {
+		ProbeSSHRelay(string, int) doctor.Check
+	}); ok {
+		checks = append(checks, relay.ProbeSSHRelay(instance.HostPIDFile, state.DriverSSHPort(box.Index)))
+	}
 	result := state.DoctorResult{}
 	for _, check := range checks {
 		switch {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 	"net"
+	"net/netip"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -66,5 +68,46 @@ func TestRelayRetriesAndPreservesHalfClose(t *testing.T) {
 	}
 	if data, err := io.ReadAll(client); err != nil || string(data) != "response" {
 		t.Fatalf("client read %q: %v", data, err)
+	}
+}
+
+func TestRelayDropsConnectionWhenTargetChangesDuringDial(t *testing.T) {
+	upstream, err := net.ListenTCP("tcp4", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer upstream.Close()
+	var listenerID atomic.Uint64
+	r := Relay{
+		Listen: "127.0.0.1:0", Target: upstream.Addr().String(),
+		TargetListenerID: func(netip.AddrPort) uint64 { return listenerID.Add(1) },
+	}
+	listener, err := r.Bind()
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- r.Serve(ctx, listener) }()
+	defer func() {
+		cancel()
+		if err := <-done; err != nil {
+			t.Error(err)
+		}
+	}()
+	client, err := net.DialTCP("tcp4", nil, listener.Addr().(*net.TCPAddr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	upstream.SetDeadline(time.Now().Add(time.Second))
+	server, err := upstream.AcceptTCP()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer server.Close()
+	server.SetDeadline(time.Now().Add(time.Second))
+	if data, err := io.ReadAll(server); err != nil || len(data) != 0 {
+		t.Fatalf("unverified upstream read %q: %v", data, err)
 	}
 }
