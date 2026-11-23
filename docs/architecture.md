@@ -7,7 +7,9 @@ two disagree, plan.md wins.
 ## Packages
 
 ```
-cmd/box            main: wires concrete pieces together; no logic
+cmd/box            CLI entry point and network daemon dispatch
+desktop/           independent Go module with Wails and embedded React/Vite output
+internal/wiring    assembles the local app.Service for both entry points
 internal/cli       commands, flags, output; calls app, nothing else
 internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init, status, top, logs); the only place that knows the order of steps
@@ -37,12 +39,14 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 
 ## Dependency rules
 
-- `cli` → `app` → everything else. Nothing imports `cli` but `cmd/box`. `app`
-  defines the interfaces it needs (ports); only `cmd/box` and the adapters that
-  implement them (`internal/isolation`) import `app`.
-- Only `cmd/box` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
+- CLI and desktop both call `app` and get the local service from
+  `internal/wiring`. The desktop binds a read-only status adapter to the web
+  view. The CLI supplies its own executable to wiring for daemon launches.
+- Only `internal/wiring` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
   needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
+- Desktop dependencies stay in `desktop/go.mod`. The root module never
+  imports the desktop module or Wails.
 - Drivers know nothing about profiles, ports policy or egress. They get plain
   values (`vm.Spec`, `vm.StartOptions`).
 - `guest` knows nothing about drivers beyond `vm.Image`.
@@ -156,5 +160,8 @@ contains the process names and PIDs available from the guest's `ss` output.
 ## Testing
 
 - `go test ./...` runs unit tests only; they need no VM, network or Lima.
+- The macOS CI runner separately builds the desktop bundle. Native window
+  automation runs in a signed-in macOS session with Accessibility and Screen
+  Recording permissions. See the [spike](spikes/wails-desktop.md).
 - `HOMEBOX_E2E=1 go test ./e2e/...` boots real VMs on this machine.
 - `shellcheck` covers every script under `guest/`.

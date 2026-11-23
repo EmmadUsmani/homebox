@@ -5,20 +5,11 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 
-	guestfs "github.com/EmmadUsmani/homebox/guest"
-	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/cli"
-	"github.com/EmmadUsmani/homebox/internal/doctor"
-	"github.com/EmmadUsmani/homebox/internal/execx"
-	"github.com/EmmadUsmani/homebox/internal/guest"
-	"github.com/EmmadUsmani/homebox/internal/hostinfo"
 	"github.com/EmmadUsmani/homebox/internal/isolation"
-	"github.com/EmmadUsmani/homebox/internal/sshx"
-	"github.com/EmmadUsmani/homebox/internal/state"
-	"github.com/EmmadUsmani/homebox/internal/vm/lima"
 	"github.com/EmmadUsmani/homebox/internal/vmnet"
+	"github.com/EmmadUsmani/homebox/internal/wiring"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".
@@ -30,7 +21,7 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == isolation.DaemonCommand {
 		os.Exit(runDaemon(os.Args[2:]))
 	}
-	service, err := newService()
+	service, err := wiring.NewService(os.Executable)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "box:", err)
 		os.Exit(1)
@@ -48,40 +39,4 @@ func runDaemon(args []string) int {
 		return 1
 	}
 	return 0
-}
-
-func newService() (*app.Service, error) {
-	root, err := state.DefaultRoot()
-	if err != nil {
-		return nil, err
-	}
-	profiles, err := guest.NewCatalog(guestfs.FS)
-	if err != nil {
-		return nil, fmt.Errorf("load guest profiles: %w", err)
-	}
-	exe, err := os.Executable()
-	if err != nil {
-		return nil, err
-	}
-	runner := execx.OS{}
-	ssh := sshx.Client{Runner: runner}
-	store := &state.Store{Root: root}
-	limaHome := filepath.Join(root, "lima")
-	const limactl = "limactl"
-	return &app.Service{
-		Driver:        lima.New(lima.Options{Home: limaHome, Limactl: limactl, Runner: runner}),
-		Profiles:      profiles,
-		Store:         store,
-		GuestSSH:      ssh,
-		Isolation:     &isolation.Host{Store: store, Executable: exe, LimaHome: limaHome, Limactl: limactl},
-		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
-		HostCapacity:  hostinfo.System{},
-		HostUsage:     hostinfo.ProcessUsage{Runner: runner},
-		LocalHostName: ssh.LocalHostName,
-		OpenURL: func(ctx context.Context, url string) error {
-			_, err := runner.Run(ctx, execx.Cmd{Name: "open", Args: []string{url}})
-			return err
-		},
-		Progress: os.Stderr,
-	}, nil
 }
