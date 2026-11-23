@@ -2,6 +2,10 @@
 
 package hostinfo
 
-import "context"
+import (
+	"context"
 
-func (ProcessUsage) Sample(context.Context, string) *Usage { return nil }
+	"github.com/EmmadUsmani/homebox/internal/vm"
+)
+
+func (ProcessUsage) Sample(context.Context, []vm.Instance) map[string]UsageSample { return nil }

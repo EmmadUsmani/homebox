@@ -18,7 +18,9 @@ func checkStatus(t *testing.T, box func(time.Duration, ...string) string, binary
 	if err := json.Unmarshal([]byte(output), &status); err != nil {
 		t.Fatalf("status JSON: %v\n%s", err, output)
 	}
-	if status.State != "running" || status.Guest == nil || status.Guest.Memory == nil || status.Doctor == nil {
+	if status.State != "running" || status.Guest == nil || status.Guest.Memory == nil || status.Doctor == nil ||
+		status.Host == nil || status.Host.Source != "virtualization" || status.Host.PID <= 1 ||
+		status.HostAgent == nil || status.HostAgent.Source != "hostagent" || status.HostAgent.PID == status.Host.PID {
 		t.Fatalf("status is missing running VM data: %s", output)
 	}
 	published := false
@@ -36,7 +38,7 @@ func checkStatus(t *testing.T, box func(time.Duration, ...string) string, binary
 	var list []app.VMStatus
 	output = box(10*time.Second, "ls", "--json")
 	if err := json.Unmarshal([]byte(output), &list); err != nil || len(list) != 1 || list[0].Name != name ||
-		list[0].State != "running" || list[0].Guest != nil || list[0].Host == nil || list[0].UptimeSeconds == nil {
+		list[0].State != "running" || list[0].Guest != nil || list[0].Host == nil || list[0].Host.PID != status.Host.PID || list[0].UptimeSeconds == nil {
 		t.Fatalf("unexpected host-only listing (%v): %s", err, output)
 	}
 	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
@@ -54,7 +56,8 @@ func checkStatus(t *testing.T, box func(time.Duration, ...string) string, binary
 	signalErr := cmd.Process.Signal(os.Interrupt)
 	waitErr := cmd.Wait()
 	if decodeErr != nil || signalErr != nil || waitErr != nil || len(snapshot.VMs) != 1 ||
-		snapshot.VMs[0].Name != name || snapshot.VMs[0].Guest == nil {
+		snapshot.VMs[0].Name != name || snapshot.VMs[0].Guest == nil ||
+		snapshot.VMs[0].Host == nil || snapshot.VMs[0].Host.PID != status.Host.PID {
 		t.Fatalf("top JSON: decode %v, interrupt %v, wait %v, snapshot %+v", decodeErr, signalErr, waitErr, snapshot)
 	}
 }

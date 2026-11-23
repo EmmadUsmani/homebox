@@ -64,13 +64,9 @@ func printTop(out io.Writer, snapshot app.TopSnapshot) error {
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(table, "NAME\tHOST CPU\tHOST MEM\tHOST SOURCE\tGUEST LOAD\tGUEST MEM\tROOT DISK\tERRORS")
 	for _, status := range snapshot.VMs {
-		cpu, hostMemory := hostUsage(status)
+		cpu, hostMemory := hostUsage(status.Host)
 		load, guestMemory, disk := guestUsage(status)
-		source := "-"
-		if status.Host != nil {
-			source = status.Host.Source
-		}
-		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", status.Name, cpu, hostMemory, source, load, guestMemory, disk, strings.Join(status.Errors, ", "))
+		fmt.Fprintf(table, "%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n", status.Name, cpu, hostMemory, hostSource(status), load, guestMemory, disk, strings.Join(status.Errors, ", "))
 	}
 	return table.Flush()
 }

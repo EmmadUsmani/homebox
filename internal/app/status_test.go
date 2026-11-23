@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/EmmadUsmani/homebox/internal/hostinfo"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
@@ -135,5 +136,21 @@ func TestDenialsTail(t *testing.T) {
 	if err != nil || len(denials) != 20 || denials[0].Reason != "limit" || denials[0].Active == nil ||
 		*denials[0].Active != 0 || denials[1].Destination != "destination-24" || denials[19].Destination != "destination-6" {
 		t.Fatalf("denials=%+v err=%v", denials, err)
+	}
+}
+
+func TestStatusHostUsageFallback(t *testing.T) {
+	agent := &hostinfo.Usage{Source: "hostagent", PID: 10, UptimeSeconds: 4}
+	machine := &hostinfo.Usage{Source: "virtualization", PID: 20, UptimeSeconds: 3}
+	var fallback VMStatus
+	fallback.setHostUsage(hostinfo.UsageSample{HostAgent: agent})
+	if fallback.Host != agent || fallback.HostAgent != nil || *fallback.UptimeSeconds != 4 {
+		t.Fatalf("unexpected hostagent fallback: %+v", fallback)
+	}
+	uptime := uint64(2)
+	status := VMStatus{UptimeSeconds: &uptime}
+	status.setHostUsage(hostinfo.UsageSample{VM: machine, HostAgent: agent})
+	if status.Host != machine || status.HostAgent != agent || *status.UptimeSeconds != 2 {
+		t.Fatalf("unexpected VM metrics: %+v", status)
 	}
 }

@@ -71,9 +71,9 @@ type HostCapacity interface {
 	Capacity() (cpus int, memoryBytes uint64, err error)
 }
 
-// HostUsage samples the process associated with a driver PID file.
+// HostUsage samples host processes for a batch of running driver instances.
 type HostUsage interface {
-	Sample(context.Context, string) *hostinfo.Usage
+	Sample(context.Context, []vm.Instance) map[string]hostinfo.UsageSample
 }
 
 // Service implements the box use cases.

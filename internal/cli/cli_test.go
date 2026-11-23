@@ -184,9 +184,9 @@ func TestRemovalConfirmation(t *testing.T) {
 func TestListAndVersionOutput(t *testing.T) {
 	service := &stubApp{}
 	out, _, err := execute(t, service, false, "", "ls")
-	want := "NAME       STATUS   PROFILE  SSH   HTTP         HEALTH  UPTIME  HOST CPU  HOST MEM\n" +
-		"main       running  ubuntu   2201  10100-10199  never   -       -         -\n" +
-		"secondary  stopped  ubuntu   2202  -            never   -       -         -\n"
+	want := "NAME       STATUS   PROFILE  SSH   HTTP         HEALTH  UPTIME  HOST CPU  HOST MEM  HOST SOURCE\n" +
+		"main       running  ubuntu   2201  10100-10199  never   -       -         -         -\n" +
+		"secondary  stopped  ubuntu   2202  -            never   -       -         -         -\n"
 	if err != nil || out != want {
 		t.Fatalf("listing = %q, %v", out, err)
 	}

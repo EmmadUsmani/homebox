@@ -32,12 +32,12 @@ func listCommand(service Application) *cobra.Command {
 
 func printListing(out io.Writer, boxes []app.VMStatus) error {
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "NAME\tSTATUS\tPROFILE\tSSH\tHTTP\tHEALTH\tUPTIME\tHOST CPU\tHOST MEM")
+	fmt.Fprintln(table, "NAME\tSTATUS\tPROFILE\tSSH\tHTTP\tHEALTH\tUPTIME\tHOST CPU\tHOST MEM\tHOST SOURCE")
 	for _, box := range boxes {
-		cpu, memory := hostUsage(box)
-		fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+		cpu, memory := hostUsage(box.Host)
+		fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			box.Name, box.State, box.Profile, box.SSHPort, portRanges(box.Forwards),
-			doctorHealth(box), uptime(box), cpu, memory)
+			doctorHealth(box), uptime(box), cpu, memory, hostSource(box))
 	}
 	return table.Flush()
 }

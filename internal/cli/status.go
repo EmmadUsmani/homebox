@@ -8,6 +8,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
+	"github.com/EmmadUsmani/homebox/internal/hostinfo"
 	"github.com/spf13/cobra"
 )
 
@@ -44,8 +45,12 @@ func printStatus(out io.Writer, status app.VMStatus) error {
 		}
 	}
 	if status.Host != nil {
-		cpu, memory := hostUsage(status)
-		fmt.Fprintf(table, "Host (%s)\t%s CPU, %s resident\n", status.Host.Source, cpu, memory)
+		cpu, memory := hostUsage(status.Host)
+		fmt.Fprintf(table, "Host (%s)\t%s CPU, %s resident\n", hostSource(status), cpu, memory)
+		if status.HostAgent != nil {
+			cpu, memory = hostUsage(status.HostAgent)
+			fmt.Fprintf(table, "Hostagent\t%s CPU, %s resident\n", cpu, memory)
+		}
 	}
 	if status.Guest != nil {
 		load, memory, disk := guestUsage(status)
@@ -96,11 +101,21 @@ func uptime(status app.VMStatus) string {
 	return fmt.Sprintf("%dh%02dm%02ds", seconds/3600, seconds/60%60, seconds%60)
 }
 
-func hostUsage(status app.VMStatus) (cpu, memory string) {
-	if status.Host == nil {
+func hostUsage(usage *hostinfo.Usage) (cpu, memory string) {
+	if usage == nil {
 		return "-", "-"
 	}
-	return fmt.Sprintf("%.1f%%", status.Host.CPUPercent), fmt.Sprintf("%.1f MiB", float64(status.Host.ResidentBytes)/(1<<20))
+	return fmt.Sprintf("%.1f%%", usage.CPUPercent), fmt.Sprintf("%.1f MiB", float64(usage.ResidentBytes)/(1<<20))
+}
+
+func hostSource(status app.VMStatus) string {
+	if status.Host == nil {
+		return "-"
+	}
+	if status.Host.Source == "hostagent" {
+		return "hostagent only"
+	}
+	return status.Host.Source
 }
 
 func guestUsage(status app.VMStatus) (load, memory, disk string) {

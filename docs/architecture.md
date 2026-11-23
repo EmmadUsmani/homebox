@@ -27,7 +27,7 @@ internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    reads guest public host keys and renders OpenSSH config and pins
 internal/doctor    host-side controls and reporting for isolation checks
-internal/hostinfo  host sizing, process liveness and macOS hostagent resource usage
+internal/hostinfo  host sizing, process liveness and macOS VM resource usage
 internal/untrusted cleans text that came from a VM (escape sequences, control
                    characters) before box prints it
 internal/execx     a small process-runner interface, so code that shells out
@@ -138,12 +138,16 @@ records. Laptop exports use the same pins and the laptop's own identity.
 
 ## Status on the host
 
-`box ls` uses host-side records and reports Lima's hostagent uptime. `box
-status` and `box top` add guest readings by running the bundled read-only
-[probe](../guest/common/status.sh) over SSH. When guest uptime is available,
-these views use it. macOS host CPU and resident memory are attributed to the
-hostagent using the instance PID file and process arguments. Apple's separate
-Virtualization process is outside these readings.
+`box ls` reads host-side records and reports host process uptime. `box status`
+and `box top` add guest readings, including guest uptime when available, by
+running the bundled read-only [probe](../guest/common/status.sh) over SSH.
+
+On macOS, box matches a Virtualization process's open disk descriptor to the
+instance's exact disk path and file identity. It queries open files once per
+sample and checks that each matched PID retains the same kernel start time
+through the CPU and resident memory sample. The hostagent is identified by
+its PID file and command line. Its measurements appear separately, or as a
+labeled fallback when a Virtualization process cannot be identified.
 
 ## Testing
 

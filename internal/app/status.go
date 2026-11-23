@@ -24,6 +24,7 @@ type VMStatus struct {
 	Provisioning  *ProvisionState     `json:"provisioning,omitempty"`
 	UptimeSeconds *uint64             `json:"uptime_seconds,omitempty"`
 	Host          *hostinfo.Usage     `json:"host,omitempty"`
+	HostAgent     *hostinfo.Usage     `json:"hostagent,omitempty"`
 	Guest         *GuestStatus        `json:"guest,omitempty"`
 	Ports         []PortStatus        `json:"ports,omitempty"`
 	Containers    []ContainerStatus   `json:"containers,omitempty"`
@@ -100,7 +101,10 @@ func (s *Service) Status(ctx context.Context, name string) (VMStatus, error) {
 	if instance.Status == "" {
 		instance.Status = vm.StatusBroken
 	}
-	status := s.localStatus(ctx, Listing{Box: box, Status: instance.Status, instance: instance})
+	status := s.localStatus(Listing{Box: box, Status: instance.Status})
+	if instance.Status == vm.StatusRunning {
+		status.setHostUsage(s.sampleHost(ctx, []vm.Instance{instance})[name])
+	}
 	status.Denials, err = readDenials(filepath.Join(s.Store.BoxDir(name), "run", "vmnet.log"))
 	status.addError("network log", err)
 	if instance.Status == vm.StatusRunning {
@@ -115,9 +119,12 @@ func (s *Service) ListStatus(ctx context.Context) ([]VMStatus, error) {
 	if err != nil {
 		return nil, err
 	}
+	host := s.sampleHost(ctx, runningInstances(boxes))
 	statuses := make([]VMStatus, 0, len(boxes))
 	for _, box := range boxes {
-		statuses = append(statuses, s.localStatus(ctx, box))
+		status := s.localStatus(box)
+		status.setHostUsage(host[box.Name])
+		statuses = append(statuses, status)
 	}
 	return statuses, nil
 }
@@ -142,21 +149,26 @@ func (s *Service) Top(ctx context.Context, name string) (TopSnapshot, error) {
 	}
 	snapshot.VMs = make([]VMStatus, len(selected))
 	var probes sync.WaitGroup
+	var host map[string]hostinfo.UsageSample
+	probes.Go(func() { host = s.sampleHost(ctx, runningInstances(selected)) })
 	for index, box := range selected {
 		probes.Go(func() {
 			probeCtx, cancel := context.WithTimeout(ctx, 1800*time.Millisecond)
 			defer cancel()
 			status := VMStatus{Name: box.Name, State: string(box.Status)}
-			s.sampleHost(probeCtx, &status, box.instance)
 			s.probeGuest(probeCtx, &status, false)
 			snapshot.VMs[index] = status
 		})
 	}
 	probes.Wait()
+	for index := range snapshot.VMs {
+		status := &snapshot.VMs[index]
+		status.setHostUsage(host[status.Name])
+	}
 	return snapshot, nil
 }
 
-func (s *Service) localStatus(ctx context.Context, box Listing) VMStatus {
+func (s *Service) localStatus(box Listing) VMStatus {
 	status := VMStatus{
 		Name: box.Name, State: string(box.Status), Profile: box.Profile,
 		SSHPort: box.SSHPort, Forwards: box.Forwards,
@@ -169,9 +181,6 @@ func (s *Service) localStatus(ctx context.Context, box Listing) VMStatus {
 			StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
 			Step: untrusted.Line(run.Step), Error: untrusted.Line(run.Error),
 		}
-	}
-	if box.Status == vm.StatusRunning {
-		s.sampleHost(ctx, &status, box.instance)
 	}
 	status.Doctor, err = s.Store.LoadDoctorResult(box.Name)
 	status.addError("doctor record", err)
@@ -191,12 +200,32 @@ func provisionStatus(current string, run state.ProvisionRun, alive func(int) boo
 	}
 }
 
-func (s *Service) sampleHost(ctx context.Context, status *VMStatus, instance vm.Instance) {
-	if s.HostUsage != nil {
-		status.Host = s.HostUsage.Sample(ctx, instance.HostPIDFile)
-		if status.Host != nil {
-			status.UptimeSeconds = &status.Host.UptimeSeconds
+func runningInstances(boxes []Listing) []vm.Instance {
+	instances := make([]vm.Instance, 0, len(boxes))
+	for _, box := range boxes {
+		if box.Status == vm.StatusRunning {
+			instances = append(instances, box.instance)
 		}
+	}
+	return instances
+}
+
+func (s *Service) sampleHost(ctx context.Context, instances []vm.Instance) map[string]hostinfo.UsageSample {
+	if s.HostUsage == nil {
+		return nil
+	}
+	return s.HostUsage.Sample(ctx, instances)
+}
+
+func (status *VMStatus) setHostUsage(sample hostinfo.UsageSample) {
+	status.Host = sample.VM
+	status.HostAgent = sample.HostAgent
+	if status.Host == nil {
+		status.Host = sample.HostAgent
+		status.HostAgent = nil
+	}
+	if status.UptimeSeconds == nil && status.Host != nil {
+		status.UptimeSeconds = &status.Host.UptimeSeconds
 	}
 }
 
