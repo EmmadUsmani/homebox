@@ -1,6 +1,7 @@
 # Observability and the desktop app
 
-The local CLI status, top, list and logs commands are built. The owner agreed
+The CLI (status, top, list and logs) and the macOS desktop app are built; the
+remote desktop (step 3) is not. The owner agreed
 this design on 2026-11-22. The decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.

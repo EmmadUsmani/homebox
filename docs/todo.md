@@ -4,19 +4,13 @@ Work agreed in principle but not built yet, roughly in priority order. Each item
 says why it matters and the approach we lean towards; a spike settles the
 details. Anything that changes the design document waits for the owner.
 
-## Observability and the desktop app (phase 1b, next)
+## Observability and the desktop app (phase 1b)
 
 Agreed by the owner on 2026-11-22; design in [observability.md](observability.md).
-In order (step 1 is done):
+Steps 1 and 2 were built on 2026-11-22: the CLI (`box status`, `box top`,
+`box logs`, a richer `box ls`, `--json`) and the macOS desktop app (local and
+remote VMs, overview, logs, terminal, files and editor). Left:
 
-Step 1, the CLI (`box status`, `box top`, `box logs`, a richer `box ls` and
-`--json`), was built on 2026-11-22. Left:
-
-2. Desktop app with Wails: local VMs, remote VMs through the laptop's SSH
-   (unreachable, not running and host key changed shown as hints), an SSH
-   terminal, a file browser and a light Monaco editor. Keep its web-view
-   dependencies out of the `box` binary. The look is approved
-   ([design/desktop-app.md](design/desktop-app.md)); React with TypeScript.
 3. Remote desktop, with phase 2's desktop in the VM: a spike picks the server
    (KasmVNC favoured, against TigerVNC with noVNC and Selkies) for latency and
    bandwidth, then `box desktop NAME` and the app's desktop tab.

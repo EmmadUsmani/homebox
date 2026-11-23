@@ -55,8 +55,10 @@ same-machine use, pinned laptop SSH, file-confined host processes and UDP/ICMP
 egress. On 2026-11-22 a second Mac (an 8 GiB M2 Mac mini on macOS 27) hosted a
 VM that passed `box doctor`, and a laptop on the LAN reached it with pinned SSH
 and its published HTTP port, and the owner signed Claude Code and Codex in
-inside that VM. Phase 1b's first step, the observability CLI (`box status`,
-`box top`, `box logs`, `--json`), is built and in the e2e test.
+inside that VM. Phase 1b's first two steps are built: the observability CLI
+(`box status`, `box top`, `box logs`, `--json`, in the e2e test) and the macOS
+desktop app in `desktop/` (verified by driving the built app through
+Accessibility with the scripts in `desktop/scripts/`).
 [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
 [docs/architecture.md](docs/architecture.md) holds the code layout, dependency
 rules and known limitations; follow it.

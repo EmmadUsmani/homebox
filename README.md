@@ -215,7 +215,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
-- [Observability and the desktop app](docs/observability.md): status and live logs, plus the desktop app design.
+- [Observability and the desktop app](docs/observability.md): status, live logs and the desktop app.
 - [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
