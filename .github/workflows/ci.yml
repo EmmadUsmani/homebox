@@ -27,6 +27,9 @@ jobs:
         run: go vet ./...
       - name: go test
         run: go test -race ./...
+      - name: Build desktop bundle
+        if: matrix.os == 'macos-latest'
+        run: node desktop/scripts/build.js
 
   cross-build:
     name: Build ${{ matrix.goos }}/${{ matrix.goarch }}

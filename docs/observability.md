@@ -170,13 +170,13 @@ code runs on the laptop and on a host; on a host it also sees the local VMs.
   stays the tool for real editing.
 - **Distribution: build from source.** No signed or notarized builds, so no
   Apple developer account (owner, 2026-11-22). An app built on your own Mac
-  isn't quarantined, so it opens normally. The README will explain how to build
-  it.
-- **Wails version:** v3 if it's out of beta when the work starts, otherwise v2.
-- **Layout:** the app's web-view dependencies (cgo, WebKit on Linux) must not
-  reach the `box` binary, which stays one static file with nothing to install.
-  The first step of the build decides between a nested Go module and a
-  separate command with build tags.
+  isn't quarantined, so it opens normally. See the
+  [README](../README.md#desktop-status-spike-macos) for the source build.
+- **Wails version.** v3 reached stable on 2026-10-26. The skeleton uses v3.1.0.
+  See the [version and build checks](spikes/wails-desktop.md#version-and-build).
+- **Layout.** The nested `desktop/` Go module imports the shared app service.
+  Wails and the web view stay outside the root module and `box` builds with
+  cgo disabled. See the [dependency check](spikes/wails-desktop.md#module-layout).
 
 ## Remote desktop (phase 2)
 

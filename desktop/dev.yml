@@ -1,0 +1,13 @@
+dev_mode:
+  root_path: .
+  debounce: 1000
+  ignore:
+    dir: [bin, dist, frontend]
+    watched_extension: ["*.go"]
+  executes:
+    - cmd: npm --prefix frontend run dev
+      type: background
+    - cmd: go build -ldflags=-extldflags=-mmacosx-version-min=15.0 -o bin/homebox-dev .
+      type: blocking
+    - cmd: ./bin/homebox-dev
+      type: primary

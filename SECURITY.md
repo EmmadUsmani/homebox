@@ -81,6 +81,14 @@ bounded output and timeouts. The guest's answers are untrusted and used only
 for display. Box strips terminal controls and opens no listener or guest-to-host
 reporting channel for these commands.
 
+### Desktop status
+
+The packaged desktop app uses WKWebView's in-process Wails asset and binding
+handlers with embedded frontend files. Its sole binding calls the shared
+read-only local status service. The app opens no network listener and renders
+the returned JSON as text. The Vite development server
+listens only on host loopback and serves frontend files.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields

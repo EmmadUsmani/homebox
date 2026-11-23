@@ -32,7 +32,7 @@ describe it are true, in the same commit or the one right after.
 | [docs/architecture.md](docs/architecture.md) | Packages, dependencies, host state or known limitations change |
 | [docs/decisions.md](docs/decisions.md) | A decision is made or reversed: record why, the date and who made it |
 | [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |
-| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found |
+| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) |
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
 | [docs/images-and-sleep.md](docs/images-and-sleep.md) | Images or sleep are built, or a spike answers one of its questions |
 | [docs/observability.md](docs/observability.md) | Status, logs or the desktop app are built, or a spike answers one of its questions |

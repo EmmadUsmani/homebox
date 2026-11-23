@@ -170,6 +170,22 @@ when root in the guest changes its routes. Run `box doctor` to check.
 See [SECURITY.md](SECURITY.md) for the full security model, and the
 [architecture](docs/architecture.md) for known limitations.
 
+## Desktop status spike (macOS)
+
+Build from the repository root with Go 1.27.4, Xcode Command Line Tools and
+Node.js 22.12 or later (verified with 22.14.0 and npm 11.0.0). Keep
+`limactl` on your shell's PATH.
+
+```sh
+node desktop/scripts/build.js
+open --env "PATH=$PATH" desktop/dist/homebox.app
+```
+
+The window shows local VM status JSON and has a Refresh status button. The
+build installs the locked npm dependencies with `npm ci` and embeds the Vite
+output. It can run without a Wails CLI installation.
+See the [spike report](docs/spikes/wails-desktop.md) for the native GUI check.
+
 ## Development
 
 ```sh
@@ -185,7 +201,8 @@ shellcheck --shell=sh guest/*/*.sh
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
-- [Observability and the desktop app](docs/observability.md): status, health, live logs and a desktop app (the CLI is built; the app is next).
+- [Observability and the desktop app](docs/observability.md): status and live logs, plus the desktop app design.
 - [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
+- [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)

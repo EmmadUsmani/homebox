@@ -99,6 +99,11 @@ Design: [observability.md](observability.md).
 once in box's core; the CLI and the desktop app only display them, so both
 always show the same thing.
 
+**Desktop version and module** (2026-11-22, phase 1b spike worker). Pin Wails v3.1.0
+because v3 reached stable before work started. Use a nested Go module to keep
+the desktop build dependencies outside the root CLI module. The
+[spike](spikes/wails-desktop.md) records the build and accessibility evidence.
+
 **The host pulls status from the VM over SSH** (2026-11-22). A guest agent that
 reports to the host would open the VM→host channel that isolation blocks, and
 guest-reported data is untrusted anyway, so box only displays it.
