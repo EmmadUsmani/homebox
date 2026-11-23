@@ -356,7 +356,7 @@ run=$(date +%s)
 seq 1 500 | xargs -P 64 -I '{}' sh -eu -c '
     name="hb-$1-$2.example.com"
     # Quad9 rate-limits a burst like this from one address, even straight
-    # from the host, so spread it over resolvers that don't.
+    # from the host, so spread it over resolvers that do not.
     case $(($2 % 4)) in
         0) resolver=1.1.1.1 ;;
         1) resolver=8.8.8.8 ;;
