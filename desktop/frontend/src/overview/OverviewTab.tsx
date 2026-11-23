@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Call } from "@wailsio/runtime";
-import type { LocalStatus } from "../types";
+import type { LocalStatus, VMDetail } from "../types";
 
 const gib = 1024 ** 3;
 const number = new Intl.NumberFormat(undefined, { maximumFractionDigits: 1 });
@@ -19,13 +19,21 @@ function StorageCard({ title, used, total }: { title: string; used?: number; tot
     );
 }
 
-export function OverviewTab({ status, showNetworkLogs }: { status: LocalStatus; showNetworkLogs: () => void }) {
+type OverviewProps = { kind: "local"; status: LocalStatus; showNetworkLogs: () => void } |
+    { kind: "remote"; status: VMDetail };
+
+export function OverviewTab(props: OverviewProps) {
+    const status = props.status;
+    const local = props.kind === "local" ? props.status : undefined;
     const [openError, setOpenError] = useState("");
-    const usage = status.host ?? status.hostagent;
+    const usage = local?.host ?? local?.hostagent;
     const agents = status.agents ?? [];
     const ports = status.ports ?? [];
-    const denials = (status.denials ?? []).slice(0, 5);
+    const denials = (local?.denials ?? []).slice(0, 5);
     const load = status.guest?.load?.[0];
+    const memory = status.guest?.memory;
+    const processes = status.guest?.processes ?? [];
+    const containers = status.containers ?? [];
 
     async function openPort(port: number) {
         setOpenError("");
@@ -41,12 +49,13 @@ export function OverviewTab({ status, showNetworkLogs }: { status: LocalStatus; 
             {!!status.errors?.length && <p className="notice" role="status">Some readings are unavailable or stale. {status.errors.join(" · ")}</p>}
             <div className="metrics">
                 <section className="card">
-                    <div className="muted">{status.hostagent && !status.host ? "CPU (Lima hostagent)" : "CPU (seen from the Mac)"}</div>
-                    <div className="metric">{usage ? `${number.format(usage.cpu_percent)}%` : "—"}</div>
-                    <div className="muted">{status.cpus} cores{load !== undefined && ` · load ${load.toFixed(2)}`}</div>
+                    <div className="muted">{local ? local.hostagent && !local.host ? "CPU (Lima hostagent)" : "CPU (seen from the Mac)" : "Guest load"}</div>
+                    <div className="metric">{local ? usage ? `${number.format(usage.cpu_percent)}%` : "—" : load?.toFixed(2) ?? "—"}</div>
+                    {local && <div className="muted">{local.cpus} cores{load !== undefined && ` · load ${load.toFixed(2)}`}</div>}
                 </section>
-                <StorageCard title={status.hostagent && !status.host ? "Memory (Lima hostagent)" : "Memory"}
-                    used={usage?.memory_bytes} total={status.memory_gib * gib} />
+                <StorageCard title={local?.hostagent && !local.host ? "Memory (Lima hostagent)" : "Memory"}
+                    used={local ? usage?.memory_bytes : memory?.used_bytes}
+                    total={local ? local.memory_gib * gib : memory?.total_bytes} />
                 <StorageCard title="Disk" used={status.guest?.disk?.used_bytes} total={status.guest?.disk?.total_bytes} />
                 <section className="card">
                     <div className="muted">Coding agents</div>
@@ -60,16 +69,16 @@ export function OverviewTab({ status, showNetworkLogs }: { status: LocalStatus; 
                     {openError && <p className="notice" role="alert">{openError}</p>}
                     {!ports.length && <p className="muted">{status.guest ? "No listening servers" : "Guest readings unavailable"}</p>}
                     {ports.map((port) => (
-                        <div className="detail-row" key={`${port.address}:${port.guest_port}`}>
+                        <div className="detail-row" key={`${port.address}:${port.guest_port}`} role="group" aria-label={`Server port ${port.guest_port}`}>
                             <code title={port.address}>:{port.guest_port}</code>
                             <span className="description">{port.processes?.map((process) => `${process.name} (pid ${process.pid})`).join(", ") || port.address}</span>
-                            {port.published && port.host_url
+                            {local && (port.published && port.host_url
                                 ? <a href={port.host_url} onClick={(event) => { event.preventDefault(); void openPort(port.guest_port); }}>Open in browser</a>
-                                : <span className="muted">not published</span>}
+                                : <span className="muted">not published</span>)}
                         </div>
                     ))}
                 </section>
-                <section className="card">
+                {props.kind === "local" ? <section className="card">
                     <h2>Blocked network attempts</h2>
                     {!denials.length && <p className="muted">No recent blocked attempts</p>}
                     {denials.map((denial, index) => (
@@ -81,10 +90,24 @@ export function OverviewTab({ status, showNetworkLogs }: { status: LocalStatus; 
                         </div>
                     ))}
                     <div className="detail-row">
-                        <button className="text-button" onClick={showNetworkLogs}>See all in Logs</button>
+                        <button className="text-button" onClick={props.showNetworkLogs}>See all in Logs</button>
                     </div>
-                </section>
+                </section> : <section className="card">
+                    <h2>Top processes</h2>
+                    {!processes.length && <p className="muted">No guest processes reported</p>}
+                    {processes.map((process, index) => <div className="detail-row" key={index}>
+                        <span className="description">{process.name} (pid {process.pid})</span>
+                        <span className="muted">{number.format(process.cpu_percent)}% CPU</span>
+                    </div>)}
+                </section>}
+                {!local && containers.length > 0 && <section className="card">
+                    <h2>Containers</h2>
+                    {containers.map((container, index) => <div className="detail-row" key={index}>
+                        <span className="description">{container.name}</span><span className="muted">{container.status}</span>
+                    </div>)}
+                </section>}
             </div>
+            {!local && <p className="muted">Host CPU, memory footprint, published ports, provisioning, isolation checks and blocked network attempts are only visible on the host Mac.</p>}
         </div>
     );
 }

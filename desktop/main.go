@@ -19,6 +19,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	remote, err := newRemote(service.Profiles)
+	if err != nil {
+		log.Fatal(err)
+	}
 	frontend, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {
 		log.Fatal(err)
@@ -33,6 +37,7 @@ func main() {
 	desktop.RegisterService(application.NewService(&Local{
 		box: service, load: service.Store.Load, findTool: exec.LookPath, emit: desktop.Event.Emit,
 	}))
+	desktop.RegisterService(application.NewService(remote))
 	desktop.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "homebox", URL: "/", Width: 1280, Height: 800, MinWidth: 850, MinHeight: 540,
 		BackgroundColour: application.NewRGB(15, 17, 21),

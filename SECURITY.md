@@ -91,6 +91,11 @@ profile as a CLI start. The app serves no network API. Running doctor explicitly
 opens its short-lived diagnostic canaries, as in the CLI. The Vite development
 server listens only on host loopback and serves frontend files.
 
+Remote status runs the bounded, read-only guest probe over the laptop's own
+SSH login. Each check verifies the pinned key in `homebox_known_hosts` and
+disables agent forwarding, X11 forwarding, port forwarding and SSH
+connection sharing.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields

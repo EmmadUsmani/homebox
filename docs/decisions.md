@@ -149,6 +149,13 @@ one web client used by the browser and the app. KasmVNC is favoured, pending a
 spike against TigerVNC with noVNC and Selkies. macOS Screen Sharing is nice to
 have (owner), and KasmVNC doesn't support it.
 
+**Remote host inventory and refresh** (worker M, implementation, 2026-11-22).
+Keep aliases in the macOS user application-support directory so they are
+independent of box's host records. Refresh each alias separately every 15
+seconds with backoff up to 2 minutes after failure, so a sleeping Mac uses
+fewer connection attempts while reachable guests keep reporting.
+See [desktop implementation decisions](observability.md#desktop-implementation-decisions).
+
 ## Outside projects
 
 **devvm: ideas only** (owner, 2026-11-21). MIT-licensed, and the source of the

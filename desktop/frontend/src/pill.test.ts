@@ -7,6 +7,11 @@ it.each([
     ["broken", "Broken", "bad"],
     ["provisioning", "Provisioning", "warn"],
     ["provision-failed", "Provisioning failed", "bad"],
+    ["reachable", "Reachable", "good"],
+    ["unreachable", "Unreachable", "bad"],
+    ["not-running", "VM not running", "idle"],
+    ["connection-broken", "Connection broken", "warn"],
+    ["host-key-changed", "Key changed", "warn"],
     ["toString", "toString", "idle"],
     ["", "Unknown", "idle"],
 ])("maps %s to a labelled pill", (state, label, tone) => {
