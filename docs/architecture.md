@@ -44,6 +44,8 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   web view; its daemon executable is the sibling `box` inside the bundle.
   Desktop wiring supplies standard Homebrew and system tool paths on launch.
   The CLI retains its environment and supplies its own daemon executable.
+  The desktop's [SSH source](../internal/app/remote.go) uses the laptop's
+  OpenSSH configuration and shares the local probe's parser and limits.
 - Only `internal/wiring` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
   needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
@@ -75,6 +77,10 @@ original if it exists.
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```
+
+The desktop stores added SSH aliases in its own
+[`settings.json`](observability.md#desktop-implementation-decisions).
+The laptop's SSH config and pins stay under `~/.ssh`.
 
 ## Ports
 

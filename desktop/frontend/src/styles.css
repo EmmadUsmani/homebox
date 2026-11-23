@@ -77,6 +77,7 @@ h2 { margin: 0 0 12px; font-size: 14px; font-weight: 600; }
 .workspace { flex: 1; min-height: 0; display: flex; }
 .sidebar {
     flex: 0 0 clamp(240px, 20vw, 280px);
+    min-width: 0;
     min-height: 0;
     display: flex;
     flex-direction: column;
@@ -175,7 +176,7 @@ progress::-webkit-progress-value { background: var(--accent); border-radius: 3px
     border-top: 1px solid var(--border);
     font-size: 13px;
 }
-.detail-row > :last-child { text-align: right; }
+.detail-row > :last-child:not(.description) { text-align: right; }
 .description { flex: 1; min-width: 0; color: var(--secondary); }
 .text-button { height: auto; padding: 0; border: 0; background: transparent; font-size: 13px; text-decoration: underline; }
 .logs { flex: 1; min-height: 0; display: flex; flex-direction: column; }

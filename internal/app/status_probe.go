@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"math"
 	"net"
 	"net/netip"
@@ -55,26 +56,35 @@ func (s *Service) probeGuest(ctx context.Context, status *VMStatus, detail bool)
 	if detail {
 		env = map[string]string{"HOMEBOX_STATUS_MODE": "detail"}
 	}
-	stdout := &cappedGuestOutput{limit: 248 << 10, cancel: cancel}
-	stderr := &cappedGuestOutput{limit: 8 << 10, cancel: cancel}
-	err = s.GuestSSH.RunScript(ctx, endpoint, script, env, false, stdout, stderr)
-	switch {
-	case stdout.exceeded || stderr.exceeded:
-		status.addError("guest probe", errGuestOutputLimit)
-	case ctx.Err() != nil:
-		status.addError("guest probe", ctx.Err())
-	case err != nil:
+	err = runGuestProbe(ctx, cancel, status, detail, func(stdout, stderr io.Writer) error {
+		return s.GuestSSH.RunScript(ctx, endpoint, script, env, false, stdout, stderr)
+	})
+	matchPorts(status.Ports, status.Forwards)
+	if err != nil {
 		status.addError("guest probe", err)
 	}
+}
+
+func runGuestProbe(ctx context.Context, cancel context.CancelFunc, status *VMStatus, detail bool, run func(io.Writer, io.Writer) error) error {
+	stdout := &cappedGuestOutput{limit: 248 << 10, cancel: cancel}
+	stderr := &cappedGuestOutput{limit: 8 << 10, cancel: cancel}
+	err := run(stdout, stderr)
 	complete := ""
 	if end := bytes.LastIndexByte(stdout.buffer.Bytes(), '\n'); end >= 0 {
 		complete = string(stdout.buffer.Bytes()[:end+1])
 	}
 	parseGuestStatus(complete, status, detail)
-	matchPorts(status.Ports, status.Forwards)
-	if status.Guest == nil && len(status.Errors) == 0 {
-		status.addError("guest probe", errors.New("no usable resource readings"))
+	switch {
+	case stdout.exceeded || stderr.exceeded:
+		return errGuestOutputLimit
+	case ctx.Err() != nil:
+		return ctx.Err()
+	case err != nil:
+		return err
+	case status.Guest == nil:
+		return errors.New("no usable resource readings")
 	}
+	return nil
 }
 
 func parseGuestStatus(output string, status *VMStatus, detail bool) {
@@ -193,7 +203,7 @@ var listenerProcessEntry = regexp.MustCompile(`^\(("(?:[^"\\\r\n]|\\.){1,128}"),
 
 func parseListenerProcesses(field string) []ListenerProcess {
 	const maxProcesses = 16
-	entries, ok := strings.CutPrefix(field, "users:(")
+	entries, ok := strings.CutPrefix(strings.TrimSpace(field), "users:(")
 	if !ok {
 		return nil
 	}

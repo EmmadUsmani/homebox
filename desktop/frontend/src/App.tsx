@@ -4,8 +4,10 @@ import { FilesTab } from "./files/FilesTab";
 import { LogsTab, type LogSource } from "./logs/LogsTab";
 import { OverviewTab } from "./overview/OverviewTab";
 import { statePill } from "./pill";
+import { AddRemoteHost, RemoteView } from "./remote/RemoteView";
+import { useRemoteHosts } from "./remote/useRemoteHosts";
 import { TerminalTab } from "./terminal/TerminalTab";
-import type { DoctorResult, LocalStatus, RemoteVM, VMRef, VMStatus } from "./types";
+import type { DoctorResult, LocalStatus, VMRef, VMStatus } from "./types";
 import { usePolling } from "./usePolling";
 import "./styles.css";
 
@@ -13,9 +15,6 @@ const tabs = ["Overview", "Logs", "Terminal", "Files"] as const;
 type Tab = typeof tabs[number];
 type Action = "Start" | "Stop" | "Doctor";
 const progress: Record<Action, string> = { Start: "Starting VM…", Stop: "Stopping VM…", Doctor: "Running isolation checks…" };
-
-// Remote inventory will come from the other-host service.
-const remoteHosts: RemoteVM[] = [];
 
 const listLocal = (): Promise<VMStatus[]> => Call.ByName("main.Local.ListStatus");
 const readLocal = (name: string): Promise<LocalStatus> => Call.ByName("main.Local.Status", name);
@@ -45,11 +44,11 @@ function DoctorPill({ result }: { result?: DoctorResult }) {
     </span>;
 }
 
-function VMRow({ name, host, state, selected, select }: {
-    name: string; host?: string; state: string; selected: boolean; select: () => void;
+function VMRow({ id, name, host, state, selected, select }: {
+    id?: string; name: string; host?: string; state: string; selected: boolean; select: () => void;
 }) {
     const pill = statePill(state);
-    return <button type="button" className="vm-row" aria-current={selected} onClick={select}>
+    return <button type="button" id={id} className="vm-row" aria-current={selected} onClick={select}>
         <Dot tone={pill.tone} /><span className="vm-name" title={name}>{name}
             {host && <span className="muted"> · {host}</span>}</span>
         <span className="muted row-state">{pill.label.toLowerCase()}</span>
@@ -57,6 +56,7 @@ function VMRow({ name, host, state, selected, select }: {
 }
 
 export default function App() {
+    const remoteHosts = useRemoteHosts();
     const [selection, setSelection] = useState<VMRef>();
     const [tab, setTab] = useState<Tab>("Overview");
     const [logSource, setLogSource] = useState<LogSource>("");
@@ -66,11 +66,11 @@ export default function App() {
     const inventory = usePolling("local", listLocal, revision);
     const localVMs = inventory?.data ?? [];
     const selectedLocal = localVMs.find((vm) => selection?.kind === "local" && selection.name === vm.name);
-    const remote = remoteHosts.find((vm) => selection?.kind === "remote" && selection.alias === vm.id);
+    const remote = remoteHosts.vms.find((vm) => selection?.kind === "remote" && selection.alias === vm.id);
     const local = remote ? undefined : selectedLocal ?? localVMs[0];
     const vm: VMRef | undefined = local ? { kind: "local", name: local.name } : remote ? { kind: "remote", alias: remote.id } : undefined;
     const detail = usePolling(tab === "Overview" ? local?.name : undefined, readLocal, revision, retainGuestReadings);
-    const current = detail?.data ?? local ?? remote;
+    const current = remote ? remote.check?.status : detail?.data ?? local;
     const pill = statePill(current?.state ?? "");
     const running = local?.state === "running";
     const transitioning = local?.state === "provisioning";
@@ -110,18 +110,22 @@ export default function App() {
                             selected={local?.name === entry.name} select={() => select({ kind: "local", name: entry.name })} />)}
                         {inventory?.error && <p className="notice" role="status">{inventory.error}</p>}
                         <h2>Other hosts</h2>
-                        {remoteHosts.map((entry) => <VMRow key={entry.id} name={entry.name} host={entry.host} state={entry.state}
+                        {remoteHosts.vms.map((entry) => <VMRow key={entry.id} id={`remote-row-${entry.id}`} name={entry.name}
+                            host={entry.host} state={entry.check?.state ?? (entry.error ? "Check failed" : "Checking")}
                             selected={remote?.id === entry.id} select={() => select({ kind: "remote", alias: entry.id })} />)}
+                        {remoteHosts.error && <p className="notice" role="alert">{remoteHosts.error}</p>}
                     </div>
-                    <button className="add-host" disabled>Add a host</button>
+                    <AddRemoteHost add={remoteHosts.add} />
                 </nav>
                 <main>
-                    {vm && current ? <>
+                    {remote && remote.check?.state !== "reachable"
+                        ? <RemoteView key={remote.id} vm={remote} checkAgain={() => void remoteHosts.check(remote.id)} />
+                        : vm && current ? <>
                         <header className="vm-header">
                             <h1>{current.name}</h1>
                             <span className={`pill ${pill.tone}`}>
                                 <Dot tone={pill.tone} />{pill.label}
-                                {local?.uptime_seconds !== undefined && running && ` · up ${uptime(local.uptime_seconds)}`}
+                                {current.uptime_seconds !== undefined && (running || remote) && ` · up ${uptime(current.uptime_seconds)}`}
                             </span>
                             {local && <DoctorPill result={local.doctor} />}
                             <span className="spacer" />
@@ -129,9 +133,10 @@ export default function App() {
                                 <button disabled={!running || !!pending} onClick={() => void run("Doctor")}>Run doctor</button>
                                 <button disabled={transitioning || !!pending} onClick={() => void run(running ? "Stop" : "Start")}>{running ? "Stop" : "Start"}</button>
                             </>}
+                            {remote && <button disabled={remote.checking} onClick={() => void remoteHosts.check(remote.id)}>Check again</button>}
                             <button className="primary" onClick={() => setTab("Terminal")}>Open terminal</button>
                         </header>
-                        {pending && <p className="notice header-notice" role="status">{progress[pending]}</p>}
+                        {local && pending && <p className="notice header-notice" role="status">{progress[pending]}</p>}
                         {actionError && <p className="notice header-notice" role="alert">{actionError}</p>}
                         {local?.provisioning?.step && <p className="notice header-notice" role="status">
                             {local.provisioning.step}{local.provisioning.error && ` · ${local.provisioning.error}`}
@@ -145,11 +150,11 @@ export default function App() {
                                 {detail?.error && <p className="notice header-notice" role="status">
                                     {detail.data ? "Showing stale status. " : ""}{detail.error}
                                 </p>}
-                                {detail?.data && <OverviewTab key={local.name} status={detail.data} showNetworkLogs={() => showLogs("net")} />}
+                                {detail?.data && <OverviewTab key={local.name} kind="local" status={detail.data} showNetworkLogs={() => showLogs("net")} />}
                                 {!detail?.data && !detail?.error && <p className="content muted" role="status">Loading VM status…</p>}
-                            </> : <p className="content">{remote?.hint}</p>)}
+                            </> : <OverviewTab key={remote?.id} kind="remote" status={current} />)}
                             {tab === "Logs" && (local ? <LogsTab key={`${local.name}:${logSource}`} name={local.name} initialSource={logSource} />
-                                : <p className="content">Logs are available for local VMs.</p>)}
+                                : <p className="content">View guest logs for this VM from its host Mac.</p>)}
                             {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} />}
                             {tab === "Files" && <FilesTab key={local?.name ?? remote?.id} vm={vm} />}
                         </div>

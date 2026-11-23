@@ -112,7 +112,11 @@ VM, set up by the [laptop installer](../README.md). Call this level A; it's the
 only level adopted. Two others were explored and turned down (below).
 
 **Which VMs:** the hosts in `~/.ssh/homebox_config` (written by the installer),
-plus any the user adds in the app.
+plus any the user adds in the app. Add a host accepts an existing SSH alias
+using letters, digits, dots, hyphens or underscores and starting with a letter
+or digit. The VM's key must be pinned in `homebox_known_hosts`. The remote
+Overview shows guest readings. For remote logs, the app directs users to
+the VM's host Mac.
 
 **What the app can tell about each one.** box checks each host on a timer and
 reports what it found as a hint, not a diagnosis:
@@ -224,12 +228,21 @@ VM: Xfce ── display server (guest loopback only)
 3. **Remote desktop.** With phase 2's desktop in the VM: `box desktop NAME` and
    the app's desktop tab, after the display-server spike.
 
+## Desktop implementation decisions
+
+- Check each SSH alias independently on launch, on window focus and when
+  **Check again** is pressed. Reachable VMs refresh every 15 seconds.
+  Failed checks back off from 15 seconds to at most 2 minutes. A successful
+  check resets the interval.
+- The app stores added aliases in
+  `~/Library/Application Support/homebox/settings.json` with mode 0600 and
+  atomic replacement. Window state can use the same file when implemented.
+- The SSH status service uses `/usr/bin/ssh`. Native verification can point
+  the app at copies via `HOMEBOX_DESKTOP_SSH_CONFIG`,
+  `HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS` and `HOMEBOX_DESKTOP_SETTINGS`.
+
 ## Open questions
 
 - Whether `box doctor` runs on a schedule (and how often) or only on demand
   with its last result kept.
-- How often the app checks remote hosts, and whether it backs off for hosts
-  that stay unreachable.
-- Where the app keeps its own settings (added hosts, window state), outside
-  box's host state.
 - Wails v2 or v3, and the module layout (above).

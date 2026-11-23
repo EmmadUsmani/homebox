@@ -1,13 +1,5 @@
 export type VMRef = { kind: "local"; name: string } | { kind: "remote"; alias: string };
 
-export interface RemoteVM {
-    id: string;
-    name: string;
-    host: string;
-    state: string;
-    hint: string;
-}
-
 export interface DoctorResult {
     checked_at: string;
     passed: number;
@@ -35,12 +27,14 @@ interface Storage {
     used_bytes: number;
 }
 
-export interface LocalStatus extends VMStatus {
-    cpus: number;
-    memory_gib: number;
-    host?: Usage;
-    hostagent?: Usage;
-    guest?: { load?: number[]; disk?: Storage };
+export interface VMDetail extends VMStatus {
+    guest?: {
+        load?: number[];
+        memory?: Storage;
+        disk?: Storage;
+        processes?: { pid: number; name: string; cpu_percent: number }[];
+    };
+    containers?: { id: string; name: string; image: string; status: string }[];
     agents?: { pid: number; name: string; cwd?: string }[];
     ports?: {
         address: string;
@@ -49,5 +43,12 @@ export interface LocalStatus extends VMStatus {
         host_url?: string;
         processes?: { pid: number; name: string }[];
     }[];
+}
+
+export interface LocalStatus extends VMDetail {
+    cpus: number;
+    memory_gib: number;
+    host?: Usage;
+    hostagent?: Usage;
     denials?: { time: string; msg: string; protocol?: string; destination?: string; reason?: string }[];
 }

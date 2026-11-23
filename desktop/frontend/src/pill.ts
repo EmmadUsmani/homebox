@@ -6,8 +6,10 @@ const states: Record<string, { label: string; tone: string }> = {
     "provision-failed": { label: "Provisioning failed", tone: "bad" },
     "provision-interrupted": { label: "Provisioning interrupted", tone: "warn" },
     reachable: { label: "Reachable", tone: "good" },
-    unreachable: { label: "Unreachable", tone: "warn" },
-    "key changed": { label: "Key changed", tone: "warn" },
+    unreachable: { label: "Unreachable", tone: "bad" },
+    "connection-broken": { label: "Connection broken", tone: "warn" },
+    "not-running": { label: "VM not running", tone: "idle" },
+    "host-key-changed": { label: "Key changed", tone: "warn" },
 };
 
 export function statePill(state: string) {

@@ -185,6 +185,12 @@ The app lists local VMs and shows their status, resources, listening servers,
 network denials and live logs. Start, stop and run doctor from the window.
 Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
 and includes the matching `box` executable for the network daemon.
+Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for
+another SSH alias pinned in `~/.ssh/homebox_known_hosts`. Reachable VMs show
+live guest readings. A changed or missing pin blocks the connection. After an
+intentional rebuild, run `box repin NAME` on the VM's host and reinstall the
+laptop SSH config.
+
 See the [spike report](docs/spikes/wails-desktop.md) for the build background.
 
 ## Development

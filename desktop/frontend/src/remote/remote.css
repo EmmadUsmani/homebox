@@ -1,0 +1,49 @@
+.remote-view { min-height: 0; overflow: auto; overflow-wrap: anywhere; }
+.remote-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 20px var(--gutter) 16px;
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+}
+.remote-header h1 { color: var(--text); }
+.remote-age { margin-left: auto; font-size: 12px; }
+.remote-content { display: grid; gap: 20px; padding: 24px var(--gutter) 28px; }
+.remote-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.remote-key-alert {
+    display: grid;
+    gap: 10px;
+    padding: 18px 20px;
+    border: 1px solid #7a4d16;
+    border-radius: 12px;
+    background: #2a1e0f;
+    color: #f3dfc2;
+}
+.remote-key-alert h2, .remote-hint h3 { display: flex; align-items: center; gap: 10px; margin: 0; }
+.remote-key-alert h2 { color: #ffd39a; font-size: 16px; }
+.remote-key-alert p { max-width: 760px; line-height: 1.5; margin: 0; }
+.remote-key-alert code { background: #1a130a; padding: 2px 6px; border-radius: 4px; }
+.remote-key-alert button:first-child { border-color: #7a4d16; background: #3a2a14; color: #ffe2b8; }
+.remote-subtitle { margin: 0; }
+.remote-subtitle, .remote-hint h3 { font-size: 14px; color: var(--secondary); font-weight: 600; }
+.remote-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+.remote-hint { display: grid; align-content: start; gap: 7px; }
+.remote-hint[aria-current=true] { border-color: var(--accent); }
+.remote-hint p { margin: 0; font-size: 13px; color: var(--secondary); }
+.remote-content small, .remote-add-form small { color: var(--muted); }
+.remote-dot { display: inline-block; flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #8b94a5; }
+.remote-dot[data-state=reachable] { background: var(--good); }
+.remote-dot[data-state=unreachable] { background: var(--bad); }
+.remote-dot[data-state=connection-broken], .remote-dot[data-state=host-key-changed] { background: var(--warn); }
+.remote-add-form { display: grid; gap: 8px; }
+.remote-add-form input {
+    width: 100%;
+    min-height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--button-border);
+    border-radius: var(--button-radius);
+    background: var(--sidebar);
+    color: var(--text);
+}
