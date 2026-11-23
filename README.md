@@ -185,7 +185,11 @@ The app lists local VMs and shows their status, resources, listening servers,
 network denials and live logs. Start, stop and run doctor from the window.
 **Open terminal** starts a pinned SSH session. The session tabs share a
 connection and run separate shells. For remote VMs, the app offers SSH agent
-keys first, then tries unencrypted default SSH keys.
+keys first, then tries unencrypted default SSH keys. **Files** browses the
+selected VM over SFTP, starting in the SSH user's home directory. Upload and
+download use native file dialogs. Open UTF-8 text files up to 2 MiB for light
+editing, press ⌘S to save or ⌘F to find, and use **Reload and compare** if
+the VM file changed since you opened it.
 Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
 and includes the matching `box` executable for the network daemon.
 Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Call } from "@wailsio/runtime";
-import { FilesTab } from "./files/FilesTab";
+import { confirmDiscard, FilesTab } from "./files/FilesTab";
 import { LogsTab, type LogSource } from "./logs/LogsTab";
 import { OverviewTab } from "./overview/OverviewTab";
 import { statePill } from "./pill";
@@ -59,6 +59,7 @@ export default function App() {
     const remoteHosts = useRemoteHosts();
     const [selection, setSelection] = useState<VMRef>();
     const [tab, setTab] = useState<Tab>("Overview");
+    const [filesDirty, setFilesDirty] = useState(false);
     const [logSource, setLogSource] = useState<LogSource>("");
     const [revision, setRevision] = useState(0);
     const [pending, setPending] = useState<Action>();
@@ -71,18 +72,22 @@ export default function App() {
     const vm: VMRef | undefined = local ? { kind: "local", name: local.name } : remote ? { kind: "remote", alias: remote.id } : undefined;
     const detail = usePolling(tab === "Overview" ? local?.name : undefined, readLocal, revision, retainGuestReadings);
     const current = remote ? remote.check?.status : detail?.data ?? local;
-    const pill = statePill(current?.state ?? "");
+    const pill = statePill(current?.state ?? remote?.check?.state ?? "");
+    const retainDraft = tab === "Files" && filesDirty;
     const running = local?.state === "running";
     const transitioning = local?.state === "provisioning";
 
-    function select(next: VMRef) {
+    async function select(next: VMRef) {
+        const sameVM = next.kind === "local" ? next.name === local?.name : next.alias === remote?.id;
+        if (!sameVM && filesDirty && !await confirmDiscard()) return;
         setSelection(next);
         setActionError("");
     }
 
-    function showLogs(source: LogSource) {
-        setLogSource(source);
-        setTab("Logs");
+    async function changeTab(next: Tab, source: LogSource = "") {
+        if (next !== tab && filesDirty && !await confirmDiscard()) return;
+        if (next === "Logs") setLogSource(source);
+        setTab(next);
     }
 
     async function run(action: Action) {
@@ -120,14 +125,14 @@ export default function App() {
                     <AddRemoteHost add={remoteHosts.add} />
                 </nav>
                 <main>
-                    {remote && remote.check?.state !== "reachable"
+                    {remote && remote.check?.state !== "reachable" && !retainDraft
                         ? <RemoteView key={remote.id} vm={remote} checkAgain={() => void remoteHosts.check(remote.id)} />
-                        : vm && current ? <>
+                        : vm && (current || retainDraft) ? <>
                         <header className="vm-header" role="group" aria-label="VM status and actions" id="vm-header">
-                            <h1>{current.name}</h1>
+                            <h1>{current?.name ?? remote?.name}</h1>
                             <span className={`pill ${pill.tone}`}>
                                 <Dot tone={pill.tone} />{pill.label}
-                                {current.uptime_seconds !== undefined && (running || remote) && ` · up ${uptime(current.uptime_seconds)}`}
+                                {current?.uptime_seconds !== undefined && (running || remote) && ` · up ${uptime(current.uptime_seconds)}`}
                             </span>
                             {local && <DoctorPill result={local.doctor} />}
                             <span className="spacer" />
@@ -136,7 +141,7 @@ export default function App() {
                                 <button disabled={transitioning || !!pending} onClick={() => void run(running ? "Stop" : "Start")}>{running ? "Stop" : "Start"}</button>
                             </>}
                             {remote && <button disabled={remote.checking} onClick={() => void remoteHosts.check(remote.id)}>Check again</button>}
-                            <button className="primary" onClick={() => setTab("Terminal")}>Open terminal</button>
+                            <button className="primary" onClick={() => void changeTab("Terminal")}>Open terminal</button>
                         </header>
                         {local && pending && <p className="notice header-notice" role="status">{progress[pending]}</p>}
                         {actionError && <p className="notice header-notice" role="alert">{actionError}</p>}
@@ -145,20 +150,20 @@ export default function App() {
                         </p>}
                         <div className="tabs" id="vm-tabs" role="tablist" aria-label="VM views">
                             {tabs.map((item) => <button key={item} id={`tab-${item}`} aria-controls="vm-view"
-                                role="tab" aria-selected={tab === item} onClick={() => item === "Logs" ? showLogs("") : setTab(item)}>{item}</button>)}
+                                role="tab" aria-selected={tab === item} onClick={() => void changeTab(item)}>{item}</button>)}
                         </div>
                         <div className="view" id="vm-view" role="tabpanel" aria-labelledby={`tab-${tab}`}>
                             {tab === "Overview" && (local ? <>
                                 {detail?.error && <p className="notice header-notice" role="status">
                                     {detail.data ? "Showing stale status. " : ""}{detail.error}
                                 </p>}
-                                {detail?.data && <OverviewTab key={local.name} kind="local" status={detail.data} showNetworkLogs={() => showLogs("net")} />}
+                                {detail?.data && <OverviewTab key={local.name} kind="local" status={detail.data} showNetworkLogs={() => void changeTab("Logs", "net")} />}
                                 {!detail?.data && !detail?.error && <p className="content muted" role="status">Loading VM status…</p>}
-                            </> : <OverviewTab key={remote?.id} kind="remote" status={current} />)}
+                            </> : current && <OverviewTab key={remote?.id} kind="remote" status={current} />)}
                             {tab === "Logs" && (local ? <LogsTab key={`${local.name}:${logSource}`} name={local.name} initialSource={logSource} />
                                 : <p className="content">View guest logs for this VM from its host Mac.</p>)}
                             {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} />}
-                            {tab === "Files" && <FilesTab key={local?.name ?? remote?.id} vm={vm} />}
+                            {tab === "Files" && <FilesTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} onDirtyChange={setFilesDirty} />}
                         </div>
                     </> : <div className="content empty">
                         {inventory?.error ? <><h1>Local VMs unavailable</h1><p role="alert">{inventory.error}</p></>

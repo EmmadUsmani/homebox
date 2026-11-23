@@ -49,11 +49,19 @@ func main() {
 	}))
 	desktop.RegisterService(application.NewService(remote))
 	desktop.RegisterService(application.NewService(session.NewTerminal(sshPool)))
-	desktop.Window.NewWithOptions(application.WebviewWindowOptions{
+	window := desktop.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "homebox", URL: "/", Width: 1280, Height: 800, MinWidth: 850, MinHeight: 540,
 		BackgroundColour: application.NewRGB(15, 17, 21),
 		Mac:              application.MacWindow{TitleBar: application.MacTitleBarHiddenInset},
 	})
+	desktop.RegisterService(application.NewService(session.NewFiles(sshPool,
+		func() (string, error) {
+			return desktop.Dialog.OpenFile().AttachToWindow(window).PromptForSingleSelection()
+		},
+		func(name string) (string, error) {
+			return desktop.Dialog.SaveFile().AttachToWindow(window).SetFilename(name).PromptForSingleSelection()
+		},
+	)))
 	if err := desktop.Run(); err != nil {
 		log.Fatal(err)
 	}

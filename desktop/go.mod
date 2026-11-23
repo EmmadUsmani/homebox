@@ -4,6 +4,8 @@ go 1.27.4
 
 require (
 	github.com/EmmadUsmani/homebox v0.0.0
+	github.com/pkg/sftp v1.13.12
+	github.com/pkg/sftp/v2 v2.0.0-alpha2.0.20261111145814-6e5ac9d5a475
 	github.com/wailsapp/wails/v3 v3.1.0
 	golang.org/x/crypto v0.58.0
 )
@@ -16,6 +18,7 @@ require (
 	github.com/google/btree v1.1.2 // indirect
 	github.com/insomniacslk/dhcp v0.0.0-20240710054256-ddd8a41251c9 // indirect
 	github.com/josharian/native v1.1.0 // indirect
+	github.com/kr/fs v0.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.14 // indirect
 	github.com/u-root/uio v0.0.0-20230220225925-ffce2a382923 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
