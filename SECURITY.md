@@ -120,6 +120,10 @@ rename, the save fails. SFTP exposes second-resolution timestamps and has
 no conditional rename, so edits with identical size and timestamp or
 changes between the final check and rename can escape conflict detection.
 
+Phase 2's remote desktop is a proposal. The [display-server spike](docs/spikes/remote-desktop.md#authentication-and-data-channels)
+records loopback listener checks, the KasmVNC UDP bind caveat and proposed
+browser session and clipboard controls.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields

@@ -1,7 +1,7 @@
 // Measures a browser remote-desktop client through a counting TCP proxy.
 //
 //   node measure.js --name NAME --target PORT --path /vnc.html?... \
-//                   --guest "box ssh desk --" --out results.json
+//                   --guest "box ssh desk --" --display 1 --out results.json
 //
 // PORT is the Mac-side end of an SSH local forward to the guest's loopback
 // web client. The proxy counts every byte the client and server exchange.
@@ -11,6 +11,7 @@ const net = require("node:net");
 const fs = require("node:fs");
 const { execFileSync } = require("node:child_process");
 const { chromium } = require("playwright");
+const jpeg = require("jpeg-js");
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((pairs, value, index, all) =>
     index % 2 === 0 ? [...pairs, [value.replace(/^--/, ""), all[index + 1]]] : pairs, []));
@@ -24,6 +25,10 @@ function proxy(target) {
     return new Promise((resolve) => {
         const server = net.createServer((client) => {
             const upstream = net.connect(target, "127.0.0.1");
+            if (args.nodelay !== "false") {
+                client.setNoDelay(true);
+                upstream.setNoDelay(true);
+            }
             client.on("data", (chunk) => { up += chunk.length; upstream.write(chunk); });
             upstream.on("data", (chunk) => { down += chunk.length; client.write(chunk); });
             const end = () => { client.destroy(); upstream.destroy(); };
@@ -45,8 +50,7 @@ function cpuSample() {
     return { busy: user + nice + system + irq + softirq + steal, total: user + nice + system + idle + iowait + irq + softirq + steal };
 }
 
-async function scene(page, label, start) {
-    if (start) inGuest(start);
+async function scene(page, label) {
     await page.waitForTimeout(3000);
     const before = { down, up, cpu: cpuSample(), at: Date.now() };
     await page.waitForTimeout(sceneSeconds * 1000);
@@ -64,130 +68,160 @@ async function scene(page, label, start) {
 
 async function main() {
     const server = await proxy(Number(args.target));
-    const port = server.address().port;
     const browser = await chromium.launch();
-    const page = await browser.newPage({ viewport: { width: 1600, height: 1000 } });
-    // Optional client settings, e.g. --storage '{"framerate":"60"}' for KasmVNC.
-    if (args.storage) {
-        await page.addInitScript((settings) => {
-            for (const [key, value] of Object.entries(settings)) localStorage.setItem(key, value);
-        }, JSON.parse(args.storage));
+    const display = "DISPLAY=:" + args.display;
+
+    try {
+        const page = await browser.newPage({ viewport: { width: 1600, height: 900 } });
+        if (args.storage) {
+            await page.addInitScript((settings) => {
+                for (const [key, value] of Object.entries(settings)) localStorage.setItem(key, value);
+            }, JSON.parse(args.storage));
+        }
+        await page.goto(`http://127.0.0.1:${server.address().port}${args.path}`);
+        await page.waitForFunction(() => [...document.querySelectorAll("canvas")]
+            .some((canvas) => canvas.width > 800 && canvas.height > 500));
+        inGuest(`${display} xdotool search --name '^HomeboxLatency$' windowclose || true`);
+        await page.waitForTimeout(4000);
+        await page.screenshot({ path: `${args.name}-desktop.png` });
+
+        startLatencyTarget(display);
+        await page.waitForTimeout(1000);
+        await page.mouse.move(800, 450);
+        const method = args.method ?? "screenshot";
+        const samples = method === "canvas" ? await canvasLatencies(page) : await screenshotLatencies(page);
+        const observed = samples.filter((ms) => ms >= 0).sort((a, b) => a - b);
+        if (observed.length === 0) throw new Error("No keystroke produced a visible change");
+        const middle = Math.floor(observed.length / 2);
+        const latency = {
+            trials,
+            missed: trials - observed.length,
+            medianMs: +((observed[Math.floor((observed.length - 1) / 2)] + observed[middle]) / 2).toFixed(1),
+            p95Ms: +observed[Math.ceil(0.95 * observed.length) - 1].toFixed(1),
+        };
+        console.log(JSON.stringify({ latency }));
+        const scenes = sceneSeconds === 0 ? [] : await measureScenes(page, display);
+        if (args.out) fs.writeFileSync(args.out, JSON.stringify({ name: args.name, method, latency, scenes }, null, 2));
+    } finally {
+        await browser.close();
+        server.close();
     }
-    await page.goto(`http://127.0.0.1:${port}${args.path}`);
-    await page.waitForFunction(() => [...document.querySelectorAll("canvas")]
-        .some((canvas) => canvas.width > 800 && canvas.height > 500), null, { timeout: 30000 });
-    await page.waitForTimeout(4000);
+}
+
+function startLatencyTarget(display) {
+    const terminal = String.raw`stty -echo; printf '\033[2J\033[H\033[?25l'
+while IFS= read -rsn1 key; do
+    [ "$key" = x ] || continue
+    if [ "$lit" = yes ]; then
+        lit=no; printf '\033[H\033[49m      '
+    else
+        lit=yes; printf '\033[H\033[107m      \033[0m'
+    fi
+done`;
+    const encoded = Buffer.from(terminal).toString("base64");
+    inGuest(`printf %s '${encoded}' | base64 -d >/tmp/hb-latency.sh;
+        ${display} nohup xfce4-terminal --disable-server --maximize --title=HomeboxLatency -x bash /tmp/hb-latency.sh >/dev/null 2>&1 &`);
+}
+
+async function canvasLatencies(page) {
     await page.evaluate(() => {
-        const sample = document.createElement("canvas");
-        sample.width = 400; sample.height = 60;
-        const ctx = sample.getContext("2d", { willReadFrequently: true });
-        window.__screen = () => [...document.querySelectorAll("canvas")]
+        const screen = [...document.querySelectorAll("canvas")]
             .sort((a, b) => b.width * b.height - a.width * a.height)[0];
-        // Hash the strip under the panel where the maximised terminal's
-        // prompt and typed text appear, away from the panel clock.
-        window.__hash = () => {
-            const screen = window.__screen();
-            ctx.drawImage(screen, 0, screen.height * 0.08, screen.width * 0.5, screen.height * 0.12, 0, 0, 400, 60);
-            const data = ctx.getImageData(0, 0, 400, 60).data;
-            let h = 0;
-            for (let i = 0; i < data.length; i += 4) h = (h * 31 + data[i] + data[i + 1] * 7 + data[i + 2] * 13) | 0;
-            return h;
+        const sample = document.createElement("canvas");
+        sample.width = 100;
+        sample.height = 100;
+        const context = sample.getContext("2d", { willReadFrequently: true });
+        window.hashTarget = () => {
+            context.drawImage(screen, 0, 25, 200, 200, 0, 0, 100, 100);
+            const pixels = context.getImageData(0, 0, 100, 100).data;
+            let hash = 0;
+            for (let index = 0; index < pixels.length; index += 4) {
+                hash = (hash * 31 + pixels[index]) | 0;
+            }
+            return hash;
         };
     });
-    await page.screenshot({ path: `${args.name}-desktop.png` });
 
-    // A maximised terminal in the middle of the screen receives the keys.
-    inGuest("DISPLAY=:" + args.display + " xdotool search --class xfce4-terminal windowactivate --sync >/dev/null 2>&1 || true");
-    const box = await page.evaluate(() => { const r = window.__screen().getBoundingClientRect(); return { x: r.x + r.width / 2, y: r.y + r.height / 2 }; });
-    await page.mouse.click(box.x, box.y);
-    await page.waitForTimeout(500);
-
-    // Latency via Chrome's screencast, content-aware: the compositor streams
-    // frames stamped with the browser's clock; each frame is decoded and the
-    // strip where typed text appears is compared with the frame before the
-    // key press. Works for clients that draw from a worker or stream video
-    // continuously, and adds the same overhead to every candidate.
-    if (args.method === "screencast") {
-        const jpeg = require("jpeg-js");
-        const cdp = await page.context().newCDPSession(page);
-        const strip = (data) => {
-            const image = jpeg.decode(Buffer.from(data, "base64"), { useTArray: true });
-            const scale = image.width / 1600;
-            const x0 = 0, x1 = Math.round(600 * scale), y0 = Math.round(120 * scale), y1 = Math.round(160 * scale);
-            const out = [];
-            for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
-                const i = (y * image.width + x) * 4;
-                out.push(image.data[i] + image.data[i + 1] + image.data[i + 2]);
-            }
-            return out;
-        };
-        const differs = (a, b) => { let sum = 0; for (let i = 0; i < a.length; i++) sum += Math.abs(a[i] - b[i]); return sum / a.length > 4; };
-        let last = null;
-        let watch = null;
-        cdp.on("Page.screencastFrame", (frame) => {
-            cdp.send("Page.screencastFrameAck", { sessionId: frame.sessionId }).catch(() => {});
-            const pixels = strip(frame.data);
-            const at = frame.metadata.timestamp * 1000;
-            if (watch && at >= watch.sent && differs(pixels, watch.base)) { watch.resolve(at - watch.sent); watch = null; }
-            last = pixels;
-        });
-        await cdp.send("Page.startScreencast", { format: "jpeg", quality: 80, maxWidth: 1600, maxHeight: 1000, everyNthFrame: 1 });
-        await page.waitForTimeout(1000);
-        const latencies = [];
-        for (let i = 0; i < trials; i++) {
-            await page.waitForTimeout(400);
-            const changed = new Promise((resolve) => {
-                watch = { base: last, sent: Date.now(), resolve };
-                setTimeout(() => { if (watch) { watch = null; resolve(-1); } }, 2000);
-            });
-            await page.keyboard.press(i % 2 === 0 ? "x" : "Backspace");
-            latencies.push(await changed);
-        }
-        await cdp.send("Page.stopScreencast");
-        return finish(latencies);
-    }
     const latencies = [];
-    for (let i = 0; i < trials; i++) {
-        const key = i % 2 === 0 ? "x" : "Backspace";
+    for (let index = 0; index < trials; index++) {
+        await page.waitForTimeout(250 + Math.random() * 100);
         await page.evaluate(() => {
-            window.__h0 = window.__hash();
-            window.__t0 = performance.now();
-            window.__changed = new Promise((resolve) => {
-                const tick = () => window.__hash() !== window.__h0 ? resolve(performance.now() - window.__t0) : requestAnimationFrame(tick);
-                requestAnimationFrame(tick);
-                setTimeout(() => resolve(-1), 2000);
+            const baseline = window.hashTarget();
+            const sent = performance.now();
+            window.canvasChanged = new Promise((resolve) => {
+                function poll() {
+                    if (window.hashTarget() !== baseline) return resolve(performance.now() - sent);
+                    if (performance.now() - sent >= 2000) return resolve(-1);
+                    requestAnimationFrame(poll);
+                }
+                requestAnimationFrame(poll);
             });
         });
-        await page.keyboard.press(key);
-        latencies.push(await page.evaluate(() => window.__changed));
-        await page.waitForTimeout(150);
+        await page.keyboard.press("x");
+        latencies.push(await page.evaluate(() => window.canvasChanged));
     }
-    return finish(latencies);
+    return latencies;
+}
 
-    async function finish(latencies) {
-    const ok = latencies.filter((ms) => ms >= 0).sort((a, b) => a - b);
-    if (ok.length === 0) throw new Error("no keystroke produced a visible change");
-    const pick = (q) => +ok[Math.min(ok.length - 1, Math.floor(q * ok.length))].toFixed(1);
-    const latency = { trials, missed: trials - ok.length, medianMs: pick(0.5), p95Ms: pick(0.95) };
-    console.log(JSON.stringify({ latency }));
-
-    const display = "DISPLAY=:" + args.display;
-    const scenes = [];
-    inGuest("pkill -x mpv; pkill -f '[p]v -qL' ; true");
-    scenes.push(await scene(page, "idle"));
+async function measureScenes(page, display) {
+    inGuest("pkill -x mpv; pkill -f '[p]v -qL'; true");
+    const idle = await scene(page, "idle");
     inGuest(`${display} nohup xfce4-terminal --maximize -x sh -c 'while :; do cat /usr/share/common-licenses/GPL-3; done | pv -qL 40000' >/dev/null 2>&1 &`);
-    scenes.push(await scene(page, "scrolling text"));
-    await page.screenshot({ path: `${args.name}-scroll.png` });
-    inGuest("pkill -f '[p]v -qL'; true");
-    inGuest(`${display} nohup mpv --really-quiet --loop --geometry=1280x720 /tmp/hb-test.mp4 >/dev/null 2>&1 &`);
-    scenes.push(await scene(page, "video 1280x720"));
-    await page.screenshot({ path: `${args.name}-video.png` });
-    inGuest("pkill -x mpv; true");
-
-    fs.writeFileSync(args.out, JSON.stringify({ name: args.name, method: args.method ?? "canvas", latency, scenes }, null, 2));
-    await browser.close();
-    server.close();
+    try {
+        const scroll = await scene(page, "scrolling text");
+        await page.screenshot({ path: `${args.name}-scroll.png` });
+        inGuest("pkill -f '[p]v -qL'; true");
+        inGuest(`${display} nohup mpv --really-quiet --loop --geometry=1280x720 /tmp/hb-test.mp4 >/dev/null 2>&1 &`);
+        const video = await scene(page, "video 1280x720");
+        await page.screenshot({ path: `${args.name}-video.png` });
+        return [idle, scroll, video];
+    } finally {
+        inGuest("pkill -x mpv; pkill -f '[p]v -qL'; true");
     }
+}
+
+async function screenshotLatencies(page) {
+    const cdp = await page.context().newCDPSession(page);
+    const clip = { x: 0, y: 0, width: 300, height: 240, scale: 0.5 };
+    async function capture() {
+        const { data } = await cdp.send("Page.captureScreenshot", {
+            format: "jpeg", quality: 75, clip, optimizeForSpeed: true,
+        });
+        const at = performance.now();
+        const pixels = jpeg.decode(Buffer.from(data, "base64"), { useTArray: true }).data;
+        return { pixels, at };
+    }
+
+    const dark = (await capture()).pixels;
+    await page.keyboard.press("x");
+    await page.waitForTimeout(500);
+    const light = (await capture()).pixels;
+    const marker = [];
+    for (let index = 0; index < light.length; index += 4) {
+        if (light[index] - dark[index] > 120) marker.push(index);
+    }
+    if (marker.length < 20) throw new Error(`Latency target not visible (${marker.length} changed pixels)`);
+    const brightness = (pixels) => marker.reduce((sum, index) => sum + pixels[index], 0) / marker.length;
+    const threshold = (brightness(dark) + brightness(light)) / 2;
+    const latencies = [];
+    let expectLight = false;
+    for (let index = 0; index < trials; index++) {
+        await page.waitForTimeout(250 + Math.random() * 100);
+        const sent = performance.now();
+        await page.keyboard.press("x");
+        let elapsed = -1;
+        while (performance.now() - sent < 2000) {
+            const { pixels, at } = await capture();
+            if ((brightness(pixels) >= threshold) === expectLight) {
+                elapsed = at - sent;
+                break;
+            }
+        }
+        latencies.push(elapsed);
+        expectLight = elapsed < 0 ? brightness((await capture()).pixels) < threshold : !expectLight;
+    }
+    await cdp.detach();
+    return latencies;
 }
 
 main().catch((error) => { console.error(error); process.exit(1); });

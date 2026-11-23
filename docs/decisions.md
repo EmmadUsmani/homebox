@@ -145,9 +145,9 @@ on your own Mac open normally.
 
 **Remote desktop: low latency and bandwidth first** (owner, 2026-11-22), over
 image quality and extra features. One server in the VM, reached over SSH, with
-one web client used by the browser and the app. KasmVNC is favoured, pending a
-spike against TigerVNC with noVNC and Selkies. macOS Screen Sharing is nice to
-have (owner), and KasmVNC doesn't support it.
+one web client used by the browser and the app. The owner initially favoured
+KasmVNC. The [display-server spike](spikes/remote-desktop.md) is complete and
+server selection awaits the owner. macOS Screen Sharing is nice to have (owner).
 
 **Remote host inventory and refresh** (worker M, implementation, 2026-11-22).
 Keep aliases in the macOS user application-support directory so they are
