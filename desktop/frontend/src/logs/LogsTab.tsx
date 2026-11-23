@@ -72,7 +72,7 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
 
     return (
         <div className="logs">
-            <div className="log-toolbar">
+            <div className="log-toolbar" id="log-toolbar" role="group" aria-label="Log filters">
                 {sources.map(([value, label]) => <button className="chip" key={value}
                     aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>)}
                 <span className="spacer" />
@@ -84,7 +84,7 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
                 <label><input type="checkbox" checked={follow} onChange={(event) => setFollow(event.target.checked)} /> Follow</label>
             </div>
             {error && <p className="notice log-notice" role="alert">{error}</p>}
-            <div className="log-pane" ref={pane} aria-label="Log output" tabIndex={0} onScroll={(event) => {
+            <div className="log-pane" id="log-output" ref={pane} role="group" aria-label="Log output" tabIndex={0} onScroll={(event) => {
                 const element = event.currentTarget;
                 atEnd.current = element.scrollHeight - element.scrollTop - element.clientHeight < 16;
             }}>

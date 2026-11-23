@@ -151,7 +151,9 @@ A full desktop app (owner), built with **Wails**: a Go backend that calls
 code runs on the laptop and on a host; on a host it also sees the local VMs.
 
 The local VM list and Overview refresh every few seconds, retaining readings
-on refresh errors. Local lifecycle actions and doctor use the shared service.
+on refresh errors. The Overview memory card uses the guest's used and total
+memory for the bar and shows the host process footprint separately. Local
+lifecycle actions and doctor use the shared service.
 Logs follow the CLI sources, support a guest-unit filter and retain the most
 recent 5,000 lines while open. Leaving the view cancels the stream.
 

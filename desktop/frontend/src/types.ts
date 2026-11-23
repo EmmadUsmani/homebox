@@ -37,10 +37,9 @@ interface Storage {
 
 export interface LocalStatus extends VMStatus {
     cpus: number;
-    memory_gib: number;
     host?: Usage;
     hostagent?: Usage;
-    guest?: { load?: number[]; disk?: Storage };
+    guest?: { load?: number[]; memory?: Storage; disk?: Storage };
     agents?: { pid: number; name: string; cwd?: string }[];
     ports?: {
         address: string;

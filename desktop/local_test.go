@@ -31,12 +31,12 @@ func TestListStatusExplainsMissingLima(t *testing.T) {
 	}
 }
 
-func TestStatusAddsConfiguredSize(t *testing.T) {
+func TestStatusAddsConfiguredCPUCount(t *testing.T) {
 	local := Local{box: fakeLocal{}, load: func(name string) (state.Box, error) {
-		return state.Box{Name: name, CPUs: 4, MemoryGiB: 6}, nil
+		return state.Box{Name: name, CPUs: 4}, nil
 	}}
 	status, err := local.Status(t.Context(), "sample")
-	if err != nil || status.Name != "sample" || status.State != "running" || status.CPUs != 4 || status.MemoryGiB != 6 {
+	if err != nil || status.Name != "sample" || status.State != "running" || status.CPUs != 4 {
 		t.Fatalf("Status = %+v, %v", status, err)
 	}
 }
