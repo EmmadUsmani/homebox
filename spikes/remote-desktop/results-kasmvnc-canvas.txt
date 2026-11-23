@@ -1,0 +1,29 @@
+{
+  "name": "kasmvnc",
+  "latency": {
+    "trials": 60,
+    "missed": 0,
+    "medianMs": 96.4,
+    "p95Ms": 112.6
+  },
+  "scenes": [
+    {
+      "scene": "idle",
+      "downKBps": 0,
+      "upKBps": 0,
+      "guestCPUPercent": 0.6
+    },
+    {
+      "scene": "scrolling text",
+      "downKBps": 1978.9,
+      "upKBps": 0,
+      "guestCPUPercent": 11.1
+    },
+    {
+      "scene": "video 1280x720",
+      "downKBps": 1972.8,
+      "upKBps": 0,
+      "guestCPUPercent": 21.3
+    }
+  ]
+}
