@@ -69,6 +69,10 @@ both agents store and refresh logins first. Design and open questions:
 
 ## Smaller
 
+- Lima's SSH port forwarder leaves a connection in CLOSE_WAIT when the client
+  side closes and never closes the guest side (seen with Lima 2.3.0). The
+  guest's sshd keepalives clean these up within about a minute; report it
+  upstream with a reproduction.
 - Reconnect the socket NIC after a daemon failure without restarting the VM.
 - Pass the gateway's MAC address and subnet to the guest from box instead of
   repeating them in `guest/ubuntu/network.sh`.

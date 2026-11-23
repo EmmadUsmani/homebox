@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/netip"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -77,12 +76,7 @@ func (r Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
 	}
 }
 
-// active counts forwarded connections, for tests.
-var active atomic.Int64
-
 func forward(ctx context.Context, client *net.TCPConn, target netip.AddrPort) {
-	active.Add(1)
-	defer active.Add(-1)
 	defer client.Close()
 	dialCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()
@@ -113,12 +107,11 @@ func forward(ctx context.Context, client *net.TCPConn, target netip.AddrPort) {
 	copies.Wait()
 }
 
-// pipe copies one direction and then closes both connections. SSH never
-// half-closes TCP, and Lima's forwarder does not pass a half-close on to the
-// guest, so keeping the other direction open would leave the guest's session
-// running after the laptop has gone.
 func pipe(destination, source *net.TCPConn) {
-	_, _ = io.Copy(destination, source)
-	destination.Close()
-	source.Close()
+	if _, err := io.Copy(destination, source); err != nil {
+		destination.Close()
+		source.Close()
+		return
+	}
+	destination.CloseWrite()
 }

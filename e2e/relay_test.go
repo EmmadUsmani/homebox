@@ -9,7 +9,9 @@ import (
 )
 
 // checkRelayDropsDeadClients kills SSH clients connected through box's relay
-// and checks the guest's sshd sessions end with them instead of lingering.
+// and checks the guest's sshd sessions end instead of lingering. Lima's port
+// forwarder doesn't pass the close on, so the guest's sshd keepalives
+// (guest/ubuntu/base.sh) are what end them, within about a minute.
 func checkRelayDropsDeadClients(t *testing.T, config, name string, sessions func() string) {
 	t.Helper()
 	count := func() int {
@@ -32,7 +34,7 @@ func checkRelayDropsDeadClients(t *testing.T, config, name string, sessions func
 		_ = client.Process.Kill()
 		_ = client.Wait()
 	}
-	deadline := time.Now().Add(20 * time.Second)
+	deadline := time.Now().Add(150 * time.Second)
 	for {
 		after := count()
 		if after <= before {
@@ -42,6 +44,6 @@ func checkRelayDropsDeadClients(t *testing.T, config, name string, sessions func
 		if time.Now().After(deadline) {
 			t.Fatalf("guest SSH sessions grew from %d to %d after 3 killed clients", before, after)
 		}
-		time.Sleep(time.Second)
+		time.Sleep(5 * time.Second)
 	}
 }

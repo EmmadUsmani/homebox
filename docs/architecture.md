@@ -129,10 +129,7 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
 4. The daemon opens the published SSH relay after observing the driver
    host process. On macOS it closes the listener and active forwards on
    a kqueue process-exit notification. `box stop` stops the guest before
-   releasing the daemon. Each forward closes both connections as soon as
-   either direction ends: Lima's forwarder doesn't pass a TCP half-close on
-   to the guest, so a half-closed forward kept the guest's sshd session
-   open after the laptop had gone.
+   releasing the daemon.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
