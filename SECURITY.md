@@ -76,6 +76,11 @@ the VM reaches the internet but not the host's loopback services, its LAN
 interfaces or the router, and that the confined host processes can't read or
 write a canary file in your home folder. Run it after any change to the host or the VM's network.
 
+`box status` and `box top` pull data over the existing SSH connection with
+bounded output and timeouts. The guest's answers are untrusted and used only
+for display. Box strips terminal controls and opens no listener or guest-to-host
+reporting channel for these commands.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields
@@ -85,9 +90,9 @@ only. Per-run provisioning logs are readable only by the host owner.
 
 Box opens guest journal sessions over pinned SSH, including when following
 new entries. It accepts bounded journal cursors with a restricted character
-set solely to resume a disconnected stream. Ubuntu provisioning adds the VM user to the `systemd-journal`
-group, granting read access to the system journal without running the log
-reader as root.
+set solely to resume a disconnected stream. Ubuntu provisioning adds the
+VM user to the `systemd-journal` group, granting read access to the system
+journal without running the log reader as root.
 
 ## Secrets in the VM
 

@@ -6,9 +6,12 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"time"
 
 	"github.com/EmmadUsmani/homebox/internal/doctor"
+	"github.com/EmmadUsmani/homebox/internal/execx"
 	"github.com/EmmadUsmani/homebox/internal/state"
+	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
@@ -79,10 +82,22 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		Name: "network-daemon", OK: s.Isolation.Running(box.Name),
 		Detail: "network daemon is not running",
 	})
+	result := state.DoctorResult{}
+	for _, check := range checks {
+		switch {
+		case check.Skipped:
+			result.Skipped++
+		case check.OK:
+			result.Passed++
+		default:
+			recordDoctorFailure(&result, check.Name)
+		}
+	}
 	var hostErr error
 	if !doctor.Write(out, checks) {
 		hostErr = errors.New("host checks failed")
 	}
+	hostFailures := result.Failed
 	endpoint, guestErr := s.Driver.SSH(ctx, box.Name)
 	if guestErr == nil {
 		env := map[string]string{
@@ -90,13 +105,64 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 			"HOMEBOX_DENY_TARGETS":    strings.Join(targets, " "),
 			"HOMEBOX_PUBLIC_URL":      "https://example.com",
 		}
-		guestErr = s.GuestSSH.RunScript(ctx, endpoint, script, env, false, out, out)
+		guestCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		stdout := &cappedGuestOutput{limit: 128 << 10, cancel: cancel}
+		stderr := &cappedGuestOutput{limit: 16 << 10, cancel: cancel}
+		guestErr = s.GuestSSH.RunScript(guestCtx, endpoint, script, env, false, stdout, stderr)
+		for _, output := range []*cappedGuestOutput{stdout, stderr} {
+			for _, line := range strings.Split(strings.TrimSuffix(output.buffer.String(), "\n"), "\n") {
+				if line != "" {
+					fmt.Fprintln(out, untrusted.Line(line))
+				}
+			}
+		}
+		countGuestDoctorChecks(&result, stdout.buffer.String())
+		if stdout.exceeded || stderr.exceeded {
+			guestErr = errGuestOutputLimit
+		}
 	}
 	if guestErr != nil {
-		guestErr = fmt.Errorf("guest checks: %w", guestErr)
+		if result.Failed == hostFailures {
+			recordDoctorFailure(&result, "guest-checks")
+		}
+		var exit *execx.ExitError
+		if errors.As(guestErr, &exit) {
+			// SSH diagnostics were already printed as sanitized lines.
+			guestErr = fmt.Errorf("guest checks exited with status %d", exit.ExitCode)
+		} else {
+			guestErr = fmt.Errorf("guest checks: %w", guestErr)
+		}
 	}
-	if err := errors.Join(hostErr, guestErr, ctx.Err()); err != nil {
+	result.CheckedAt = time.Now().UTC()
+	saveErr := s.Store.SaveDoctorResult(box, result)
+	if err := errors.Join(hostErr, guestErr, ctx.Err(), saveErr); err != nil {
 		return fmt.Errorf("doctor %s: %w", box.Name, err)
 	}
 	return nil
+}
+
+func countGuestDoctorChecks(result *state.DoctorResult, output string) {
+	for line := range strings.SplitSeq(output, "\n") {
+		label, rest, _ := strings.Cut(line, " ")
+		name, _, _ := strings.Cut(rest, ": ")
+		if len(name) == 0 || len(name) > 256 || strings.ContainsAny(name, " \t\r") {
+			continue
+		}
+		switch label {
+		case "PASS":
+			result.Passed++
+		case "SKIP":
+			result.Skipped++
+		case "FAIL":
+			recordDoctorFailure(result, name)
+		}
+	}
+}
+
+func recordDoctorFailure(result *state.DoctorResult, name string) {
+	result.Failed++
+	if len(result.FailingChecks) < 256 {
+		result.FailingChecks = append(result.FailingChecks, untrusted.Line(name))
+	}
 }

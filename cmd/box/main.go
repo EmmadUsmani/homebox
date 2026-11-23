@@ -76,6 +76,7 @@ func newService() (*app.Service, error) {
 		Isolation:     &isolation.Host{Store: store, Executable: exe, LimaHome: limaHome, Limactl: limactl},
 		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
 		HostCapacity:  hostinfo.System{},
+		HostUsage:     hostinfo.ProcessUsage{Runner: runner},
 		LocalHostName: ssh.LocalHostName,
 		OpenURL: func(ctx context.Context, url string) error {
 			_, err := runner.Run(ctx, execx.Cmd{Name: "open", Args: []string{url}})

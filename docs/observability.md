@@ -1,7 +1,7 @@
 # Observability and the desktop app
 
-The CLI logs command is built. The owner agreed this design on 2026-11-22.
-The decisions and what was turned down are also in
+The local CLI status, top, list and logs commands are built. The owner agreed
+this design on 2026-11-22. The decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
 
@@ -41,7 +41,7 @@ What box can show, and where each fact comes from:
 | What | Source |
 |---|---|
 | State: running, stopped, broken, provisioning (and which step) | box's records and the driver (`box ls` already does part of this) |
-| CPU and memory used, seen from the host | the VM's host process (Apple's Virtualization process on macOS) |
+| CPU and memory used, seen from the host | the VM's host process (Apple's Virtualization process on macOS), with the Lima hostagent shown separately or labeled as the fallback |
 | Load, memory, disk, top processes | a short read-only command in the guest, over SSH |
 | Servers listening, and which are published on which host port | `ss` in the guest, matched against the VM's port forwards |
 | Docker containers | `docker ps` in the guest |

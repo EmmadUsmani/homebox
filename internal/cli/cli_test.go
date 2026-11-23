@@ -119,10 +119,10 @@ func TestLogsFlagsAndJSON(t *testing.T) {
 	}
 }
 
-func (*stubApp) List(context.Context) ([]app.Listing, error) {
-	return []app.Listing{
-		{Box: state.Box{Name: "main", Profile: "ubuntu", SSHPort: 2201, Forwards: state.DefaultForwards(1, false)}, Status: vm.StatusRunning},
-		{Box: state.Box{Name: "secondary", Profile: "ubuntu", SSHPort: 2202}, Status: vm.StatusStopped},
+func (*stubApp) ListStatus(context.Context) ([]app.VMStatus, error) {
+	return []app.VMStatus{
+		{Name: "main", Profile: "ubuntu", SSHPort: 2201, Forwards: state.DefaultForwards(1, false), State: string(vm.StatusRunning)},
+		{Name: "secondary", Profile: "ubuntu", SSHPort: 2202, State: string(vm.StatusStopped)},
 	}, nil
 }
 
@@ -207,9 +207,9 @@ func TestRemovalConfirmation(t *testing.T) {
 func TestListAndVersionOutput(t *testing.T) {
 	service := &stubApp{}
 	out, _, err := execute(t, service, false, "", "ls")
-	want := "NAME       STATUS   PROFILE  SSH   HTTP\n" +
-		"main       running  ubuntu   2201  10100-10199\n" +
-		"secondary  stopped  ubuntu   2202  -\n"
+	want := "NAME       STATUS   PROFILE  SSH   HTTP         HEALTH  UPTIME  HOST CPU  HOST MEM  HOST SOURCE\n" +
+		"main       running  ubuntu   2201  10100-10199  never   -       -         -         -\n" +
+		"secondary  stopped  ubuntu   2202  -            never   -       -         -         -\n"
 	if err != nil || out != want {
 		t.Fatalf("listing = %q, %v", out, err)
 	}

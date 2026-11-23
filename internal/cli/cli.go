@@ -25,7 +25,9 @@ type Application interface {
 	Start(context.Context, string) error
 	Stop(context.Context, string) error
 	Remove(context.Context, string) error
-	List(context.Context) ([]app.Listing, error)
+	ListStatus(context.Context) ([]app.VMStatus, error)
+	Status(context.Context, string) (app.VMStatus, error)
+	Top(context.Context, string) (app.TopSnapshot, error)
 	SSH(context.Context, string, []string) error
 	Ports(context.Context, string, app.PortOptions) ([]vm.PortForward, error)
 	SSHConfig(context.Context, app.SSHConfigOptions) (string, error)
@@ -71,13 +73,9 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 		namedCommand("stop NAME", "Stop a VM", service.Stop),
 		logsCommand(service),
 		namedCommand("provision NAME", "Run guest provisioning", service.Provision),
-		&cobra.Command{Use: "ls", Short: "List VMs", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
-			boxes, err := service.List(cmd.Context())
-			if err != nil {
-				return err
-			}
-			return printListing(cmd.OutOrStdout(), boxes)
-		}},
+		listCommand(service),
+		statusCommand(service),
+		topCommand(service, isTerminal),
 		&cobra.Command{Use: "ssh NAME [-- cmd...]", Short: "Open an SSH session", Args: cobra.MinimumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			return service.SSH(cmd.Context(), args[0], args[1:])
 		}},

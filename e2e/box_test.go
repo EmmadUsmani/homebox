@@ -214,6 +214,7 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 		t.Fatalf("box open --print = %q, want %q", url, want)
 	}
 	checkHTTP(t, url)
+	checkStatus(t, box, binary, name, url)
 	if output := runOK("curl", "--noproxy", "*", "--fail", "--silent", "--show-error", url); output != "homebox e2e\n" {
 		t.Fatalf("curl response = %q", output)
 	}
