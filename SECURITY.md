@@ -76,6 +76,18 @@ the VM reaches the internet but not the host's loopback services, its LAN
 interfaces or the router, and that the confined host processes can't read or
 write a canary file in your home folder. Run it after any change to the host or the VM's network.
 
+### Logs
+
+Box treats guest journal entries, provisioning output and host log fields
+that can carry guest data as untrusted text. It bounds line sizes, strips
+terminal escape sequences and control characters, and displays the contents
+only. Per-run provisioning logs are readable only by the host owner.
+
+Box opens guest journal sessions over pinned SSH, including when following
+new entries. Ubuntu provisioning adds the VM user to the `systemd-journal`
+group, granting read access to the system journal without running the log
+reader as root.
+
 ## Secrets in the VM
 
 Anything in the VM is readable by the agents in it, including the agents' own

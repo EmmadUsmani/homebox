@@ -39,6 +39,9 @@ func (r instanceRecord) instance() vm.Instance {
 		Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
 		HostPIDFile: filepath.Join(r.Dir, "ha.pid"),
 	}
+	if r.Dir != "" {
+		instance.HostLog = filepath.Join(r.Dir, "ha.stderr.log")
+	}
 	for _, network := range r.Config.Networks {
 		if network.Socket != "" {
 			instance.Socket = vm.SocketAttachment{Path: network.Socket, Interface: network.Interface, MAC: network.MAC, RouteMetric: network.Metric}

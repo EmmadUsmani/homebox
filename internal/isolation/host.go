@@ -120,7 +120,7 @@ func pidFile(dir string) string {
 }
 
 func (h *Host) runDir(name string) string {
-	return filepath.Join(h.Store.BoxDir(name), "run")
+	return h.Store.RunDir(name)
 }
 
 func (h *Host) prepareRunDir(name string) (string, error) {
@@ -147,7 +147,7 @@ func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 		Socket:     filepath.Join(dir, "net.sock"),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
-		LogFile:    filepath.Join(dir, "vmnet.log"),
+		LogFile:    state.NetworkLogPath(dir),
 		PIDFile:    pidFile(dir),
 	}
 }

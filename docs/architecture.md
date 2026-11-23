@@ -10,7 +10,7 @@ two disagree, plan.md wins.
 cmd/box            main: wires concrete pieces together; no logic
 internal/cli       commands, flags, output; calls app, nothing else
 internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
-                   doctor, host init); the only place that knows the order of steps
+                   doctor, host init, logs); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
 internal/guest     loads guest profiles (images + provisioning steps)
@@ -41,7 +41,8 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   defines the interfaces it needs (ports); only `cmd/box` and the adapters that
   implement them (`internal/isolation`) import `app`.
 - Only `cmd/box` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
-  Lima's paths, YAML and `limactl` never leak out of `vm/lima`.
+  Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
+  needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
 - Drivers know nothing about profiles, ports policy or egress. They get plain
   values (`vm.Spec`, `vm.StartOptions`).
 - `guest` knows nothing about drivers beyond `vm.Image`.
@@ -60,7 +61,7 @@ original if it exists.
 ~/.homebox/
   host.json             host settings (LAN publishing, laptop SSH keys)
   boxes/NAME/box.json   one VM's record: profile, size, index, ports, SSH pins
-  boxes/NAME/provision/ the latest provisioning run (last.json) and per-run logs
+  boxes/NAME/provision/ latest run (last.json) and five owner-only UTC-named logs
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)

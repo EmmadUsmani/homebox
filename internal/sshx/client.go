@@ -97,6 +97,29 @@ func (c Client) Run(ctx context.Context, ep vm.Endpoint, argv ...string) (execx.
 	return c.run(ctx, ep, argv, nil, nil, nil)
 }
 
+// Stream runs a remote command without a terminal or unbounded output capture.
+func (c Client) Stream(ctx context.Context, ep vm.Endpoint, argv []string, stdout, stderr io.Writer) error {
+	if ep.KnownHosts == "" {
+		return fmt.Errorf("streaming guest logs requires pinned SSH host keys")
+	}
+	args, err := endpointArgs(ep)
+	if err != nil {
+		return err
+	}
+	args = append(args, "-T", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=5",
+		"-o", "ServerAliveCountMax=2", "--", ep.User+"@"+ep.Host, remoteCommand(argv))
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	_, err = c.Runner.Run(ctx, execx.Cmd{
+		Name: c.binary(), Args: args, Stdout: stdout, Stderr: stderr,
+	})
+	return err
+}
+
 func (c Client) run(ctx context.Context, ep vm.Endpoint, argv []string, stdin io.Reader, stdout, stderr io.Writer) (execx.Result, error) {
 	args, err := endpointArgs(ep)
 	if err != nil {

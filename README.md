@@ -90,6 +90,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
 | `box ports NAME [--add G:H] [--rm G] [--set G:H]` | Shows or changes published ports (VM stopped) |
 | `box provision NAME` | Re-runs provisioning (idempotent) |
+| `box logs NAME [-f] [--source S] [--unit U] [-n N] [--json]` | Prints recent logs or follows new entries |
 | `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
 | `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
 | `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
@@ -98,6 +99,23 @@ running `box repin` so the driver can authenticate the guest.
 Each VM gets an index `n`: SSH on host port `2200+n`, and guest ports
 `8000–8099` on host ports `10000+100n …`. So for the first VM, a dev server on
 guest port 8000 is `http://<mac>:10100` from the laptop.
+
+## Logs
+
+```sh
+box logs main
+box logs main --source provision -n 20
+box logs main -f --source guest --unit docker.service --json
+```
+
+The sources are `provision`, `host`, `net`, and `guest`. A snapshot prints
+the latest 100 lines per source by default, ordered by time. Use `-f` to
+keep receiving new lines and Ctrl-C to exit. `--unit` filters the guest
+journal by systemd system unit. `--json` emits one JSON object per line.
+
+Host-side logs remain available when a VM is stopped. Box keeps the last five
+provisioning logs and displays the latest one. Run `box provision NAME` on
+existing Ubuntu VMs to enable guest journal access.
 
 ## What's in the VM
 

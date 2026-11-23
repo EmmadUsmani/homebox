@@ -1,6 +1,8 @@
 #!/bin/sh
 set -eu
 
+usermod -aG systemd-journal "$HOMEBOX_USER"
+
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 # Development and diagnostic tools drawn from the exeuntu package list.

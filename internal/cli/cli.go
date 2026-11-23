@@ -21,6 +21,7 @@ import (
 type Application interface {
 	New(context.Context, app.NewOptions) error
 	Provision(context.Context, string) error
+	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
 	Start(context.Context, string) error
 	Stop(context.Context, string) error
 	Remove(context.Context, string) error
@@ -68,6 +69,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 		repinCommand(service, isTerminal),
 		namedCommand("start NAME", "Start a VM", service.Start),
 		namedCommand("stop NAME", "Stop a VM", service.Stop),
+		logsCommand(service),
 		namedCommand("provision NAME", "Run guest provisioning", service.Provision),
 		&cobra.Command{Use: "ls", Short: "List VMs", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
 			boxes, err := service.List(cmd.Context())

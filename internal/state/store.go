@@ -194,6 +194,16 @@ func readJSON(path string, value any) error {
 	return nil
 }
 
+// RunDir holds the host-side network daemon's runtime state.
+func (s *Store) RunDir(name string) string {
+	return filepath.Join(s.BoxDir(name), "run")
+}
+
+// NetworkLogPath resolves the daemon log inside a box's runtime directory.
+func NetworkLogPath(runDir string) string {
+	return filepath.Join(runDir, "vmnet.log")
+}
+
 func writeJSON(path string, value any) error {
 	data, err := json.MarshalIndent(value, "", "  ")
 	if err != nil {

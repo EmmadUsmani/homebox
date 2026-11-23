@@ -1,7 +1,7 @@
 # Observability and the desktop app
 
-Design, not built yet. The owner agreed this design on 2026-11-22; the
-decisions and what was turned down are also in
+The CLI logs command is built. The owner agreed this design on 2026-11-22.
+The decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
 
@@ -57,7 +57,7 @@ What box can show, and where each fact comes from:
 | `box ls [--json]` | Adds health, uptime and resource use to today's list |
 | `box status NAME [--json]` | Everything in the table above for one VM |
 | `box top [NAME]` | Live view of resource use, refreshed every few seconds |
-| `box logs NAME [-f] [--source S]` | Prints or follows logs (below) |
+| `box logs NAME [-f] [--source S] [--unit U] [-n N] [--json]` | Prints or follows logs (below) |
 
 ### Live logs
 
@@ -74,6 +74,14 @@ shows the same stream. Sources:
 Following a host file has to survive rotation and truncation. Following the
 guest keeps one SSH session open and reconnects if the VM restarts. With no
 `--source`, box interleaves all of them, labelled and ordered by time.
+
+The CLI reads the latest provisioning run and retains five on disk. A
+snapshot takes up to `-n` lines per source (default 100, range 0–1000) and
+sorts them by timestamp. Follow mode emits entries as they arrive. Box uses
+the arrival time for lines without a readable timestamp. The guest journal
+uses `--unit` for system units. During a disconnect, box reports that the
+journal is unavailable and leaves host-side logs readable. Reconnection
+requests the same bounded journal history, so recent guest lines can repeat.
 
 ### Trust rules
 

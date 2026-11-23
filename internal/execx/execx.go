@@ -75,7 +75,7 @@ func (OS) Run(ctx context.Context, c Cmd) (Result, error) {
 		cmd.Stdout = c.Stdout
 	}
 	if c.Stderr != nil {
-		cmd.Stderr = io.MultiWriter(c.Stderr, &stderr)
+		cmd.Stderr = c.Stderr
 	}
 
 	err := cmd.Run()

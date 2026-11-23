@@ -109,6 +109,7 @@ func TestBoxLifecycle(t *testing.T) {
 	if !record.Provisioned {
 		t.Fatal("box new did not mark the VM provisioned")
 	}
+	checkLogs(t, binary, name, box)
 	assertRunning(t, box(time.Minute, "ls"), name)
 	output := box(time.Minute, "ssh", name, "--", "echo ok && whoami")
 	if strings.TrimSpace(output) != "ok\n"+record.User {

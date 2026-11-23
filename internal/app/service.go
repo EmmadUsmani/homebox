@@ -24,6 +24,7 @@ type SSH interface {
 	HostKeys(ctx context.Context, ep vm.Endpoint) ([]string, error)
 	RunScript(ctx context.Context, ep vm.Endpoint, script []byte, env map[string]string, sudo bool, stdout, stderr io.Writer) error
 	AuthorizeKeys(ctx context.Context, ep vm.Endpoint, keys []string) error
+	Stream(ctx context.Context, ep vm.Endpoint, argv []string, stdout, stderr io.Writer) error
 	Interactive(ep vm.Endpoint, argv []string) error
 }
 
