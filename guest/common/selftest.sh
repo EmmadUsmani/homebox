@@ -23,6 +23,8 @@ check 'Claude Code' sh -lc 'claude --version'
 check Codex sh -lc 'codex --version'
 check 'sshd refuses agent and X11 forwarding' sh -c \
     'sudo -n sshd -T | grep -qx "allowagentforwarding no" && sudo -n sshd -T | grep -qx "x11forwarding no"'
+check 'sshd drops clients that stop answering' sh -c \
+    'sudo -n sshd -T | grep -qx "clientaliveinterval 30" && sudo -n sshd -T | grep -qx "clientalivecountmax 4"'
 
 workspace="$HOME/.local/share/homebox/playwright"
 mise="$HOME/.local/bin/mise"

@@ -136,6 +136,9 @@ func TestBoxLifecycle(t *testing.T) {
 	if output := runOK("ssh", "-F", localConfig, name, "cmp scp-test rsync-test && cat scp-test"); output != "transfer verified\n" {
 		t.Fatalf("transferred contents = %q", output)
 	}
+	checkRelayDropsDeadClients(t, localConfig, name, func() string {
+		return box(time.Minute, "ssh", name, "--", `pgrep -fc "sshd-session: .*\[priv\]" || true`)
+	})
 	t.Log(box(time.Minute, "ssh", name, "--", egressStress))
 	daemonLog, err := os.ReadFile(filepath.Join(root, "boxes", name, "run", "vmnet.log"))
 	if err != nil {

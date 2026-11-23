@@ -19,10 +19,14 @@ update-locale LANG=en_US.UTF-8
 timedatectl set-timezone Etc/UTC
 
 # The VM must never reach the laptop's SSH agent or display, whatever the
-# client asks for.
+# client asks for. A client that stops answering (a laptop that slept or left
+# the network) is dropped after about two minutes instead of keeping its
+# session forever.
 cat > /etc/ssh/sshd_config.d/10-homebox.conf <<'EOF'
 AllowAgentForwarding no
 X11Forwarding no
+ClientAliveInterval 30
+ClientAliveCountMax 4
 EOF
 sshd -t
 systemctl enable ssh.service

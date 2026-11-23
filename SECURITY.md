@@ -63,7 +63,9 @@ Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-
 ### Your laptop and the VM
 
 - SSH lands in the VM, through a relay box runs only while the VM's host process
-  is alive.
+  is alive. When either side of a forwarded connection ends, the relay closes
+  both, and the VM's sshd drops a client that stops answering for about two
+  minutes, so a laptop that sleeps or leaves doesn't leave sessions behind.
 - Laptops pin each VM's SSH host keys, so an impostor on the port fails the
   host-key check. `box repin` changes pins only after you review them.
 - Ports are published only on the Mac's loopback unless you turn on LAN
