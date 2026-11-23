@@ -81,6 +81,19 @@ bounded output and timeouts. The guest's answers are untrusted and used only
 for display. Box strips terminal controls and opens no listener or guest-to-host
 reporting channel for these commands.
 
+### Logs
+
+Box treats guest journal entries, provisioning output and host log fields
+that can carry guest data as untrusted text. It bounds line sizes, strips
+terminal escape sequences and control characters, and displays the contents
+only. Per-run provisioning logs are readable only by the host owner.
+
+Box opens guest journal sessions over pinned SSH, including when following
+new entries. It accepts bounded journal cursors with a restricted character
+set solely to resume a disconnected stream. Ubuntu provisioning adds the
+VM user to the `systemd-journal` group, granting read access to the system
+journal without running the log reader as root.
+
 ## Secrets in the VM
 
 Anything in the VM is readable by the agents in it, including the agents' own

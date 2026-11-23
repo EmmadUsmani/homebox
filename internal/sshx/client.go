@@ -17,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/EmmadUsmani/homebox/internal/execx"
+	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"golang.org/x/term"
 )
@@ -89,12 +90,43 @@ func (c Client) RunScript(ctx context.Context, ep vm.Endpoint, script []byte, en
 	}
 	argv = append(argv, "sh", "-s")
 	_, err := c.run(ctx, ep, argv, bytes.NewReader(script), stdout, stderr)
+	if exit, ok := err.(*execx.ExitError); ok {
+		clean := untrusted.Text(exit.Stderr)
+		if clean != exit.Stderr {
+			safe := *exit
+			safe.Stderr = clean
+			return &safe
+		}
+	}
 	return err
 }
 
 // Run runs a short remote command and captures its output.
 func (c Client) Run(ctx context.Context, ep vm.Endpoint, argv ...string) (execx.Result, error) {
 	return c.run(ctx, ep, argv, nil, nil, nil)
+}
+
+// Stream runs a remote command without a terminal or unbounded output capture.
+func (c Client) Stream(ctx context.Context, ep vm.Endpoint, argv []string, stdout, stderr io.Writer) error {
+	if ep.KnownHosts == "" {
+		return fmt.Errorf("streaming guest logs requires pinned SSH host keys")
+	}
+	args, err := endpointArgs(ep)
+	if err != nil {
+		return err
+	}
+	args = append(args, "-T", "-o", "ConnectTimeout=5", "-o", "ServerAliveInterval=5",
+		"-o", "ServerAliveCountMax=2", "--", ep.User+"@"+ep.Host, remoteCommand(argv))
+	if stdout == nil {
+		stdout = io.Discard
+	}
+	if stderr == nil {
+		stderr = io.Discard
+	}
+	_, err = c.Runner.Run(ctx, execx.Cmd{
+		Name: c.binary(), Args: args, Stdout: stdout, Stderr: stderr,
+	})
+	return err
 }
 
 func (c Client) run(ctx context.Context, ep vm.Endpoint, argv []string, stdin io.Reader, stdout, stderr io.Writer) (execx.Result, error) {

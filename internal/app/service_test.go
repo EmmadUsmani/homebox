@@ -37,12 +37,14 @@ func (testProfiles) ReadScript(path string) ([]byte, error) { return []byte(path
 const fixtureHostKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 type testSSH struct {
-	hostKeys []string
-	calls    []string
-	keys     []string
-	env      map[string]string
-	argv     []string
-	fail     error
+	hostKeys     []string
+	calls        []string
+	keys         []string
+	env          map[string]string
+	argv         []string
+	fail         error
+	scriptOutput string
+	stream       func(context.Context, []string, io.Writer, io.Writer) error
 }
 
 func (s *testSSH) HostKeys(_ context.Context, _ vm.Endpoint) ([]string, error) {
@@ -57,19 +59,29 @@ func (d testDriver) SSH(ctx context.Context, name string) (vm.Endpoint, error) {
 	return ep, err
 }
 
-func (s *testSSH) RunScript(_ context.Context, _ vm.Endpoint, script []byte, env map[string]string, sudo bool, _, _ io.Writer) error {
+func (s *testSSH) RunScript(_ context.Context, _ vm.Endpoint, script []byte, env map[string]string, sudo bool, stdout, _ io.Writer) error {
 	call := string(script)
 	if sudo {
 		call = "sudo " + call
 	}
 	s.calls = append(s.calls, call)
 	s.env = env
+	if s.scriptOutput != "" {
+		_, _ = io.WriteString(stdout, s.scriptOutput)
+	}
 	return s.fail
 }
 
 func (s *testSSH) AuthorizeKeys(_ context.Context, _ vm.Endpoint, keys []string) error {
 	s.calls = append(s.calls, "keys")
 	s.keys = slices.Clone(keys)
+	return nil
+}
+
+func (s *testSSH) Stream(ctx context.Context, _ vm.Endpoint, argv []string, stdout, stderr io.Writer) error {
+	if s.stream != nil {
+		return s.stream(ctx, argv, stdout, stderr)
+	}
 	return nil
 }
 

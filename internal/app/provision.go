@@ -4,14 +4,18 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
+	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/state"
+	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
@@ -159,8 +163,54 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 				box.Name, err, box.Name, box.Name)
 		}
 	}()
+	run := state.ProvisionRun{PID: os.Getpid(), StartedAt: time.Now().UTC(), Step: "prepare"}
+	dir := s.Store.ProvisionDir(box.Name)
+	if err := s.Store.SaveProvisionRun(box.Name, run); err != nil {
+		return err
+	}
+	var log *provisionLog
+	defer func() {
+		if log != nil {
+			if err != nil {
+				_ = log.line("Failed: "+err.Error(), false)
+			}
+			err = errors.Join(err, log.err, log.file.Close())
+		}
+		finished := time.Now().UTC()
+		run.FinishedAt = &finished
+		if err != nil {
+			run.Error = untrusted.Line(err.Error())
+		}
+		err = errors.Join(err, s.Store.SaveProvisionRun(box.Name, run))
+	}()
+	filename := run.StartedAt.Format(provisionLogTimestamp) + ".log"
+	file, err := os.OpenFile(filepath.Join(dir, filename), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	if err != nil {
+		return err
+	}
+	run.Log = filename
+	log = &provisionLog{file: file, terminal: s.Progress}
+	setStep := func(step string) error {
+		run.Step = step
+		return s.Store.SaveProvisionRun(box.Name, run)
+	}
+	if err := setStep("prepare"); err != nil {
+		return err
+	}
+	if err := pruneProvisionLogs(dir, filename); err != nil {
+		return err
+	}
+	worker := *s
+	worker.Progress = &logFramer{emit: log.line}
+	return worker.runProvision(ctx, box, profile, setStep, log)
+}
+
+func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest.Profile, setStep func(string) error, log *provisionLog) error {
 	instance, err := s.Driver.Get(ctx, box.Name)
 	if errors.Is(err, vm.ErrNotFound) {
+		if err := setStep("create"); err != nil {
+			return err
+		}
 		s.progress("Creating %s", box.Name)
 		if err := s.Driver.Create(ctx, vm.Spec{
 			Name: box.Name, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
@@ -174,6 +224,9 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 		instance, err = s.Driver.Get(ctx, box.Name)
 	}
 	if err != nil {
+		return err
+	}
+	if err := setStep("start"); err != nil {
 		return err
 	}
 	// Existing guests need a boot with the new NIC before provisioning can
@@ -194,6 +247,9 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	if err := s.start(ctx, &box, instance); err != nil {
 		return err
 	}
+	if err := setStep("ssh"); err != nil {
+		return err
+	}
 	endpoint, err := s.pinSSH(ctx, &box)
 	if err != nil {
 		return err
@@ -203,12 +259,15 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	}
 	env := map[string]string{"HOMEBOX_USER": box.User}
 	for _, step := range profile.Steps {
+		if err := setStep(step.Name); err != nil {
+			return err
+		}
 		s.progress("Provisioning %s: %s", box.Name, step.Name)
 		script, err := s.Profiles.ReadScript(step.Script)
 		if err != nil {
 			return err
 		}
-		if err := s.GuestSSH.RunScript(ctx, endpoint, script, env, step.Root, s.Progress, s.Progress); err != nil {
+		if err := log.runScript(ctx, s.GuestSSH, endpoint, script, env, step.Root); err != nil {
 			return fmt.Errorf("step %q: %w", step.Name, err)
 		}
 	}
@@ -218,5 +277,66 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 		return err
 	}
 	s.progress("Provisioned %s", box.Name)
+	return nil
+}
+
+const (
+	provisionLogTimestamp = "20060102T150405.000000000Z"
+	provisionLogRetention = 5
+)
+
+type provisionLog struct {
+	mu       sync.Mutex
+	file     *os.File
+	terminal io.Writer
+	err      error
+}
+
+func (l *provisionLog) line(raw string, truncated bool) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	// Leave room for a timestamp and the truncation marker within a file line.
+	const textLimit = untrusted.MaxLine - 64
+	text := logText(raw, untrusted.MaxLine)
+	if truncated || len(text) > textLimit {
+		text = logText(raw, textLimit) + " [line truncated]"
+	}
+	if l.err == nil {
+		_, l.err = fmt.Fprintf(l.file, "%s\t%s\n", time.Now().UTC().Format(time.RFC3339Nano), text)
+	}
+	if l.terminal != nil {
+		_, _ = fmt.Fprintln(l.terminal, text)
+	}
+	return l.err
+}
+
+func (l *provisionLog) runScript(ctx context.Context, ssh SSH, endpoint vm.Endpoint, script []byte, env map[string]string, root bool) error {
+	stdout, stderr := &logFramer{emit: l.line}, &logFramer{emit: l.line}
+	err := ssh.RunScript(ctx, endpoint, script, env, root, stdout, stderr)
+	for _, output := range []*logFramer{stdout, stderr} {
+		if len(output.pending) > 0 {
+			err = errors.Join(err, output.finish())
+		}
+	}
+	return err
+}
+
+func pruneProvisionLogs(dir, current string) error {
+	entries, err := os.ReadDir(dir) // sorted by filename, which is the UTC start time
+	if err != nil {
+		return err
+	}
+	var logs []string
+	for _, entry := range entries {
+		timestamp, ok := strings.CutSuffix(entry.Name(), ".log")
+		if _, err := time.Parse(provisionLogTimestamp, timestamp); ok && err == nil && entry.Type().IsRegular() && entry.Name() != current {
+			logs = append(logs, entry.Name())
+		}
+	}
+	for _, filename := range logs[:max(0, len(logs)-(provisionLogRetention-1))] {
+		if err := os.Remove(filepath.Join(dir, filename)); err != nil {
+			return err
+		}
+	}
 	return nil
 }

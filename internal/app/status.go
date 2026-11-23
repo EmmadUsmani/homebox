@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -105,7 +104,7 @@ func (s *Service) Status(ctx context.Context, name string) (VMStatus, error) {
 	if instance.Status == vm.StatusRunning {
 		status.setHostUsage(s.sampleHost(ctx, []vm.Instance{instance})[name])
 	}
-	status.Denials, err = readDenials(filepath.Join(s.Store.BoxDir(name), "run", "vmnet.log"))
+	status.Denials, err = readDenials(state.NetworkLogPath(s.Store.RunDir(name)))
 	status.addError("network log", err)
 	if instance.Status == vm.StatusRunning {
 		s.probeGuest(ctx, &status, true)

@@ -140,3 +140,40 @@ func TestConfigGoldenAndLocalHost(t *testing.T) {
 		t.Fatalf("local host = %q, %v", host, err)
 	}
 }
+
+func TestStreamUsesPinnedSSH(t *testing.T) {
+	fake := &execx.Fake{}
+	client := Client{Runner: fake}
+	argv := []string{"journalctl", "--unit=worker's.service"}
+	if err := client.Stream(t.Context(), endpoint, argv, nil, nil); err == nil || len(fake.Calls) != 0 {
+		t.Fatalf("stream accepted an unpinned endpoint: %v", err)
+	}
+	ep := endpoint
+	ep.KnownHosts = "test known-hosts"
+	if err := client.Stream(t.Context(), ep, argv, io.Discard, io.Discard); err != nil {
+		t.Fatal(err)
+	}
+	call := fake.Calls[0]
+	if call.Stdout != io.Discard || call.Stderr != io.Discard {
+		t.Fatalf("stream captured output: %+v", call)
+	}
+	for _, arg := range []string{"-T", "StrictHostKeyChecking=yes", "ConnectTimeout=5", "ServerAliveInterval=5", "ForwardAgent=no"} {
+		if !slices.Contains(call.Args, arg) {
+			t.Errorf("missing SSH argument %q", arg)
+		}
+	}
+	if got := call.Args[len(call.Args)-1]; got != `'journalctl' '--unit=worker'"'"'s.service'` {
+		t.Errorf("remote command = %q", got)
+	}
+}
+
+func TestRunScriptCleansCapturedStderr(t *testing.T) {
+	fake := &execx.Fake{}
+	fake.On("ssh ", "", &execx.ExitError{ExitCode: 23, Stderr: "\x1b[2Jpermission denied"})
+	client := Client{Runner: fake}
+	err := client.RunScript(t.Context(), endpoint, nil, nil, false, io.Discard, io.Discard)
+	var exit *execx.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode != 23 || exit.Stderr != "permission denied" {
+		t.Fatalf("script error = %v", err)
+	}
+}

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/state"
@@ -18,6 +19,7 @@ type stubApp struct {
 	newOptions  app.NewOptions
 	hostOptions app.HostInitOptions
 	portOptions app.PortOptions
+	logOptions  app.LogOptions
 	argv        []string
 	name        string
 	sshOptions  app.SSHConfigOptions
@@ -93,6 +95,27 @@ func TestSSHConfigAndOpenFlags(t *testing.T) {
 	out, _, err = execute(t, service, false, "", "open", "main", "9000")
 	if err != nil || !reflect.DeepEqual(service.argv, []string{"9000"}) || out != "" {
 		t.Fatalf("explicit open = %v, %q, %v", service.argv, out, err)
+	}
+}
+
+func (s *stubApp) Logs(_ context.Context, name string, options app.LogOptions, emit func(app.LogLine) error) error {
+	s.name, s.logOptions = name, options
+	return emit(app.LogLine{Time: time.Unix(0, 0).UTC(), Source: "guest", Level: "info", Unit: "worker.service", Text: "ready"})
+}
+
+func TestLogsFlagsAndJSON(t *testing.T) {
+	service := &stubApp{}
+	out, _, err := execute(t, service, false, "", "logs", "main", "-f", "--source", "guest", "--unit", "worker.service", "-n", "12", "--json")
+	want := app.LogOptions{Follow: true, Source: "guest", Unit: "worker.service", Lines: 12}
+	if err != nil || service.name != "main" || service.logOptions != want {
+		t.Fatalf("logs flags = %s %+v, %v", service.name, service.logOptions, err)
+	}
+	if out != `{"time":"1970-01-01T00:00:00Z","source":"guest","level":"info","unit":"worker.service","text":"ready"}`+"\n" {
+		t.Fatalf("logs JSON = %q", out)
+	}
+	out, _, err = execute(t, service, false, "", "logs", "main")
+	if err != nil || !strings.HasSuffix(out, " guest info worker.service: ready\n") || service.logOptions.Lines != 100 {
+		t.Fatalf("plain logs = %q, %+v, %v", out, service.logOptions, err)
 	}
 }
 
