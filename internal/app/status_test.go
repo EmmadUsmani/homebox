@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -20,7 +21,7 @@ import (
 
 func TestGuestStatus(t *testing.T) {
 	input := "garbage\nuptime 15.81\nload 0.10 0.20 0.30\nmemory 2048 1024\ndisk 4096 3072\n" +
-		"listener 0.0.0.0:8000 users:((\x1b[31mserver\x1b[0m))\nlistener [::]:8443\nlistener *:65536\n" +
+		"listener 0.0.0.0:8000 users:((\"\x1b[31mserver\x1b[0m\",pid=12,fd=3))\nlistener [::]:8443\nlistener *:65536\n" +
 		"process bad NaN 4 invalid\nprocess 1 1 4 oversized" + strings.Repeat("x", untrusted.MaxLine) + "\n" +
 		strings.Repeat("process 12 1.25 8 \x1b[31mnode\x1b[0m\n", 40) +
 		strings.Repeat("container 1 test ubuntu Up 2 minutes\n", 101) +
@@ -31,7 +32,7 @@ func TestGuestStatus(t *testing.T) {
 		status.Guest.Memory.UsedBytes != 1024*1024 || len(status.Guest.Processes) != 10 || status.Guest.Processes[0].Name != "node" {
 		t.Fatalf("unexpected guest: %+v", status.Guest)
 	}
-	if len(status.Ports) != 2 || status.Ports[0].Process != "users:((server))" ||
+	if len(status.Ports) != 2 || !slices.Equal(status.Ports[0].Processes, []ListenerProcess{{Name: "server", PID: 12}}) ||
 		len(status.Containers) != 100 || len(status.Agents) != 1 || status.Agents[0].CWD != "/tmp/workspace" {
 		t.Fatalf("unexpected detail: %+v", status)
 	}
@@ -152,5 +153,57 @@ func TestStatusHostUsageFallback(t *testing.T) {
 	status.setHostUsage(hostinfo.UsageSample{VM: machine, HostAgent: agent})
 	if status.Host != machine || status.HostAgent != agent || *status.UptimeSeconds != 2 {
 		t.Fatalf("unexpected VM metrics: %+v", status)
+	}
+}
+
+func TestListenerProcesses(t *testing.T) {
+	for _, test := range []struct {
+		field string
+		want  []ListenerProcess
+	}{
+		{`users:(("python3",pid=40251,fd=3),("node dev",pid=59,fd=0),("python3",pid=40251,fd=4))`,
+			[]ListenerProcess{{Name: "python3", PID: 40251}, {Name: "node dev", PID: 59}}},
+		{`users:(("has\"quote",pid=1,fd=2))`, []ListenerProcess{{Name: "has\"quote", PID: 1}}},
+		{`users:(("\x1b[31mserver\x1b[0m",pid=12,fd=3))`, []ListenerProcess{{Name: "server", PID: 12}}},
+		{`users:(("\x1b]52;c;dGVzdA==\x07",pid=12,fd=3))`, nil},
+		{`users:(("server",pid=12,fd=3),invalid)`, nil},
+		{`users:(("server",pid=0,fd=3))`, nil},
+		{`users:(("server",pid=2147483648,fd=3))`, nil},
+		{`users:(("server",pid=12,fd=-1))`, nil},
+		{`users:(("server",pid=12,fd=3)) junk`, nil},
+		{`users:(("` + strings.Repeat("x", 129) + `",pid=12,fd=3))`, nil},
+		{`users:(` + strings.Repeat(`("a",pid=1,fd=0),`, 16) + `("b",pid=2,fd=0))`, nil},
+		{"", nil},
+	} {
+		if got := parseListenerProcesses(test.field); !slices.Equal(got, test.want) {
+			t.Errorf("parseListenerProcesses(%q) = %+v, want %+v", test.field, got, test.want)
+		}
+	}
+}
+
+func TestProvisioningStepAvailableUntilSuccess(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	box := state.Box{Name: "test", Driver: driver.Name()}
+	if err := service.Store.Save(box); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now()
+	for _, test := range []struct {
+		run       state.ProvisionRun
+		wantState string
+		wantStep  string
+	}{
+		{state.ProvisionRun{PID: os.Getpid(), Step: "Self-test"}, "provisioning", "Self-test"},
+		{state.ProvisionRun{Step: "Self-test"}, "provision-interrupted", "Self-test"},
+		{state.ProvisionRun{FinishedAt: &now, Step: "Self-test", Error: "failed"}, "provision-failed", "Self-test"},
+		{state.ProvisionRun{FinishedAt: &now, Step: "Self-test"}, "stopped", ""},
+	} {
+		if err := service.Store.SaveProvisionRun(box.Name, test.run); err != nil {
+			t.Fatal(err)
+		}
+		got := service.localStatus(Listing{Box: box, Status: vm.StatusStopped})
+		if got.State != test.wantState || got.Provisioning == nil || got.Provisioning.Step != test.wantStep {
+			t.Fatalf("status = %+v, provisioning = %+v", got, got.Provisioning)
+		}
 	}
 }

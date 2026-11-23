@@ -146,9 +146,12 @@ running the bundled read-only [probe](../guest/common/status.sh) over SSH.
 On macOS, box matches a Virtualization process's open disk descriptor to the
 instance's exact disk path and file identity. It queries open files once per
 sample and checks that each matched PID retains the same kernel start time
-through the CPU and resident memory sample. The hostagent is identified by
+through the CPU and memory sample. The hostagent is identified by
 its PID file and command line. Its measurements appear separately, or as a
-labeled fallback when a Virtualization process cannot be identified.
+labeled fallback when a Virtualization process cannot be identified. The
+`host.memory_bytes` and `hostagent.memory_bytes` JSON fields report macOS
+physical footprint from `proc_pid_rusage`. Each listener's `processes` field
+contains the process names and PIDs available from the guest's `ss` output.
 
 ## Testing
 

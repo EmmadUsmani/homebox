@@ -61,12 +61,17 @@ type ProcessStatus struct {
 }
 
 type PortStatus struct {
-	Address   string `json:"address"`
-	GuestPort int    `json:"guest_port"`
-	Process   string `json:"process,omitempty"`
-	Published bool   `json:"published"`
-	HostPort  int    `json:"host_port,omitempty"`
-	HostURL   string `json:"host_url,omitempty"`
+	Address   string            `json:"address"`
+	GuestPort int               `json:"guest_port"`
+	Processes []ListenerProcess `json:"processes,omitempty"`
+	Published bool              `json:"published"`
+	HostPort  int               `json:"host_port,omitempty"`
+	HostURL   string            `json:"host_url,omitempty"`
+}
+
+type ListenerProcess struct {
+	Name string `json:"name"`
+	PID  int    `json:"pid"`
 }
 
 type ContainerStatus struct {
@@ -177,8 +182,10 @@ func (s *Service) localStatus(box Listing) VMStatus {
 	if recorded {
 		status.State = provisionStatus(status.State, run, hostinfo.ProcessAlive)
 		status.Provisioning = &ProvisionState{
-			StartedAt: run.StartedAt, FinishedAt: run.FinishedAt,
-			Step: untrusted.Line(run.Step), Error: untrusted.Line(run.Error),
+			StartedAt: run.StartedAt, FinishedAt: run.FinishedAt, Error: untrusted.Line(run.Error),
+		}
+		if run.FinishedAt == nil || run.Error != "" {
+			status.Provisioning.Step = untrusted.Line(run.Step)
 		}
 	}
 	status.Doctor, err = s.Store.LoadDoctorResult(box.Name)

@@ -16,7 +16,7 @@ func TestHostagentUsageMatchesInstance(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(pidFile), 0700); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(pidFile, []byte("123\n"), 0600); err != nil {
+	if err := os.WriteFile(pidFile, []byte(fmt.Sprintln(os.Getpid())), 0600); err != nil {
 		t.Fatal(err)
 	}
 
@@ -29,10 +29,10 @@ func TestHostagentUsageMatchesInstance(t *testing.T) {
 		{filepath.Join(t.TempDir(), "other", "ha.pid"), false},
 	} {
 		runner := &execx.Fake{}
-		runner.On("/bin/ps -ww -p 123", "123 2.5 1024 1-02:03:04 limactl hostagent --pidfile "+test.path+" --socket ha.sock vm\n", nil)
+		runner.On("/bin/ps -ww -p ", fmt.Sprintf("%d 2.5 1-02:03:04 limactl hostagent --pidfile %s --socket ha.sock vm\n", os.Getpid(), test.path), nil)
 		usage := (ProcessUsage{Runner: runner}).Sample(t.Context(), []vm.Instance{{Name: "vm", HostPIDFile: pidFile}})["vm"].HostAgent
 		if test.want {
-			if usage == nil || usage.CPUPercent != 2.5 || usage.ResidentBytes != 1<<20 || usage.UptimeSeconds != 93784 || usage.Source != "hostagent" {
+			if usage == nil || usage.CPUPercent != 2.5 || usage.MemoryBytes == nil || *usage.MemoryBytes == 0 || usage.UptimeSeconds != 93784 || usage.Source != "hostagent" {
 				t.Fatalf("unexpected sample: %+v", usage)
 			}
 		} else if usage != nil {
@@ -114,7 +114,7 @@ func TestVirtualizationBatchUsesOneLsofCall(t *testing.T) {
 	}
 	runner := &execx.Fake{}
 	runner.On("/usr/sbin/lsof ", records, nil)
-	runner.On("/bin/ps ", fmt.Sprintf("%d 2.5 1024 00:04 %s\n", os.Getpid(), testVirtualizationCommand), nil)
+	runner.On("/bin/ps ", fmt.Sprintf("%d 2.5 00:04 %s\n", os.Getpid(), testVirtualizationCommand), nil)
 	got := (ProcessUsage{Runner: runner}).Sample(t.Context(), instances)
 	calls := runner.Commands()
 	if len(calls) != 2 || got[machines[0]].VM == nil || got[machines[1]].VM != nil {

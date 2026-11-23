@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"slices"
 	"testing"
 	"time"
 
@@ -19,18 +20,23 @@ func checkStatus(t *testing.T, box func(time.Duration, ...string) string, binary
 		t.Fatalf("status JSON: %v\n%s", err, output)
 	}
 	if status.State != "running" || status.Guest == nil || status.Guest.Memory == nil || status.Doctor == nil ||
-		status.Host == nil || status.Host.Source != "virtualization" || status.Host.PID <= 1 ||
-		status.HostAgent == nil || status.HostAgent.Source != "hostagent" || status.HostAgent.PID == status.Host.PID {
+		status.Host == nil || status.Host.Source != "virtualization" || status.Host.PID <= 1 || status.Host.MemoryBytes == nil ||
+		*status.Host.MemoryBytes == 0 || status.Provisioning == nil || status.Provisioning.FinishedAt == nil || status.Provisioning.Step != "" ||
+		status.HostAgent == nil || status.HostAgent.Source != "hostagent" || status.HostAgent.PID == status.Host.PID ||
+		status.HostAgent.MemoryBytes == nil || *status.HostAgent.MemoryBytes == 0 {
 		t.Fatalf("status is missing running VM data: %s", output)
 	}
 	published := false
 	for _, port := range status.Ports {
-		if port.GuestPort == 8000 && port.Published && port.HostURL == url {
+		if port.GuestPort == 8000 && port.Published && port.HostURL == url &&
+			slices.ContainsFunc(port.Processes, func(process app.ListenerProcess) bool {
+				return process.Name == "python3" && process.PID > 1
+			}) {
 			published = true
 		}
 	}
 	if !published {
-		t.Fatalf("status did not report the published listener: %s", output)
+		t.Fatalf("status did not report the published Python listener: %s", output)
 	}
 	t.Logf("box status table:\n%s", box(12*time.Second, "status", name))
 	t.Logf("box status JSON:\n%s", output)

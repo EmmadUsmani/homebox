@@ -14,7 +14,12 @@ df -Pk / | awk 'NR == 2 { print "disk", $2, $3 }'
 ps -eo pid=,pcpu=,rss=,comm= --sort=-pcpu |
     head -n 10 | awk '{ print "process", $1, $2, $3, $4 }'
 if command -v ss >/dev/null 2>&1; then
-    ss -Hltnp | head -n 200 | awk '{ address=$4; $1=$2=$3=$4=$5=""; sub(/^ +/, ""); print "listener", address, $0 }'
+    ss -Hltnp | head -n 200 | awk '{
+        address=$4
+        for (field=1; field<=5; field++) sub(/^[[:space:]]*[^[:space:]]+/, "")
+        sub(/^[[:space:]]+/, "")
+        print "listener", address, $0
+    }'
 fi
 if command -v docker >/dev/null 2>&1; then
     docker ps --format '{{.ID}} {{.Names}} {{.Image}} {{.Status}}' | head -n 100 |

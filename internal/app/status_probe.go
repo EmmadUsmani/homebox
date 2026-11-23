@@ -7,6 +7,8 @@ import (
 	"math"
 	"net"
 	"net/netip"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -166,7 +168,7 @@ func parseGuestDetail(kind, raw string, status *VMStatus, guest *GuestStatus) {
 		_, addrErr := netip.ParseAddr(host)
 		if err == nil && portErr == nil && port > 0 && len(host) <= 128 &&
 			(host == "*" || addrErr == nil) && len(status.Ports) < 200 {
-			status.Ports = append(status.Ports, PortStatus{Address: untrusted.Line(host), GuestPort: int(port), Process: untrusted.Line(process)})
+			status.Ports = append(status.Ports, PortStatus{Address: untrusted.Line(host), GuestPort: int(port), Processes: parseListenerProcesses(process)})
 		}
 	case "container":
 		if len(parts) == 4 && len(status.Containers) < 100 {
@@ -183,4 +185,43 @@ func parseGuestDetail(kind, raw string, status *VMStatus, guest *GuestStatus) {
 			status.Agents = append(status.Agents, AgentStatus{int(pid), untrusted.Line(fields[1]), untrusted.Line(fields[2])})
 		}
 	}
+}
+
+// ss -p emits users:(("name",pid=123,fd=4),...). Reject the entire field
+// when any entry fails to match so a malformed suffix cannot impersonate a process.
+var listenerProcessEntry = regexp.MustCompile(`^\(("(?:[^"\\\r\n]|\\.){1,128}"),pid=([0-9]{1,10}),fd=([0-9]{1,10})\)`)
+
+func parseListenerProcesses(field string) []ListenerProcess {
+	const maxProcesses = 16
+	entries, ok := strings.CutPrefix(field, "users:(")
+	if !ok {
+		return nil
+	}
+	var processes []ListenerProcess
+	for index := 0; index < maxProcesses; index++ {
+		match := listenerProcessEntry.FindStringSubmatch(entries)
+		if match == nil {
+			return nil
+		}
+		name, nameErr := strconv.Unquote(match[1])
+		pid, pidErr := strconv.ParseUint(match[2], 10, 31)
+		_, fdErr := strconv.ParseUint(match[3], 10, 31)
+		name = strings.TrimSpace(untrusted.Line(name))
+		if nameErr != nil || name == "" || pidErr != nil || pid == 0 || fdErr != nil {
+			return nil
+		}
+		process := ListenerProcess{Name: name, PID: int(pid)}
+		if !slices.Contains(processes, process) {
+			processes = append(processes, process)
+		}
+		remaining := entries[len(match[0]):]
+		if remaining == ")" {
+			return processes
+		}
+		entries, ok = strings.CutPrefix(remaining, ",")
+		if !ok {
+			return nil
+		}
+	}
+	return nil
 }

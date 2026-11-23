@@ -10,7 +10,7 @@ type Usage struct {
 	Source        string  `json:"source"`
 	PID           int     `json:"pid"`
 	CPUPercent    float64 `json:"cpu_percent"`
-	ResidentBytes uint64  `json:"resident_bytes"`
+	MemoryBytes   *uint64 `json:"memory_bytes,omitempty"` // physical footprint
 	UptimeSeconds uint64  `json:"uptime_seconds"`
 }
 
