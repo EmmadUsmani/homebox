@@ -28,6 +28,8 @@ internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    reads guest public host keys and renders OpenSSH config and pins
 internal/doctor    host-side controls and reporting for isolation checks
 internal/hostinfo  the host's CPU count and RAM, for sizing new VMs
+internal/untrusted cleans text that came from a VM (escape sequences, control
+                   characters) before box prints it
 internal/execx     a small process-runner interface, so code that shells out
                    can be tested with a fake
 e2e/               opt-in CLI lifecycle tests against a real VM
@@ -58,6 +60,7 @@ original if it exists.
 ~/.homebox/
   host.json             host settings (LAN publishing, laptop SSH keys)
   boxes/NAME/box.json   one VM's record: profile, size, index, ports, SSH pins
+  boxes/NAME/provision/ the latest provisioning run (last.json) and per-run logs
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
