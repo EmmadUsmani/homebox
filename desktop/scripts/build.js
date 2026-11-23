@@ -15,18 +15,26 @@ function run(command, args, cwd, env = process.env) {
 
 function build() {
     if (process.platform !== "darwin") {
-        throw new Error("The desktop spike packages a macOS app.");
+        throw new Error("The desktop build packages a macOS app.");
     }
     const frontend = join(desktop, "frontend");
     run("npm", ["ci"], frontend);
     run("npm", ["run", "build"], frontend);
 
     mkdirSync(executables, { recursive: true });
+    run("go", ["build", "-o", join(executables, "box"), "./cmd/box"], join(desktop, ".."),
+        { ...process.env, CGO_ENABLED: "0" });
     run("go", [
         "build", "-tags", "production", "-ldflags=-extldflags=-mmacosx-version-min=15.0",
         "-o", executable, ".",
     ], desktop, { ...process.env, CGO_ENABLED: "1", MACOSX_DEPLOYMENT_TARGET: "15.0" });
     copyFileSync(join(desktop, "Info.plist"), join(bundle, "Contents", "Info.plist"));
+    const resources = join(bundle, "Contents", "Resources");
+    mkdirSync(resources, { recursive: true });
+    for (const font of ["inter", "jetbrains-mono"]) {
+        const licence = `${font}-OFL.txt`;
+        copyFileSync(join(frontend, "src", "fonts", licence), join(resources, licence));
+    }
     return bundle;
 }
 

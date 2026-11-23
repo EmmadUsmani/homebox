@@ -170,21 +170,22 @@ when root in the guest changes its routes. Run `box doctor` to check.
 See [SECURITY.md](SECURITY.md) for the full security model, and the
 [architecture](docs/architecture.md) for known limitations.
 
-## Desktop status spike (macOS)
+## Desktop app (macOS)
 
 Build from the repository root with Go 1.27.4, Xcode Command Line Tools and
-Node.js 22.12 or later (verified with 22.14.0 and npm 11.0.0). Keep
-`limactl` on your shell's PATH.
+Node.js 22 (22.12 or later), 24, or 26+. For local VMs, install Lima in a
+standard Homebrew location (`/opt/homebrew/bin` or `/usr/local/bin`).
 
 ```sh
 node desktop/scripts/build.js
-open --env "PATH=$PATH" desktop/dist/homebox.app
+open desktop/dist/homebox.app
 ```
 
-The window shows local VM status JSON and has a Refresh status button. The
-build installs the locked npm dependencies with `npm ci` and embeds the Vite
-output. It can run without a Wails CLI installation.
-See the [spike report](docs/spikes/wails-desktop.md) for the native GUI check.
+The app lists local VMs and shows their status, resources, listening servers,
+network denials and live logs. Start, stop and run doctor from the window.
+Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
+and includes the matching `box` executable for the network daemon.
+See the [spike report](docs/spikes/wails-desktop.md) for the build background.
 
 ## Development
 

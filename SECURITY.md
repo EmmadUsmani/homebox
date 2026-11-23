@@ -84,10 +84,12 @@ reporting channel for these commands.
 ### Desktop status
 
 The packaged desktop app uses WKWebView's in-process Wails asset and binding
-handlers with embedded frontend files. Its sole binding calls the shared
-read-only local status service. The app opens no network listener and renders
-the returned JSON as text. The Vite development server
-listens only on host loopback and serves frontend files.
+handlers with embedded frontend files. Local status and logs use the same
+bounded, pinned SSH reads as the CLI and render guest content as text. Starting
+a VM launches the bundled `box` network daemon under the same per-VM Seatbelt
+profile as a CLI start. The app serves no network API. Running doctor explicitly
+opens its short-lived diagnostic canaries, as in the CLI. The Vite development
+server listens only on host loopback and serves frontend files.
 
 ### Logs
 

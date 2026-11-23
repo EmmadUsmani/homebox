@@ -150,6 +150,11 @@ A full desktop app (owner), built with **Wails**: a Go backend that calls
 `internal/app` directly, and a web frontend in the OS's own web view. The same
 code runs on the laptop and on a host; on a host it also sees the local VMs.
 
+The local VM list and Overview refresh every few seconds, retaining readings
+on refresh errors. Local lifecycle actions and doctor use the shared service.
+Logs follow the CLI sources, support a guest-unit filter and retain the most
+recent 5,000 lines while open. Leaving the view cancels the stream.
+
 | Screen | What it does |
 |---|---|
 | VM list | Local VMs and remote ones (level A), with state, health and a reachability badge |
@@ -171,8 +176,8 @@ code runs on the laptop and on a host; on a host it also sees the local VMs.
 - **Distribution: build from source.** No signed or notarized builds, so no
   Apple developer account (owner, 2026-11-22). An app built on your own Mac
   isn't quarantined, so it opens normally. See the
-  [README](../README.md#desktop-status-spike-macos) for the source build.
-- **Wails version.** v3 reached stable on 2026-10-26. The skeleton uses v3.1.0.
+  [README](../README.md#desktop-app-macos) for the source build.
+- **Wails version.** v3 reached stable on 2026-10-26. The app uses v3.1.0.
   See the [version and build checks](spikes/wails-desktop.md#version-and-build).
 - **Layout.** The nested `desktop/` Go module imports the shared app service.
   Wails and the web view stay outside the root module and `box` builds with

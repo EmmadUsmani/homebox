@@ -54,6 +54,10 @@ GUI checks run locally.
 
 ## Native verification
 
+The transcript below records the original spike. The current
+[`verify.swift`](../../desktop/scripts/verify.swift) checks the VM inventory
+and can drive the local lifecycle and log views with the scratch VM.
+
 From the root, run `node desktop/scripts/verify.js`. It builds the production
 bundle, opens it with `open` and a fresh scratch state directory, waits for
 the native window, finds the WKWebView accessibility tree, reads the status
