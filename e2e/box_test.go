@@ -139,13 +139,19 @@ func TestBoxLifecycle(t *testing.T) {
 	checkRelayDropsDeadClients(t, localConfig, name, func() string {
 		return box(time.Minute, "ssh", name, "--", `pgrep -fc "sshd-session: .*\[priv\]" || true`)
 	})
-	t.Log(box(time.Minute, "ssh", name, "--", egressStress))
+	output, stressErr := run(time.Minute, binary, "ssh", name, "--", egressStress)
+	t.Log(output)
 	daemonLog, err := os.ReadFile(filepath.Join(root, "boxes", name, "run", "vmnet.log"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(daemonLog), "egress flow refused") {
-		t.Fatal("gateway refused flows during provisioning or stress test")
+	for line := range strings.SplitSeq(string(daemonLog), "\n") {
+		if strings.Contains(line, "egress flow refused") {
+			t.Fatalf("gateway refused flows during provisioning or stress test: %s", line)
+		}
+	}
+	if stressErr != nil {
+		t.Fatalf("egress stress: %v", stressErr)
 	}
 	diagnostics := box(2*time.Minute, "doctor", name)
 	t.Log(diagnostics)
@@ -329,7 +335,9 @@ import socket
 async def main():
     loop = asyncio.get_running_loop()
     addresses = []
-    for host in ("www.cloudflare.com", "www.google.com"):
+    hosts = ("www.cloudflare.com", "www.google.com", "www.apple.com",
+             "www.microsoft.com", "www.github.com", "www.wikipedia.org")
+    for host in hosts:
         records = await loop.getaddrinfo(host, 443, family=socket.AF_INET, type=socket.SOCK_STREAM)
         addresses.append(records[0][4])
 
@@ -344,8 +352,10 @@ async def main():
         # Stagger SYNs and keep every socket open until all 300 connect. The
         # gateway refuses a flow at connect time, so a completed connect is the
         # proof; servers may close idle pre-TLS sockets later, which is fine.
-        for _ in range(15):
-            await asyncio.gather(*(connect(address) for address in addresses for _ in range(10)))
+        # Rotate across independent public endpoints to keep the load on any one low.
+        for start in range(0, 300, 20):
+            batch = (addresses[i % len(addresses)] for i in range(start, start + 20))
+            await asyncio.gather(*(connect(address) for address in batch))
             await asyncio.sleep(0.05)
     finally:
         for conn in connections:
