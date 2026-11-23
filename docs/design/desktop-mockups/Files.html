@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>homebox: files and editor</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0d11}
+a{color:#7fb0ff}a:hover{color:#a9c9ff}
+</style>
+</helmet>
+<div style="min-height: 800px; display: flex; flex-direction: column; background: #0f1115; color: #e6e8ee; font-family: Inter, system-ui, sans-serif; font-size: 14px">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #232733; background: #12151b">
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #28c840"></span>
+    <span style="margin-left: 16px; font-weight: 600; letter-spacing: 0.2px">homebox</span>
+  </div>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0">
+    <nav aria-label="Virtual machines" style="flex: 1 1 240px; max-width: 280px; background: #12151b; border-right: 1px solid #232733; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box">
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 8px">This Mac</div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; background: #1d2330; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1; font-weight: 600">main</span>
+        <span style="font-size: 12px; color: #a3abba">running</span>
+      </a>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; border: 2px solid #6b7486; box-sizing: border-box"></span>
+        <span style="flex: 1">scratch</span>
+        <span style="font-size: 12px; color: #a3abba">stopped</span>
+      </a>
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 8px 4px">Other hosts</div>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1">main <span style="color: #a3abba">· Mac mini</span></span>
+        <span style="font-size: 12px; color: #a3abba">reachable</span>
+      </a>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #f0a040"></span>
+        <span style="flex: 1">work <span style="color: #a3abba">· Studio</span></span>
+        <span style="font-size: 12px; color: #f3b866">key changed</span>
+      </a>
+      <div style="flex: 1"></div>
+      <button type="button" style="height: 40px; border-radius: 8px; border: 1px dashed #3a4152; background: transparent; color: #c3cad6; font: inherit; cursor: pointer">Add a host</button>
+    </nav>
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 20px 28px 0">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600">main</h1>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #143326; color: #7ad8b0; font-size: 12px; font-weight: 500"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #3fb68b"></span>Running · up 3h 12m</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #1a2333; color: #a9c9ff; font-size: 12px; font-weight: 500">Isolation checks passed · 20 min ago</span>
+        <div style="flex: 1"></div>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; cursor: pointer">Run doctor</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; cursor: pointer">Stop</button>
+        <a href="Terminal.dc.html" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; background: #3b82f6; color: #ffffff; text-decoration: none; font-weight: 500">Open terminal</a>
+      </div>
+      <div role="tablist" aria-label="VM views" style="display: flex; gap: 4px; padding: 16px 28px 0; border-bottom: 1px solid #232733">
+        <a href="Main.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Overview</a>
+        <a href="Logs.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Logs</a>
+        <a href="Terminal.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Terminal</a>
+        <a href="Files.dc.html" style="padding: 10px 14px; color: #e6e8ee; text-decoration: none; border-bottom: 2px solid #5b9cff; font-weight: 500">Files</a>
+      </div>
+      <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 16px; padding: 16px 28px 24px">
+<div style="flex: 1 1 220px; max-width: 280px; background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 2px">
+<div style="display: flex; gap: 8px; padding: 4px 4px 10px"><button type="button" style="flex: 1; height: 32px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; font-size: 13px; cursor: pointer">Upload</button><button type="button" style="flex: 1; height: 32px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; font-size: 13px; cursor: pointer">Download</button></div>
+<a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 8px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #f3b866; width: 14px">▾</span>~/app</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 24px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #f3b866; width: 14px">▾</span>node_modules</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 24px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #f3b866; width: 14px">▾</span>src</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 40px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px; background: #1d2330;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>App.tsx</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 40px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>App.test.tsx</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 40px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>api.ts</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 40px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>main.tsx</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 24px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>package.json</a><a href="Files.dc.html" style="display: flex; align-items: center; gap: 8px; padding: 6px 8px 6px 24px; border-radius: 6px; text-decoration: none; color: #e6e8ee; font-size: 13px;"><span aria-hidden="true" style="color: #8b94a5; width: 14px">·</span>vite.config.ts</a></div>
+<div style="flex: 999 1 520px; min-width: 0; background: #0b0d11; border: 1px solid #232733; border-radius: 12px; display: flex; flex-direction: column">
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 10px 14px; border-bottom: 1px solid #232733"><span style="font-family: 'JetBrains Mono', monospace; font-size: 13px">~/app/src/App.tsx</span><span style="font-size: 12px; color: #f3b866">● edited</span><div style="flex: 1"></div><span style="font-size: 12px; color: #a3abba">2.1 KB · changed 4 min ago</span><button type="button" style="height: 32px; padding: 0 14px; border-radius: 8px; border: none; background: #3b82f6; color: #ffffff; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer">Save</button></div>
+<div style="padding: 12px 0; font-family: 'JetBrains Mono', monospace; font-size: 13px; line-height: 1.6; color: #e6e8ee; flex: 1"><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">1</span><span style="white-space: pre"><span style="color: #c69cff">import</span> { useState } <span style="color: #c69cff">from</span> <span style="color: #7ad8b0">'react'</span></span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">2</span><span style="white-space: pre"><span style="color: #c69cff">import</span> { fetchTodos } <span style="color: #c69cff">from</span> <span style="color: #7ad8b0">'./api'</span></span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">3</span><span style="white-space: pre">&#160;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">4</span><span style="white-space: pre"><span style="color: #c69cff">export default function</span> <span style="color: #7fb0ff">App</span>() {</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">5</span><span style="white-space: pre">  <span style="color: #c69cff">const</span> [count, setCount] = <span style="color: #7fb0ff">useState</span>(<span style="color: #f3b866">0</span>)</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">6</span><span style="white-space: pre">  <span style="color: #c69cff">return</span> (</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">7</span><span style="white-space: pre">    &lt;<span style="color: #ff8a8a">main</span> <span style="color: #b9a3ff">className</span>=<span style="color: #7ad8b0">"card"</span>&gt;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">8</span><span style="white-space: pre">      &lt;<span style="color: #ff8a8a">h1</span>&gt;Hello from homebox&lt;/<span style="color: #ff8a8a">h1</span>&gt;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">9</span><span style="white-space: pre">      &lt;<span style="color: #ff8a8a">button</span> <span style="color: #b9a3ff">onClick</span>={() =&gt; <span style="color: #7fb0ff">setCount</span>(count + <span style="color: #f3b866">1</span>)}&gt;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">10</span><span style="white-space: pre">        Clicked {count} times</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">11</span><span style="white-space: pre">      &lt;/<span style="color: #ff8a8a">button</span>&gt;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">12</span><span style="white-space: pre">    &lt;/<span style="color: #ff8a8a">main</span>&gt;</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">13</span><span style="white-space: pre">  )</span></div><div style="display: flex"><span style="width: 36px; flex: none; text-align: right; padding-right: 14px; color: #5d6576">14</span><span style="white-space: pre">}</span></div></div>
+<div role="status" style="margin: 0 14px 14px; padding: 10px 12px; border-radius: 8px; background: #2a2114; border: 1px solid #5a4220; color: #f3d2a0; font-size: 13px">This file changed in the VM since you opened it (an agent may have edited it). Saving is blocked so nothing is overwritten. <a href="Files.dc.html">Reload and compare</a></div>
+</div></div></main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

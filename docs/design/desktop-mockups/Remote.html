@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>homebox: remote VM hints</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0d11}
+a{color:#7fb0ff}a:hover{color:#a9c9ff}
+</style>
+</helmet>
+<div style="min-height: 800px; display: flex; flex-direction: column; background: #0f1115; color: #e6e8ee; font-family: Inter, system-ui, sans-serif; font-size: 14px">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #232733; background: #12151b">
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #28c840"></span>
+    <span style="margin-left: 16px; font-weight: 600; letter-spacing: 0.2px">homebox</span>
+  </div>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0">
+    <nav aria-label="Virtual machines" style="flex: 1 1 240px; max-width: 280px; background: #12151b; border-right: 1px solid #232733; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box">
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 8px">This Mac</div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1">main</span>
+        <span style="font-size: 12px; color: #a3abba">running</span>
+      </a>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; border: 2px solid #6b7486; box-sizing: border-box"></span>
+        <span style="flex: 1">scratch</span>
+        <span style="font-size: 12px; color: #a3abba">stopped</span>
+      </a>
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 8px 4px">Other hosts</div>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1">main <span style="color: #a3abba">· Mac mini</span></span>
+        <span style="font-size: 12px; color: #a3abba">reachable</span>
+      </a>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; background: #1d2330; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #f0a040"></span>
+        <span style="flex: 1">work <span style="color: #a3abba">· Studio</span></span>
+        <span style="font-size: 12px; color: #f3b866">key changed</span>
+      </a>
+      <div style="flex: 1"></div>
+      <button type="button" style="height: 40px; border-radius: 8px; border: 1px dashed #3a4152; background: transparent; color: #c3cad6; font: inherit; cursor: pointer">Add a host</button>
+    </nav>
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column"><div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 20px 28px 16px; border-bottom: 1px solid #232733"><h1 style="margin: 0; font-size: 22px; font-weight: 600">work</h1><span style="color: #a3abba">on Studio · from your SSH config</span><div style="flex: 1"></div><span style="font-size: 12px; color: #a3abba">Checked 12 s ago</span></div>
+<div style="padding: 24px 28px; display: flex; flex-direction: column; gap: 20px">
+<div role="alert" style="border-radius: 12px; border: 1px solid #7a4d16; background: #2a1e0f; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px">
+<div style="display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; color: #ffd39a"><span aria-hidden="true" style="width: 10px; height: 10px; border-radius: 5px; background: #f0a040"></span>Host key changed: not connecting</div>
+<div style="color: #f3dfc2; font-size: 14px; line-height: 1.5; max-width: 760px">The VM answered with a different key from the one pinned when it was set up. Either it was rebuilt, or something else is answering in its place. homebox won't connect until you've checked.</div>
+<div style="color: #f3dfc2; font-size: 14px; line-height: 1.5; max-width: 760px">If you rebuilt it on purpose: on that Mac run <span style="font-family: 'JetBrains Mono', monospace; background: #1a130a; padding: 2px 6px; border-radius: 4px">box repin work</span>, then reinstall the laptop SSH config.</div>
+<div style="display: flex; gap: 10px; flex-wrap: wrap"><button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #7a4d16; background: #3a2a14; color: #ffe2b8; font: inherit; cursor: pointer">Copy command</button><button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; cursor: pointer">Check again</button></div>
+</div>
+<h2 style="margin: 4px 0 0; font-size: 14px; font-weight: 600; color: #c3cad6">Other states the app can show for a VM on another Mac</h2>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px"><div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px"><div style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #ef6b6b"></span>Unreachable</div><div style="font-size: 13px; color: #c3cad6; margin-top: 8px">The name doesn't resolve or the connection timed out.</div><div style="font-size: 13px; color: #a3abba; margin-top: 6px">Likely: The Mac is off, asleep or not on this network.</div></div><div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px"><div style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #8b94a5"></span>VM not running</div><div style="font-size: 13px; color: #c3cad6; margin-top: 8px">The Mac answered but refused the connection.</div><div style="font-size: 13px; color: #a3abba; margin-top: 6px">Likely: box's SSH relay only listens while the VM runs, so the VM is probably stopped.</div></div><div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px"><div style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #f0a040"></span>Connection broken</div><div style="font-size: 13px; color: #c3cad6; margin-top: 8px">TCP connected but the SSH handshake failed.</div><div style="font-size: 13px; color: #a3abba; margin-top: 6px">Likely: sshd in the VM is down or still booting.</div></div><div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px"><div style="display: flex; align-items: center; gap: 8px; font-weight: 600"><span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>Reachable</div><div style="font-size: 13px; color: #c3cad6; margin-top: 8px">Logged in with the pinned key.</div><div style="font-size: 13px; color: #a3abba; margin-top: 6px">Likely: Status, logs, terminal and files work as for a VM on this Mac.</div></div></div>
+<div style="font-size: 13px; color: #a3abba">These are hints, not diagnoses. The app can't start, stop or create VMs on another Mac, and can't tell a stopped VM from a deleted one.</div>
+</div></main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

@@ -36,6 +36,7 @@ describe it are true, in the same commit or the one right after.
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
 | [docs/images-and-sleep.md](docs/images-and-sleep.md) | Images or sleep are built, or a spike answers one of its questions |
 | [docs/observability.md](docs/observability.md) | Status, logs or the desktop app are built, or a spike answers one of its questions |
+| [docs/design/desktop-app.md](docs/design/desktop-app.md) | The desktop app's look changes (the owner approves it first) |
 | [docs/agent-logins.md](docs/agent-logins.md) | Agent logins are stored or copied by box, or a spike answers one of its questions |
 
 - Fix a doc that's wrong or stale as soon as you notice it, even outside your

@@ -122,6 +122,18 @@ core directly, and it runs on macOS, Windows and Linux like the hosts will.
   process and a bridge to it.
 - *SwiftUI:* not chosen. macOS only.
 
+**The app's look: the approved mockups** (owner, 2026-11-22). Dark, Inter
+with JetBrains Mono for code, one blue accent; five screens in
+[design/desktop-app.md](design/desktop-app.md).
+
+**React with TypeScript for the app's frontend** (owner, 2026-11-22). xterm.js
+and Monaco, which the app needs for its terminal and editor, have mature React
+wrappers and the most examples.
+
+- *Svelte:* not chosen. Lighter, but thinner support for xterm.js and Monaco.
+- *Plain TypeScript:* not chosen. More hand-written code for five screens and
+  their state.
+
 **Build the app from source; no signed builds** (owner, 2026-11-22). homebox
 isn't sold, so there's no Apple developer account (a paid service). Apps built
 on your own Mac open normally.

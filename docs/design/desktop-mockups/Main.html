@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>homebox: VM overview</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0b0d11}
+a{color:#7fb0ff}a:hover{color:#a9c9ff}
+</style>
+</helmet>
+<div style="min-height: 800px; display: flex; flex-direction: column; background: #0f1115; color: #e6e8ee; font-family: Inter, system-ui, sans-serif; font-size: 14px">
+  <div style="height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 16px; border-bottom: 1px solid #232733; background: #12151b">
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #ff5f57"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #febc2e"></span>
+    <span aria-hidden="true" style="width: 12px; height: 12px; border-radius: 6px; background: #28c840"></span>
+    <span style="margin-left: 16px; font-weight: 600; letter-spacing: 0.2px">homebox</span>
+  </div>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0">
+    <nav aria-label="Virtual machines" style="flex: 1 1 240px; max-width: 280px; background: #12151b; border-right: 1px solid #232733; padding: 16px 12px; display: flex; flex-direction: column; gap: 6px; box-sizing: border-box">
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 4px 8px">This Mac</div>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; background: #1d2330; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1; font-weight: 600">main</span>
+        <span style="font-size: 12px; color: #a3abba">running</span>
+      </a>
+      <a href="Main.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; border: 2px solid #6b7486; box-sizing: border-box"></span>
+        <span style="flex: 1">scratch</span>
+        <span style="font-size: 12px; color: #a3abba">stopped</span>
+      </a>
+      <div style="font-size: 11px; font-weight: 600; color: #a3abba; text-transform: uppercase; letter-spacing: 0.8px; padding: 16px 8px 4px">Other hosts</div>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #3fb68b"></span>
+        <span style="flex: 1">main <span style="color: #a3abba">· Mac mini</span></span>
+        <span style="font-size: 12px; color: #a3abba">reachable</span>
+      </a>
+      <a href="Remote.dc.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 10px; border-radius: 8px; color: #e6e8ee; text-decoration: none">
+        <span aria-hidden="true" style="width: 8px; height: 8px; border-radius: 4px; background: #f0a040"></span>
+        <span style="flex: 1">work <span style="color: #a3abba">· Studio</span></span>
+        <span style="font-size: 12px; color: #f3b866">key changed</span>
+      </a>
+      <div style="flex: 1"></div>
+      <button type="button" style="height: 40px; border-radius: 8px; border: 1px dashed #3a4152; background: transparent; color: #c3cad6; font: inherit; cursor: pointer">Add a host</button>
+    </nav>
+    <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 12px; padding: 20px 28px 0">
+        <h1 style="margin: 0; font-size: 22px; font-weight: 600">main</h1>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #143326; color: #7ad8b0; font-size: 12px; font-weight: 500"><span aria-hidden="true" style="width: 6px; height: 6px; border-radius: 3px; background: #3fb68b"></span>Running · up 3h 12m</span>
+        <span style="display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: #1a2333; color: #a9c9ff; font-size: 12px; font-weight: 500">Isolation checks passed · 20 min ago</span>
+        <div style="flex: 1"></div>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; cursor: pointer">Run doctor</button>
+        <button type="button" style="height: 36px; padding: 0 14px; border-radius: 8px; border: 1px solid #2c3240; background: #171b23; color: #e6e8ee; font: inherit; cursor: pointer">Stop</button>
+        <a href="Terminal.dc.html" style="display: inline-flex; align-items: center; height: 36px; padding: 0 14px; border-radius: 8px; background: #3b82f6; color: #ffffff; text-decoration: none; font-weight: 500">Open terminal</a>
+      </div>
+      <div role="tablist" aria-label="VM views" style="display: flex; gap: 4px; padding: 16px 28px 0; border-bottom: 1px solid #232733">
+        <a href="Main.dc.html" style="padding: 10px 14px; color: #e6e8ee; text-decoration: none; border-bottom: 2px solid #5b9cff; font-weight: 500">Overview</a>
+        <a href="Logs.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Logs</a>
+        <a href="Terminal.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Terminal</a>
+        <a href="Files.dc.html" style="padding: 10px 14px; color: #a3abba; text-decoration: none">Files</a>
+      </div>
+      <div style="padding: 24px 28px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+        <div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <div style="font-size: 12px; color: #a3abba">CPU (seen from the Mac)</div>
+          <div style="font-size: 26px; font-weight: 600; margin-top: 6px">38%</div>
+          <div style="font-size: 12px; color: #a3abba; margin-top: 4px">4 cores · load 1.52</div>
+        </div>
+        <div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <div style="font-size: 12px; color: #a3abba">Memory</div>
+          <div style="font-size: 26px; font-weight: 600; margin-top: 6px">2.9 <span style="font-size: 14px; color: #a3abba">/ 4 GiB</span></div>
+          <div style="height: 6px; border-radius: 3px; background: #232733; margin-top: 10px"><div style="width: 72%; height: 6px; border-radius: 3px; background: #5b9cff"></div></div>
+        </div>
+        <div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <div style="font-size: 12px; color: #a3abba">Disk</div>
+          <div style="font-size: 26px; font-weight: 600; margin-top: 6px">14 <span style="font-size: 14px; color: #a3abba">/ 50 GiB</span></div>
+          <div style="height: 6px; border-radius: 3px; background: #232733; margin-top: 10px"><div style="width: 28%; height: 6px; border-radius: 3px; background: #5b9cff"></div></div>
+        </div>
+        <div style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <div style="font-size: 12px; color: #a3abba">Coding agents</div>
+          <div style="font-size: 26px; font-weight: 600; margin-top: 6px">2 running</div>
+          <div style="font-size: 12px; color: #a3abba; margin-top: 4px">claude in ~/app · codex in ~/api</div>
+        </div>
+      </div>
+      <div style="padding: 0 28px 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+        <section style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <h2 style="margin: 0 0 12px; font-size: 14px; font-weight: 600">Servers</h2>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #232733">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; width: 56px">:8000</span>
+            <span style="flex: 1; color: #c3cad6">vite (pid 4211)</span>
+            <a href="Main.dc.html" style="font-size: 13px">Open in browser</a>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #232733">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; width: 56px">:8001</span>
+            <span style="flex: 1; color: #c3cad6">uvicorn (pid 5120)</span>
+            <a href="Main.dc.html" style="font-size: 13px">Open in browser</a>
+          </div>
+          <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid #232733">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 13px; width: 56px">:5432</span>
+            <span style="flex: 1; color: #c3cad6">postgres (container db)</span>
+            <span style="font-size: 12px; color: #a3abba">not published</span>
+          </div>
+        </section>
+        <section style="background: #151821; border: 1px solid #232733; border-radius: 12px; padding: 16px">
+          <h2 style="margin: 0 0 12px; font-size: 14px; font-weight: 600">Blocked network attempts</h2>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #232733; font-size: 13px">
+            <span style="font-family: 'JetBrains Mono', monospace; color: #a3abba; width: 64px">19:02</span>
+            <span style="flex: 1">TCP to <span style="font-family: 'JetBrains Mono', monospace">10.20.30.40:445</span></span>
+            <span style="color: #f3b866">home network</span>
+          </div>
+          <div style="display: flex; gap: 12px; padding: 10px 0; border-top: 1px solid #232733; font-size: 13px">
+            <span style="font-family: 'JetBrains Mono', monospace; color: #a3abba; width: 64px">18:47</span>
+            <span style="flex: 1">UDP to <span style="font-family: 'JetBrains Mono', monospace">172.16.0.1:53</span></span>
+            <span style="color: #f3b866">private address</span>
+          </div>
+          <div style="padding-top: 10px; border-top: 1px solid #232733"><a href="Logs.dc.html" style="font-size: 13px">See all in Logs</a></div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1280,"height":800}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
