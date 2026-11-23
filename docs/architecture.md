@@ -125,9 +125,10 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
    socket. It can bind only its SSH, HTTP forward and runtime sockets.
    Host loopback and Lima's host DNS are disabled.
    [Both profiles](../internal/confine/profile.go) default-deny file reads
-   and Mach lookups. Lima can look up Virtualization.framework and the
-   directory service's account-info endpoint. The network daemon has no
-   Mach lookup exceptions and can read the driver's exact PID file.
+   and Mach lookups. Lima can look up Virtualization.framework, the macOS
+   directory helper, and the directory service's account-info and membership
+   endpoints. The network daemon has no Mach lookup exceptions and can read
+   the driver's exact PID file.
    Lima's `TMPDIR` is inside its own instance directory. System library
    paths include the dyld caches and exclude the APFS Data volume alias.
    [Doctor](../internal/doctor/sandbox_darwin.go) probes the installed
@@ -157,7 +158,11 @@ Known limitations ([to do](todo.md) tracks follow-ups):
   host process can modify its own instance files, including disks and logs,
   and Lima's shared `networks.yaml`. Apple marks `sandbox-exec` deprecated.
   Apple can change service names and system paths across releases. The
-  current allowlist was exercised on macOS 15.5 with Lima 2.3.0.
+  current allowlist was exercised on macOS 15.5 with Lima 2.3.0. On macOS
+  27.2.1, Virtualization.framework reported a cache directory error after
+  Seatbelt denied the directory helper lookup. The Lima profile includes the
+  helper and group membership lookup for cache directory resolution. See the
+  [scratch VM check](host-setup-macos.md#check-sandbox-compatibility).
 - Lima's virtual gateway may answer ICMP echo within its userspace stack.
   Doctor uses TCP and UDP loopback canaries to test access to host services.
 

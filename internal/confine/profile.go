@@ -168,6 +168,10 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 	profile.WriteString(`
 ; Virtualization.framework starts the VM through its XPC service.
 (allow mach-lookup (global-name "com.apple.Virtualization.VirtualMachine"))
+; Newer Virtualization.framework uses dirhelper to resolve the user cache directory.
+(allow mach-lookup (global-name "com.apple.bsd.dirhelper"))
+; The cache-directory lookup also resolves the user's group membership.
+(allow mach-lookup (global-name "com.apple.system.opendirectoryd.membership"))
 ; macOS account resolution supplies the local user to Lima and OpenSSH.
 (allow mach-lookup (global-name "com.apple.system.opendirectoryd.libinfo"))
 

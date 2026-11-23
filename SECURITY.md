@@ -43,7 +43,8 @@ network, and can't undo the rules that stop it.
   macOS libraries and configuration, VM state, and the process executables.
   Ordinary files on mounted volumes, in `/Users/Shared`, and in host temporary
   directories are outside that allowlist. Only Lima can look up named Mach
-  services, for Virtualization.framework and local account resolution.
+  services, for Virtualization.framework, its cache directory lookup and local
+  account resolution.
 - **The host takes no SSH logins for box.** You SSH into the VM, never into
   the Mac.
 
