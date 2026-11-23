@@ -106,6 +106,20 @@ default identity files without copying private keys or forwarding the agent
 or X11. Terminal output is parsed by xterm.js with bounded buffering and
 scrollback. Guest escape sequences cannot set the clipboard or open links.
 
+The Files tab uses SFTP over the same pinned SSH pool. Guest names and file
+contents are untrusted text. The browser reads at most 5,001 directory
+entries per request and limits paths to 4,096 bytes. The editor reads and
+accepts at most 2 MiB of UTF-8 text and rejects NUL bytes. Monaco and its
+workers are bundled locally. Native dialogs authorize the source of each
+upload and the destination of each download.
+
+Writes check for symbolic links in the target path. Editor saves stage a
+same-directory file, preserve the mode and recheck the original's size and
+SFTP modification time before renaming over it. If the server refuses the
+rename, the save fails. SFTP exposes second-resolution timestamps and has
+no conditional rename, so edits with identical size and timestamp or
+changes between the final check and rename can escape conflict detection.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields

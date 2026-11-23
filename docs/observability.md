@@ -167,8 +167,8 @@ recent 5,000 lines while open. Leaving the view cancels the stream.
 | VM detail | Status, resource use, published ports (open one in the browser), recent network denials, last doctor result; start, stop and doctor for local VMs |
 | Logs | The live log stream, filterable by source |
 | Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
-| Files | Browse, view, upload and download over SFTP, on the same SSH connection |
-| Editor | Light editing with Monaco (VS Code's editor component): open, edit and save over SFTP |
+| Files | Implemented. Browse from the SSH user’s home, show hidden files, and stream uploads and downloads through native file dialogs over the shared SSH connection. |
+| Editor | Implemented. Open and edit up to 2 MiB of UTF-8 text with locally bundled Monaco. Save over SFTP with ⌘S and find with ⌘F. |
 | Desktop | The VM's remote desktop, once phase 2 adds one (below) |
 
 - **SSH in the app** obeys the same rules as box's SSH config: it uses only the
@@ -176,9 +176,10 @@ recent 5,000 lines while open. Leaving the view cancels the stream.
   this host), and it never forwards the SSH agent or X11. Keys come from the
   user's `~/.ssh` and are never copied anywhere.
 - **Saving in the editor** refuses to overwrite a file that changed since it
-  was opened (by size and modification time), so a quick edit never clobbers
-  an agent's work. It's for small changes; VS Code or Cursor over Remote-SSH
-  stays the tool for real editing.
+  was opened (by size and modification time). **Reload and compare** displays
+  the current VM text alongside your retained draft before you can save
+  against that version. Saves stage a file alongside the original and replace
+  it with a rename. See the [SFTP limits](../SECURITY.md#desktop-app).
 - **Distribution: build from source.** No signed or notarized builds, so no
   Apple developer account (owner, 2026-11-22). An app built on your own Mac
   isn't quarantined, so it opens normally. See the

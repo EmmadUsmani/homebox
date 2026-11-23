@@ -53,6 +53,11 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   active VM. Terminal tabs lease that connection and open independent PTY
   channels. The web view pulls bounded chunks and waits for xterm.js to
   consume each chunk before requesting more.
+- `desktop/session` also leases a shared SFTP channel per SSH transport for
+  the Files tab. Its bounded listings use pkg/sftp v2's directory handle
+  API. The pinned upstream revision includes bounds on directory entry and
+  extended attribute counts in protocol packets. The frontend lazy-loads the Monaco editor and bundled workers when a
+  text file opens.
 - Desktop dependencies stay in `desktop/go.mod`. The root module never
   imports the desktop module or Wails.
 - Drivers know nothing about profiles, ports policy or egress. They get plain
