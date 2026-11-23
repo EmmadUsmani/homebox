@@ -7,11 +7,11 @@ details. Anything that changes the design document waits for the owner.
 ## Observability and the desktop app (phase 1b, next)
 
 Agreed by the owner on 2026-11-22; design in [observability.md](observability.md).
-In order:
+In order (step 1 is done):
 
-1. CLI: `box status`, `box top`, `box logs NAME [-f]` (provision, host, net and
-   guest sources) and `--json` on these and `box ls`. Status types live in
-   `internal/app`; the host pulls guest data over SSH and treats it as untrusted.
+Step 1, the CLI (`box status`, `box top`, `box logs`, a richer `box ls` and
+`--json`), was built on 2026-11-22. Left:
+
 2. Desktop app with Wails: local VMs, remote VMs through the laptop's SSH
    (unreachable, not running and host key changed shown as hints), an SSH
    terminal, a file browser and a light Monaco editor. Keep its web-view
