@@ -166,7 +166,7 @@ recent 5,000 lines while open. Leaving the view cancels the stream.
 | VM list | Local VMs and remote ones (level A), with state, health and a reachability badge |
 | VM detail | Status, resource use, published ports (open one in the browser), recent network denials, last doctor result; start, stop and doctor for local VMs |
 | Logs | The live log stream, filterable by source |
-| Terminal | An SSH session in a tab: xterm.js in the frontend, Go's SSH client in the backend |
+| Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
 | Files | Browse, view, upload and download over SFTP, on the same SSH connection |
 | Editor | Light editing with Monaco (VS Code's editor component): open, edit and save over SFTP |
 | Desktop | The VM's remote desktop, once phase 2 adds one (below) |

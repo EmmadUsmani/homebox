@@ -5,8 +5,10 @@ import (
 	"embed"
 	"io/fs"
 	"log"
+	"os"
 	"os/exec"
 
+	"github.com/EmmadUsmani/homebox/desktop/session"
 	"github.com/EmmadUsmani/homebox/internal/wiring"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -23,6 +25,14 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	sshFiles := session.RemoteFiles{
+		Home: home, Config: remote.inventoryPath, KnownHosts: remote.source.KnownHostsPath,
+	}
+	sshPool := session.NewPool(service, sshFiles)
 	frontend, err := fs.Sub(assets, "frontend/dist")
 	if err != nil {
 		log.Fatal(err)
@@ -38,6 +48,7 @@ func main() {
 		box: service, load: service.Store.Load, findTool: exec.LookPath, emit: desktop.Event.Emit,
 	}))
 	desktop.RegisterService(application.NewService(remote))
+	desktop.RegisterService(application.NewService(session.NewTerminal(sshPool)))
 	desktop.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "homebox", URL: "/", Width: 1280, Height: 800, MinWidth: 850, MinHeight: 540,
 		BackgroundColour: application.NewRGB(15, 17, 21),

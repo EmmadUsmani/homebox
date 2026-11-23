@@ -81,7 +81,7 @@ bounded output and timeouts. The guest's answers are untrusted and used only
 for display. Box strips terminal controls and opens no listener or guest-to-host
 reporting channel for these commands.
 
-### Desktop status
+### Desktop app
 
 The packaged desktop app uses WKWebView's in-process Wails asset and binding
 handlers with embedded frontend files. Local status and logs use the same
@@ -95,6 +95,13 @@ Remote status runs the bounded, read-only guest probe over the laptop's own
 SSH login. Each check verifies the pinned key in `homebox_known_hosts` and
 disables agent forwarding, X11 forwarding, port forwarding and SSH
 connection sharing.
+
+The terminal uses box's stored pins for loopback SSH to local VMs and the
+installed homebox pins for remote aliases. Host key changes block the
+connection. Remote authentication tries the local SSH agent and unencrypted
+default identity files without copying private keys or forwarding the agent
+or X11. Terminal output is parsed by xterm.js with bounded buffering and
+scrollback. Guest escape sequences cannot set the clipboard or open links.
 
 ### Logs
 
