@@ -35,16 +35,13 @@ host-key check. Left to do:
 - Verify that the live host process owns the driver SSH listener before
   forwarding.
 
-## Sign agents in once per host
+## Sign agents in once per host (deferred)
 
-Every new VM starts with Claude Code and Codex signed out, so each `box new`
-means two browser logins. The owner wants to sign in once per host. Approach:
-`box auth add` stores a login on the host under box's state, outside every
-sandbox's readable paths, and `box new` copies it into the VM. Prefer a
-long-lived token made for machines without a browser. Copying a browser login
-risks VMs signing each other out if refresh tokens rotate. A spike checks how
-both agents store and refresh logins first. Design and open questions:
-[agent-logins.md](agent-logins.md).
+Deferred by the owner on 2026-11-22 while other work goes first. The spike is
+done and a proposal waits for the owner: a Claude `setup-token` stored on the
+host and copied in by `box new`, and a per-VM Codex device-code login. See
+[agent-logins.md](agent-logins.md) and the
+[spike](spikes/agent-logins.md).
 
 ## Smaller
 
