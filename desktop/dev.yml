@@ -7,6 +7,8 @@ dev_mode:
   executes:
     - cmd: npm --prefix frontend run dev
       type: background
+    - cmd: go build -o bin/box github.com/EmmadUsmani/homebox/cmd/box
+      type: blocking
     - cmd: go build -ldflags=-extldflags=-mmacosx-version-min=15.0 -o bin/homebox-dev .
       type: blocking
     - cmd: ./bin/homebox-dev

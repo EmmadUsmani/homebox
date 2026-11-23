@@ -40,8 +40,10 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 ## Dependency rules
 
 - CLI and desktop both call `app` and get the local service from
-  `internal/wiring`. The desktop binds a read-only status adapter to the web
-  view. The CLI supplies its own executable to wiring for daemon launches.
+  `internal/wiring`. The desktop binds local status, logs and VM actions to the
+  web view; its daemon executable is the sibling `box` inside the bundle.
+  Desktop wiring supplies standard Homebrew and system tool paths on launch.
+  The CLI retains its environment and supplies its own daemon executable.
 - Only `internal/wiring` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
   needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
