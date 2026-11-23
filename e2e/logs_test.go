@@ -30,7 +30,8 @@ func checkLogs(t *testing.T, binary, name string, box func(time.Duration, ...str
 		}
 	}
 
-	const marker = "homebox-e2e-journal-follow"
+	const marker = "red-title"
+	const identifier = "evil"
 	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
 	defer cancel()
 	follow := exec.CommandContext(ctx, binary, "logs", name, "-f", "--source", "guest", "-n", "1", "--json")
@@ -50,12 +51,12 @@ func checkLogs(t *testing.T, binary, name string, box func(time.Duration, ...str
 		t.Fatalf("follow produced no journal history: %v", scanner.Err())
 	}
 	checkGuestLog(t, scanner.Text())
-	box(5*time.Second, "ssh", name, "--", "logger -- "+marker)
+	box(5*time.Second, "ssh", name, "--", `printf '\033]0;PWNED\007\033[31mred-title\033[0m\n' | logger -t evil`)
 	markerTimer := time.AfterFunc(10*time.Second, cancel)
 	defer markerTimer.Stop()
 	for scanner.Scan() {
 		line := checkGuestLog(t, scanner.Text())
-		if line.Text == marker {
+		if line.Identifier == identifier && line.Text == marker {
 			t.Logf("JSON log example: %s", scanner.Text())
 			if err := follow.Process.Signal(os.Interrupt); err != nil {
 				t.Fatal(err)
@@ -68,7 +69,8 @@ func checkLogs(t *testing.T, binary, name string, box func(time.Duration, ...str
 			}
 			output := box(time.Minute, "logs", name, "--source", "guest", "--json", "-n", "20")
 			for _, raw := range strings.Split(strings.TrimSpace(output), "\n") {
-				if checkGuestLog(t, raw).Text == marker {
+				line := checkGuestLog(t, raw)
+				if line.Identifier == identifier && line.Text == marker {
 					return
 				}
 			}

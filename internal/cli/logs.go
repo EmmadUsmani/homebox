@@ -26,8 +26,12 @@ func logsCommand(service Application) *cobra.Command {
 					return encoder.Encode(line)
 				}
 				text := line.Text
-				if line.Unit != "" {
-					text = line.Unit + ": " + text
+				label := line.Unit
+				if label == "" {
+					label = line.Identifier
+				}
+				if label != "" {
+					text = label + ": " + text
 				}
 				if line.Level != "" {
 					text = line.Level + " " + text
