@@ -1,7 +1,7 @@
 # Observability and the desktop app
 
-Design, not built yet. The owner agreed this design on 2026-11-22; the
-decisions and what was turned down are also in
+The local CLI status, top and richer list are built. The owner agreed this
+design on 2026-11-22; the decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
 

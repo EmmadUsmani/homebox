@@ -8,6 +8,7 @@ import (
 
 	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/guest"
+	"github.com/EmmadUsmani/homebox/internal/hostinfo"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
@@ -70,6 +71,11 @@ type HostCapacity interface {
 	Capacity() (cpus int, memoryBytes uint64, err error)
 }
 
+// HostUsage samples the process associated with a driver PID file.
+type HostUsage interface {
+	Sample(context.Context, string) *hostinfo.Usage
+}
+
 // Service implements the box use cases.
 type Service struct {
 	Driver        vm.Driver
@@ -79,6 +85,7 @@ type Service struct {
 	Isolation     Isolation
 	DoctorHost    DoctorHost
 	HostCapacity  HostCapacity
+	HostUsage     HostUsage
 	LocalHostName func(context.Context) (string, error)
 	OpenURL       func(context.Context, string) error
 	Progress      io.Writer
@@ -101,7 +108,8 @@ func (s *Service) load(name string) (state.Box, error) {
 // Listing joins an on-disk record with driver status.
 type Listing struct {
 	state.Box
-	Status vm.Status
+	Status   vm.Status
+	instance vm.Instance
 }
 
 // List returns the records and their operational status.
@@ -114,17 +122,18 @@ func (s *Service) List(ctx context.Context) ([]Listing, error) {
 	if err != nil {
 		return nil, err
 	}
-	status := make(map[string]vm.Status, len(instances))
+	byName := make(map[string]vm.Instance, len(instances))
 	for _, instance := range instances {
-		status[instance.Name] = instance.Status
+		byName[instance.Name] = instance
 	}
 	out := make([]Listing, 0, len(boxes))
 	for _, box := range boxes {
-		current := status[box.Name]
+		instance := byName[box.Name]
+		current := instance.Status
 		if current == "" || box.Driver != s.Driver.Name() {
 			current = vm.StatusBroken
 		}
-		out = append(out, Listing{Box: box, Status: current})
+		out = append(out, Listing{Box: box, Status: current, instance: instance})
 	}
 	return out, nil
 }

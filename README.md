@@ -85,7 +85,9 @@ running `box repin` so the driver can authenticate the guest.
 |---|---|
 | `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
 | `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50]` | Creates, starts and provisions a VM |
-| `box ls` | Lists VMs with their SSH port and HTTP port range |
+| `box ls [--json]` | Lists VMs, published ports, last doctor health and host-side resource use |
+| `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
+| `box top [NAME] [--json]` | Refreshes resource use for running VMs every two seconds. Redirected output and `--json` use JSON Lines |
 | `box start` / `stop` / `rm [-f]` NAME | Lifecycle |
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
 | `box ports NAME [--add G:H] [--rm G] [--set G:H]` | Shows or changes published ports (VM stopped) |
@@ -93,11 +95,16 @@ running `box repin` so the driver can authenticate the guest.
 | `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
 | `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
 | `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
-| `box doctor [NAME]` | Proves the VM reaches the internet but not the host or LAN |
+| `box doctor [NAME]` | Checks isolation and saves the latest result for `box status` and `box ls` |
 
 Each VM gets an index `n`: SSH on host port `2200+n`, and guest ports
 `8000–8099` on host ports `10000+100n …`. So for the first VM, a dev server on
 guest port 8000 is `http://<mac>:10100` from the laptop.
+
+For example, run `box status main` to see which guest listeners have a
+published URL, or `box top main` to watch CPU, memory, load and disk usage.
+The host CPU and resident memory figures on macOS describe Lima's hostagent.
+Guest resource readings come from a separate SSH probe.
 
 ## What's in the VM
 

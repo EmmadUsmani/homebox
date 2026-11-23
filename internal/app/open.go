@@ -19,7 +19,7 @@ func (s *Service) Open(ctx context.Context, name, port string, print bool) (stri
 	}
 	for _, forward := range box.Forwards {
 		if forward.GuestPort == guestPort {
-			url := fmt.Sprintf("http://127.0.0.1:%d/", forward.HostPort)
+			url := publishedURL(forward.HostPort)
 			if print || runtime.GOOS != "darwin" {
 				return url, nil
 			}
@@ -31,3 +31,5 @@ func (s *Service) Open(ctx context.Context, name, port string, print bool) (stri
 	}
 	return "", fmt.Errorf("box %q has no published forward for guest port %d", name, guestPort)
 }
+
+func publishedURL(port int) string { return fmt.Sprintf("http://127.0.0.1:%d/", port) }

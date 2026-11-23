@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"slices"
@@ -10,14 +11,33 @@ import (
 
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/vm"
+	"github.com/spf13/cobra"
 )
 
-func printListing(out io.Writer, boxes []app.Listing) error {
+func listCommand(service Application) *cobra.Command {
+	var asJSON bool
+	cmd := &cobra.Command{Use: "ls", Short: "List VMs", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		boxes, err := service.ListStatus(cmd.Context())
+		if err != nil {
+			return err
+		}
+		if asJSON {
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(boxes)
+		}
+		return printListing(cmd.OutOrStdout(), boxes)
+	}}
+	cmd.Flags().BoolVar(&asJSON, "json", false, "Print VM status as JSON")
+	return cmd
+}
+
+func printListing(out io.Writer, boxes []app.VMStatus) error {
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(table, "NAME\tSTATUS\tPROFILE\tSSH\tHTTP")
+	fmt.Fprintln(table, "NAME\tSTATUS\tPROFILE\tSSH\tHTTP\tHEALTH\tUPTIME\tHOST CPU\tHOST MEM")
 	for _, box := range boxes {
-		fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\n",
-			box.Name, box.Status, box.Profile, box.SSHPort, portRanges(box.Forwards))
+		cpu, memory := hostUsage(box)
+		fmt.Fprintf(table, "%s\t%s\t%s\t%d\t%s\t%s\t%s\t%s\t%s\n",
+			box.Name, box.State, box.Profile, box.SSHPort, portRanges(box.Forwards),
+			doctorHealth(box), uptime(box), cpu, memory)
 	}
 	return table.Flush()
 }

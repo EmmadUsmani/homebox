@@ -90,3 +90,12 @@ func TestDoctor(t *testing.T) {
 		t.Fatalf("unexpected execution: %q, SSH %v, probes %d, cleanups %d", output, ssh.calls, probes, cleanups)
 	}
 }
+
+func TestGuestDoctorCounts(t *testing.T) {
+	var result state.DoctorResult
+	countGuestDoctorChecks(&result, "PASS public-tcp\nSKIP deny-icmp-built-in-gateway: reason\nFAIL deny-tcp-192.0.2.1:80: reason\nother output\n")
+	if result.Passed != 1 || result.Failed != 1 || result.Skipped != 1 ||
+		!slices.Equal(result.FailingChecks, []string{"deny-tcp-192.0.2.1:80"}) {
+		t.Fatalf("unexpected counts: %+v", result)
+	}
+}
