@@ -24,6 +24,7 @@ type Application interface {
 	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
 	Start(context.Context, string) error
 	Stop(context.Context, string) error
+	Resize(context.Context, string, vm.Size) (vm.Size, error)
 	Remove(context.Context, string) error
 	ListStatus(context.Context) ([]app.VMStatus, error)
 	Status(context.Context, string) (app.VMStatus, error)
@@ -65,6 +66,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(
 		newBoxCommand(service),
+		resizeCommand(service),
 		hostCommand(service),
 		portsCommand(service),
 		removeCommand(service, isTerminal),

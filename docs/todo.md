@@ -35,21 +35,6 @@ host-key check. Left to do:
 - Verify that the live host process owns the driver SSH listener before
   forwarding.
 
-## Resize a VM
-
-CPUs, memory and disk are set once by `box new` (CPU and memory defaults scale
-with the host, and disk defaults to 50 GiB)
-and can't be changed afterwards; today the only way is `box rm` and `box new`,
-which loses the VM's contents. Add `box resize NAME [--cpus N] [--memory GiB]
-[--disk GiB]`:
-
-- Works only on a stopped VM; update box's record and the driver's config
-  together so they never disagree.
-- Disk can only grow; refuse a smaller size. Grow the guest's filesystem on the
-  next boot.
-- Refuse more CPUs or memory than the host has, with a clear message, instead
-  of leaving the VM unable to start.
-
 ## Sign agents in once per host
 
 Every new VM starts with Claude Code and Codex signed out, so each `box new`

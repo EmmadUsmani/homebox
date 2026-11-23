@@ -268,8 +268,7 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 		t.Fatalf("tampered pins did not trigger a host-key mismatch: %v\n%s", err, output)
 	}
 	t.Log("SSH rejected the tampered host key")
-	box(2*time.Minute, "stop", name)
-	box(3*time.Minute, "start", name)
+	checkResize(t, name, binary, box, run)
 	t.Log(box(2*time.Minute, "doctor", name))
 	box(2*time.Minute, "rm", "-f", name)
 	if output := box(time.Minute, "ls"); strings.Contains(output, name) {

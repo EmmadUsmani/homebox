@@ -89,6 +89,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
 | `box top [NAME] [--json]` | Refreshes resource use for running VMs every two seconds. Redirected output and `--json` use JSON Lines |
 | `box start` / `stop` / `rm [-f]` NAME | Lifecycle |
+| `box resize NAME [--cpus N] [--memory GiB] [--disk GiB]` | Shows the current size or resizes a stopped VM. The disk can only grow |
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
 | `box ports NAME [--add G:H] [--rm G] [--set G:H]` | Shows or changes published ports (VM stopped) |
 | `box provision NAME` | Re-runs provisioning (idempotent) |
@@ -140,6 +141,11 @@ permissions use `claude --dangerously-skip-permissions` or
 
 `box stop NAME` shuts the VM down cleanly; `box start NAME` boots it again
 from the same disk, with no re-provisioning. Only `box rm` deletes a VM's disk.
+
+Once stopped, use `box resize NAME` with the sizes you want to change. CPU and
+memory changes follow the same host limits as `box new`. The root filesystem
+grows at the next boot after a disk increase. If a resize is interrupted,
+run `box resize NAME` without flags to reconcile and display the recorded size.
 
 - **Kept:** files and git checkouts, installed packages and tools, agent
   logins, shell history, Docker images and volumes, the VM's ports and SSH

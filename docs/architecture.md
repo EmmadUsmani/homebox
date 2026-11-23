@@ -49,6 +49,13 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 - Only `internal/wiring` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
   needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
+  `vm.Driver.Resize` changes a stopped VM's configured size, reported through
+  `vm.Instance.Size`. [The application](../internal/app/resize.go) records the
+  intended size before the driver edits its config. On interruption, a repeat
+  `box resize NAME` reconciles that record against the driver's configured size.
+  [The Lima driver](../internal/vm/lima/resize.go) stages its config edit before
+  replacing the file. Lima grows the boot disk on start and Ubuntu cloud-init
+  grows the root partition and filesystem.
 - [`desktop/session`](../desktop/session) owns a pinned SSH connection per
   active VM. Terminal tabs lease that connection and open independent PTY
   channels. The web view pulls bounded chunks and waits for xterm.js to

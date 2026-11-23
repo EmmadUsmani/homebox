@@ -23,6 +23,7 @@ type Box struct {
 	CPUs            int              `json:"cpus"`
 	MemoryGiB       int              `json:"memory_gib"`
 	DiskGiB         int              `json:"disk_gib"`
+	PendingResize   *vm.Size         `json:"pending_resize,omitempty"`
 	User            string           `json:"user"`
 	SSHHostKeys     []string         `json:"ssh_host_keys,omitempty"`
 	SSHIdentityFile string           `json:"ssh_identity_file,omitempty"`

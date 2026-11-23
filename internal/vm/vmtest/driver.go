@@ -3,6 +3,7 @@ package vmtest
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"sort"
 	"sync"
@@ -51,7 +52,8 @@ func (d *Driver) Create(_ context.Context, spec vm.Spec) error {
 	if d.Specs == nil {
 		d.Specs = make(map[string]vm.Spec)
 	}
-	d.Instances[spec.Name] = vm.Instance{Name: spec.Name, Status: vm.StatusStopped}
+	d.Instances[spec.Name] = vm.Instance{Name: spec.Name, Status: vm.StatusStopped,
+		Size: vm.Size{CPUs: spec.CPUs, MemoryGiB: spec.MemoryGiB, DiskGiB: spec.DiskGiB}}
 	d.Specs[spec.Name] = spec
 	return nil
 }
@@ -148,6 +150,28 @@ func (d *Driver) SetForwards(_ context.Context, name string, forwards []vm.PortF
 		return vm.ErrNotFound
 	}
 	spec.Forwards = slices.Clone(forwards)
+	d.Specs[name] = spec
+	return nil
+}
+
+// Resize records a new size for a stopped instance.
+func (d *Driver) Resize(_ context.Context, name string, size vm.Size) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if err := d.record(Call{Method: "Resize", Name: name}); err != nil {
+		return err
+	}
+	instance, ok := d.Instances[name]
+	if !ok {
+		return vm.ErrNotFound
+	}
+	if instance.Status != vm.StatusStopped {
+		return fmt.Errorf("cannot resize %q while %s", name, instance.Status)
+	}
+	instance.Size = size
+	d.Instances[name] = instance
+	spec := d.Specs[name]
+	spec.CPUs, spec.MemoryGiB, spec.DiskGiB = size.CPUs, size.MemoryGiB, size.DiskGiB
 	d.Specs[name] = spec
 	return nil
 }
