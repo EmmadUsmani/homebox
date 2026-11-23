@@ -183,6 +183,9 @@ open desktop/dist/homebox.app
 
 The app lists local VMs and shows their status, resources, listening servers,
 network denials and live logs. Start, stop and run doctor from the window.
+**Open terminal** starts a pinned SSH session. The session tabs share a
+connection and run separate shells. For remote VMs, the app offers SSH agent
+keys first, then tries unencrypted default SSH keys.
 Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
 and includes the matching `box` executable for the network daemon.
 Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for

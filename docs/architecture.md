@@ -49,6 +49,10 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 - Only `internal/wiring` imports `internal/vm/lima`. The rest of box sees `vm.Driver`.
   Lima's YAML and `limactl` stay in `vm/lima`. The driver supplies paths
   needed by the rest of box, including its host-process log via `vm.Instance.HostLog`.
+- [`desktop/session`](../desktop/session) owns a pinned SSH connection per
+  active VM. Terminal tabs lease that connection and open independent PTY
+  channels. The web view pulls bounded chunks and waits for xterm.js to
+  consume each chunk before requesting more.
 - Desktop dependencies stay in `desktop/go.mod`. The root module never
   imports the desktop module or Wails.
 - Drivers know nothing about profiles, ports policy or egress. They get plain

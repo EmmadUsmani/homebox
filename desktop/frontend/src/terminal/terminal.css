@@ -1,0 +1,131 @@
+.terminal-tab {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
+    padding: 12px 28px 20px;
+    color: #e6e8ee;
+}
+
+.terminal-tabs {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+}
+
+.terminal-tab-item {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 0 6px;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 8px 8px 0 0;
+    color: #a3abba;
+}
+
+.terminal-tab-item[data-selected="true"] {
+    color: #e6e8ee;
+    border-color: #232733;
+    background: #0b0d11;
+}
+
+.terminal-tab-item button,
+.terminal-add,
+.terminal-status button {
+    height: 32px;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+}
+
+.terminal-tab-item button {
+    padding: 0 6px;
+    border: 0;
+    background: transparent;
+    font-size: 13px;
+}
+
+.terminal-add,
+.terminal-status button {
+    flex-shrink: 0;
+    border: 1px solid #2c3240;
+    background: #171b23;
+    border-radius: 8px;
+}
+
+.terminal-add { width: 32px; }
+.terminal-add:disabled { opacity: .55; cursor: default; }
+
+.terminal-body {
+    display: flex;
+    flex: 1;
+    min-height: 230px;
+    background: #0b0d11;
+    border: 1px solid #232733;
+    border-radius: 0 12px 12px 12px;
+}
+
+.terminal-pane {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+
+.terminal-viewport {
+    position: absolute;
+    inset: 14px 16px;
+    overflow: hidden;
+}
+
+.terminal-viewport[data-obscured="true"] { visibility: hidden; }
+
+.terminal-status {
+    position: absolute;
+    top: 14px;
+    left: 16px;
+    right: 16px;
+    padding: 8px 10px;
+    color: #c3cad6;
+    background: #151821;
+    border: 1px solid #232733;
+    border-radius: 8px;
+    overflow-wrap: anywhere;
+}
+
+.terminal-host-key {
+    display: grid;
+    gap: 10px;
+    padding: 18px 20px;
+    border-color: #7a4d16;
+    border-radius: 12px;
+    background: #2a1e0f;
+    color: #f3dfc2;
+    line-height: 1.5;
+}
+
+.terminal-host-key strong { color: #ffd39a; font-size: 16px; }
+.terminal-host-key p { max-width: 760px; margin: 0; }
+.terminal-host-key code { padding: 2px 6px; border-radius: 4px; background: #1a130a; }
+.terminal-status-error { color: #ff8a8a; }
+.terminal-status button { padding: 0 10px; }
+
+.terminal-accessible {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: pre-wrap;
+}
+
+.terminal-footer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #a3abba;
+}
