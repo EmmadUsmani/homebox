@@ -20,6 +20,7 @@ type stubApp struct {
 	hostOptions app.HostInitOptions
 	portOptions app.PortOptions
 	logOptions  app.LogOptions
+	logUnit     string
 	argv        []string
 	name        string
 	sshOptions  app.SSHConfigOptions
@@ -100,22 +101,27 @@ func TestSSHConfigAndOpenFlags(t *testing.T) {
 
 func (s *stubApp) Logs(_ context.Context, name string, options app.LogOptions, emit func(app.LogLine) error) error {
 	s.name, s.logOptions = name, options
-	return emit(app.LogLine{Time: time.Unix(0, 0).UTC(), Source: "guest", Level: "info", Unit: "worker.service", Text: "ready"})
+	return emit(app.LogLine{Time: time.Unix(0, 0).UTC(), Source: "guest", Level: "info", Unit: s.logUnit, Identifier: "worker", Text: "ready"})
 }
 
 func TestLogsFlagsAndJSON(t *testing.T) {
-	service := &stubApp{}
+	service := &stubApp{logUnit: "worker.service"}
 	out, _, err := execute(t, service, false, "", "logs", "main", "-f", "--source", "guest", "--unit", "worker.service", "-n", "12", "--json")
 	want := app.LogOptions{Follow: true, Source: "guest", Unit: "worker.service", Lines: 12}
 	if err != nil || service.name != "main" || service.logOptions != want {
 		t.Fatalf("logs flags = %s %+v, %v", service.name, service.logOptions, err)
 	}
-	if out != `{"time":"1970-01-01T00:00:00Z","source":"guest","level":"info","unit":"worker.service","text":"ready"}`+"\n" {
+	if out != `{"time":"1970-01-01T00:00:00Z","source":"guest","level":"info","unit":"worker.service","identifier":"worker","text":"ready"}`+"\n" {
 		t.Fatalf("logs JSON = %q", out)
 	}
 	out, _, err = execute(t, service, false, "", "logs", "main")
 	if err != nil || !strings.HasSuffix(out, " guest info worker.service: ready\n") || service.logOptions.Lines != 100 {
 		t.Fatalf("plain logs = %q, %+v, %v", out, service.logOptions, err)
+	}
+	service.logUnit = ""
+	out, _, err = execute(t, service, false, "", "logs", "main")
+	if err != nil || !strings.HasSuffix(out, " guest info worker: ready\n") {
+		t.Fatalf("plain logs with identifier = %q, %v", out, err)
 	}
 }
 

@@ -28,7 +28,6 @@ func TestParseLogLine(t *testing.T) {
 		{"host", `{"time":"2026-11-22T01:02:03.000456Z","level":"info","msg":"\u001b]0;fake\u0007booted","driver":"vz"}`, "info", "", "booted (driver=vz)", stamp},
 		{"net", `{"time":"2026-11-22T01:02:03.000456Z","level":"WARN","msg":"denied","active":32,"reason":"guest\nvalue"}`, "WARN", "", "denied (reason=guest value, active=32)", stamp},
 		{"guest", fmt.Sprintf(`{"__REALTIME_TIMESTAMP":"%d","MESSAGE":"hi\n\u001b[2Jthere","PRIORITY":"4","_SYSTEMD_UNIT":"worker\u001b[0m.service"}`, stamp.UnixMicro()), "warn", "worker.service", "hi there", stamp},
-		{"guest", `{"MESSAGE":[0,27,255]}`, "", "", "[binary journal message]", arrival},
 		{"host", "garbled\x1b[2J\x00 line", "", "", "garbled line", arrival},
 		{"net", `{"time":"invalid","msg":"still useful"}`, "", "", "still useful", arrival},
 	} {
@@ -40,6 +39,42 @@ func TestParseLogLine(t *testing.T) {
 	huge := parseLogEntry("guest", strings.Repeat("x", untrusted.MaxLine), true, arrival)
 	if len(huge.Text) > untrusted.MaxLine || !strings.HasSuffix(huge.Text, " [line truncated]") {
 		t.Fatal("large line was not visibly truncated")
+	}
+}
+
+func TestJournalMessageBytes(t *testing.T) {
+	for _, tc := range []struct {
+		name, array, text string
+	}{
+		{"terminal controls", "[27,93,48,59,80,87,78,69,68,7,27,91,51,49,109,114,101,100,45,116,105,116,108,101,27,91,48,109]", "red-title"},
+		{"UTF-8", "[99,97,102,195,169]", "café"},
+		{"empty", "[]", ""},
+		{"all controls", "[0,27,91,48,109]", ""},
+		{"negative", "[65,-1]", ""},
+		{"out of range", "[65,256]", ""},
+		{"float", "[65,1.0]", ""},
+		{"exponent", "[65,1e2]", ""},
+		{"nested", "[65,[66]]", ""},
+		{"null", "[65,null]", ""},
+		{"string", `[65,"66"]`, ""},
+		{"at limit", "[" + strings.Repeat("65,", logFieldLimit-1) + "65]", strings.Repeat("A", logFieldLimit)},
+		{"huge", "[" + strings.Repeat("65,", logFieldLimit) + "65]", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw := `{"MESSAGE":` + tc.array + `,"SYSLOG_IDENTIFIER":"\u001b]0;fake\u0007evil"}`
+			line := parseLogEntry("guest", raw, false, time.Now())
+			want := tc.text
+			if want == "" {
+				want = "[binary journal message]"
+			}
+			if line.Text != want || line.Identifier != "evil" {
+				t.Fatalf("message = %q, identifier = %q", line.Text, line.Identifier)
+			}
+		})
+	}
+	raw := fmt.Sprintf(`{"MESSAGE":"test","SYSLOG_IDENTIFIER":"%s"}`, strings.Repeat("a", logFieldLimit+1))
+	if line := parseLogEntry("guest", raw, false, time.Now()); len(line.Identifier) != logFieldLimit {
+		t.Fatalf("identifier length = %d, want %d", len(line.Identifier), logFieldLimit)
 	}
 }
 

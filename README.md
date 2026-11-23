@@ -120,7 +120,9 @@ box logs main -f --source guest --unit docker.service --json
 The sources are `provision`, `host`, `net`, and `guest`. A snapshot prints
 the latest 100 lines per source by default, ordered by time. Use `-f` to
 keep receiving new lines and Ctrl-C to exit. `--unit` filters the guest
-journal by systemd system unit. `--json` emits one JSON object per line.
+journal by systemd system unit. Plain output labels guest messages with their
+unit or syslog identifier. `--json` emits one JSON object per line, with
+`identifier` when the guest supplies one.
 
 Host-side logs remain available when a VM is stopped. Box keeps the last five
 provisioning logs and displays the latest one. Run `box provision NAME` on

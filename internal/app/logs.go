@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -21,11 +22,12 @@ import (
 
 // LogLine is one display-safe entry from a VM or its host services.
 type LogLine struct {
-	Time   time.Time `json:"time"`
-	Source string    `json:"source"`
-	Level  string    `json:"level,omitempty"`
-	Unit   string    `json:"unit,omitempty"`
-	Text   string    `json:"text"`
+	Time       time.Time `json:"time"`
+	Source     string    `json:"source"`
+	Level      string    `json:"level,omitempty"`
+	Unit       string    `json:"unit,omitempty"`
+	Identifier string    `json:"identifier,omitempty"`
+	Text       string    `json:"text"`
 }
 
 // LogOptions selects a source and limits the initial history per source.
@@ -170,7 +172,7 @@ func followLogSources(ctx context.Context, sources []logSource, emit func(LogLin
 
 func (s *Service) streamJournal(ctx context.Context, name string, options LogOptions, emit func(LogLine) error) error {
 	argv := []string{"journalctl", "--no-pager", "-o", "json",
-		"--output-fields=MESSAGE,PRIORITY,_SYSTEMD_UNIT,_SYSTEMD_USER_UNIT"}
+		"--output-fields=MESSAGE,PRIORITY,_SYSTEMD_UNIT,_SYSTEMD_USER_UNIT,SYSLOG_IDENTIFIER"}
 	if options.Unit != "" {
 		argv = append(argv, "--unit="+options.Unit)
 	}
@@ -288,10 +290,8 @@ func parseLogEntry(source, raw string, truncated bool, arrival time.Time) logEnt
 				if micros, err := strconv.ParseInt(logField(fields, "__REALTIME_TIMESTAMP"), 10, 64); err == nil && micros > 0 && micros <= 253402300799999999 {
 					line.Time = time.UnixMicro(micros).UTC()
 				}
-				text = logField(fields, "MESSAGE")
-				if text == "" && len(fields["MESSAGE"]) > 0 && fields["MESSAGE"][0] == '[' {
-					text = "[binary journal message]"
-				}
+				text = journalMessage(fields)
+				line.Identifier = logField(fields, "SYSLOG_IDENTIFIER")
 				line.Unit = logField(fields, "_SYSTEMD_USER_UNIT")
 				if line.Unit == "" {
 					line.Unit = logField(fields, "_SYSTEMD_UNIT")
@@ -339,6 +339,46 @@ func journalCursor(raw json.RawMessage) string {
 	return ""
 }
 
+const logFieldLimit = 4096
+
+func journalMessage(fields map[string]json.RawMessage) string {
+	raw := fields["MESSAGE"]
+	if len(raw) == 0 || raw[0] != '[' {
+		return logField(fields, "MESSAGE")
+	}
+	text := logText(journalMessageBytes(raw), logFieldLimit)
+	if text == "" {
+		return "[binary journal message]"
+	}
+	return text
+}
+
+// The JSON record has already been validated. Count before decoding so even
+// an array of single-digit values cannot allocate beyond the message limit.
+func journalMessageBytes(raw json.RawMessage) string {
+	contents := bytes.TrimSpace(raw[1 : len(raw)-1])
+	if len(contents) == 0 {
+		return ""
+	}
+	count := bytes.Count(contents, []byte{','}) + 1
+	if count > logFieldLimit {
+		return ""
+	}
+	decoded := make([]byte, 0, count)
+	for {
+		token, rest, more := bytes.Cut(contents, []byte{','})
+		value, err := strconv.ParseUint(string(bytes.TrimSpace(token)), 10, 8)
+		if err != nil {
+			return ""
+		}
+		decoded = append(decoded, byte(value))
+		if !more {
+			return string(decoded)
+		}
+		contents = rest
+	}
+}
+
 func logField(fields map[string]json.RawMessage, name string) string {
 	raw := fields[name]
 	if len(raw) == 0 {
@@ -352,7 +392,7 @@ func logField(fields map[string]json.RawMessage, name string) string {
 		}
 		value = number.String()
 	}
-	return logText(value, 4096)
+	return logText(value, logFieldLimit)
 }
 
 // logText also bounds the cleaned result, since replacing invalid UTF-8 can

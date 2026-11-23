@@ -83,6 +83,9 @@ uses `--unit` for system units. During a disconnect, box reports that the
 journal is unavailable and leaves host-side logs readable. Reconnection
 resumes after the last valid journal cursor. Until box receives a valid
 cursor, it requests the same bounded history and may repeat recent lines.
+Box decodes bounded journal byte messages before stripping terminal controls.
+Guest entries can include a syslog `identifier` in JSON. Plain output uses
+that label when the unit is absent.
 
 ### Trust rules
 
