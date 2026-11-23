@@ -1,0 +1,9 @@
+{
+  "name": "homebox-remote-desktop-spike",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "playwright": "1.65.1",
+    "jpeg-js": "0.4.4"
+  }
+}

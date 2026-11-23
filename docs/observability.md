@@ -215,10 +215,10 @@ VM: Xfce ── display server (guest loopback only)
   WebP and drops quality in areas with lots of motion, to save bandwidth. It
   doesn't support ordinary VNC viewers, so macOS Screen Sharing wouldn't work.
   The owner rates Screen Sharing as nice to have, not required.
-- **A spike decides** between KasmVNC, TigerVNC with noVNC (works with Screen
-  Sharing), and Selkies (WebRTC with a video codec; likely the least bandwidth
-  for motion, but heavier). It measures input latency, bandwidth (idle,
-  scrolling, video) and guest CPU on a 4 GiB VM.
+- **Display-server spike complete.** The [spike report](spikes/remote-desktop.md)
+  compares KasmVNC, TigerVNC with noVNC, and Selkies on latency, idle and
+  motion bandwidth, and guest CPU. It recommends server-tuned KasmVNC with
+  UDP blocked, pending the owner's package and backend decision.
 - **Clipboard and file transfer** are data channels between the VM and the
   laptop. Copying from the VM to the laptop is off by default, or at least
   always visible, so a compromised VM can't plant something you then paste.

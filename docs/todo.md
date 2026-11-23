@@ -11,9 +11,9 @@ Steps 1 and 2 were built on 2026-11-22: the CLI (`box status`, `box top`,
 `box logs`, a richer `box ls`, `--json`) and the macOS desktop app (local and
 remote VMs, overview, logs, terminal, files and editor). Left:
 
-3. Remote desktop, with phase 2's desktop in the VM: a spike picks the server
-   (KasmVNC favoured, against TigerVNC with noVNC and Selkies) for latency and
-   bandwidth, then `box desktop NAME` and the app's desktop tab.
+3. Remote desktop, with phase 2's desktop in the VM. The
+   [display-server spike](spikes/remote-desktop.md) is complete. Review its
+   recommendation, then build `box desktop NAME` and the app's Desktop tab.
 
 ## Tighten the host sandboxes further
 
