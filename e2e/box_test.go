@@ -355,9 +355,13 @@ tcp=$!
 run=$(date +%s)
 seq 1 500 | xargs -P 64 -I '{}' sh -eu -c '
     name="hb-$1-$2.example.com"
-    case $(($2 % 2)) in
-        0) resolver=9.9.9.9 ;;
-        1) resolver=1.1.1.1 ;;
+    # Quad9 rate-limits a burst like this from one address, even straight
+    # from the host, so spread it over resolvers that don't.
+    case $(($2 % 4)) in
+        0) resolver=1.1.1.1 ;;
+        1) resolver=8.8.8.8 ;;
+        2) resolver=1.0.0.1 ;;
+        3) resolver=8.8.4.4 ;;
     esac
     if result=$(dig -4 "@$resolver" +notcp +ignore +time=2 +tries=2 "$name" A) &&
         printf "%s\n" "$result" | grep -Eq "status: (NOERROR|NXDOMAIN),"; then
