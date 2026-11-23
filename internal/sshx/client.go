@@ -17,6 +17,7 @@ import (
 	"syscall"
 
 	"github.com/EmmadUsmani/homebox/internal/execx"
+	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"golang.org/x/term"
 )
@@ -89,6 +90,14 @@ func (c Client) RunScript(ctx context.Context, ep vm.Endpoint, script []byte, en
 	}
 	argv = append(argv, "sh", "-s")
 	_, err := c.run(ctx, ep, argv, bytes.NewReader(script), stdout, stderr)
+	if exit, ok := err.(*execx.ExitError); ok {
+		clean := untrusted.Text(exit.Stderr)
+		if clean != exit.Stderr {
+			safe := *exit
+			safe.Stderr = clean
+			return &safe
+		}
+	}
 	return err
 }
 

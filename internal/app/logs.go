@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -64,7 +65,7 @@ func (s *Service) Logs(ctx context.Context, name string, options LogOptions, emi
 	fileSource := func(source string, path func(context.Context) (string, error)) logSource {
 		return logSource{source, func(ctx context.Context, emit func(LogLine) error) error {
 			return streamLogFile(ctx, path, options, func(raw string, truncated bool) error {
-				return emit(parseLogLine(source, raw, truncated, time.Now().UTC()))
+				return emit(parseLogEntry(source, raw, truncated, time.Now().UTC()).LogLine)
 			})
 		}}
 	}
@@ -168,7 +169,7 @@ func followLogSources(ctx context.Context, sources []logSource, emit func(LogLin
 }
 
 func (s *Service) streamJournal(ctx context.Context, name string, options LogOptions, emit func(LogLine) error) error {
-	argv := []string{"journalctl", "--no-pager", "-o", "json", "-n", strconv.Itoa(options.Lines),
+	argv := []string{"journalctl", "--no-pager", "-o", "json",
 		"--output-fields=MESSAGE,PRIORITY,_SYSTEMD_UNIT,_SYSTEMD_USER_UNIT"}
 	if options.Unit != "" {
 		argv = append(argv, "--unit="+options.Unit)
@@ -178,6 +179,7 @@ func (s *Service) streamJournal(ctx context.Context, name string, options LogOpt
 	}
 	backoff := logPollInterval
 	reported := false
+	var lastCursor string
 	for ctx.Err() == nil {
 		attempt := ctx
 		cancel := func() {}
@@ -198,7 +200,11 @@ func (s *Service) streamJournal(ctx context.Context, name string, options LogOpt
 					count++
 				}
 				reported, backoff = false, logPollInterval
-				outputErr = emit(parseLogLine("guest", raw, truncated, time.Now().UTC()))
+				entry := parseLogEntry("guest", raw, truncated, time.Now().UTC())
+				outputErr = emit(entry.LogLine)
+				if outputErr == nil && entry.cursor != "" {
+					lastCursor = entry.cursor
+				}
 				return outputErr
 			}}
 			// SSH diagnostics are useful for pin, connection and journal permission failures.
@@ -208,7 +214,13 @@ func (s *Service) streamJournal(ctx context.Context, name string, options LogOpt
 				}
 				return nil
 			}}
-			err = s.GuestSSH.Stream(attempt, endpoint, argv, &output, &stderr)
+			args := slices.Clone(argv)
+			if lastCursor == "" {
+				args = append(args, "-n", strconv.Itoa(options.Lines))
+			} else {
+				args = append(args, "--after-cursor="+lastCursor)
+			}
+			err = s.GuestSSH.Stream(attempt, endpoint, args, &output, &stderr)
 			if len(stderr.pending) > 0 {
 				_ = stderr.finish()
 			}
@@ -253,8 +265,13 @@ func (s *Service) streamJournal(ctx context.Context, name string, options LogOpt
 	return ctx.Err()
 }
 
-func parseLogLine(source, raw string, truncated bool, arrival time.Time) LogLine {
-	line := LogLine{Time: arrival, Source: source}
+type logEntry struct {
+	LogLine
+	cursor string
+}
+
+func parseLogEntry(source, raw string, truncated bool, arrival time.Time) logEntry {
+	line := logEntry{LogLine: LogLine{Time: arrival, Source: source}}
 	var timestamp, text string
 	switch source {
 	case "provision":
@@ -267,6 +284,7 @@ func parseLogLine(source, raw string, truncated bool, arrival time.Time) LogLine
 		var fields map[string]json.RawMessage
 		if !truncated && json.Unmarshal([]byte(raw), &fields) == nil {
 			if source == "guest" {
+				line.cursor = journalCursor(fields["__CURSOR"])
 				if micros, err := strconv.ParseInt(logField(fields, "__REALTIME_TIMESTAMP"), 10, 64); err == nil && micros > 0 && micros <= 253402300799999999 {
 					line.Time = time.UnixMicro(micros).UTC()
 				}
@@ -309,6 +327,16 @@ func parseLogLine(source, raw string, truncated bool, arrival time.Time) LogLine
 		line.Text = logText(text, untrusted.MaxLine-len(marker)) + marker
 	}
 	return line
+}
+
+var journalCursorPattern = regexp.MustCompile(`^[A-Za-z0-9=;_-]{1,512}$`)
+
+func journalCursor(raw json.RawMessage) string {
+	var cursor string
+	if json.Unmarshal(raw, &cursor) == nil && journalCursorPattern.MatchString(cursor) {
+		return cursor
+	}
+	return ""
 }
 
 func logField(fields map[string]json.RawMessage, name string) string {

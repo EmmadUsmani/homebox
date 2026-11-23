@@ -166,3 +166,14 @@ func TestStreamUsesPinnedSSH(t *testing.T) {
 		t.Errorf("remote command = %q", got)
 	}
 }
+
+func TestRunScriptCleansCapturedStderr(t *testing.T) {
+	fake := &execx.Fake{}
+	fake.On("ssh ", "", &execx.ExitError{ExitCode: 23, Stderr: "\x1b[2Jpermission denied"})
+	client := Client{Runner: fake}
+	err := client.RunScript(t.Context(), endpoint, nil, nil, false, io.Discard, io.Discard)
+	var exit *execx.ExitError
+	if !errors.As(err, &exit) || exit.ExitCode != 23 || exit.Stderr != "permission denied" {
+		t.Fatalf("script error = %v", err)
+	}
+}

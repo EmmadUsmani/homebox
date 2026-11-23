@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -31,12 +32,12 @@ func TestParseLogLine(t *testing.T) {
 		{"host", "garbled\x1b[2J\x00 line", "", "", "garbled line", arrival},
 		{"net", `{"time":"invalid","msg":"still useful"}`, "", "", "still useful", arrival},
 	} {
-		line := parseLogLine(tc.source, tc.raw, false, arrival)
+		line := parseLogEntry(tc.source, tc.raw, false, arrival)
 		if line.Source != tc.source || !line.Time.Equal(tc.time) || line.Level != tc.level || line.Unit != tc.unit || line.Text != tc.text {
 			t.Errorf("%s log = %+v", tc.source, line)
 		}
 	}
-	huge := parseLogLine("guest", strings.Repeat("x", untrusted.MaxLine), true, arrival)
+	huge := parseLogEntry("guest", strings.Repeat("x", untrusted.MaxLine), true, arrival)
 	if len(huge.Text) > untrusted.MaxLine || !strings.HasSuffix(huge.Text, " [line truncated]") {
 		t.Fatal("large line was not visibly truncated")
 	}
@@ -95,41 +96,76 @@ func TestLogsInterleaveAndStoppedGuest(t *testing.T) {
 }
 
 func TestJournalReconnectsAndCancels(t *testing.T) {
-	service, _, ssh, _ := fixture(t)
-	if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
-		t.Fatal(err)
-	}
-	attempts := 0
-	ssh.stream = func(ctx context.Context, argv []string, stdout, stderr io.Writer) error {
-		attempts++
-		if !slices.Contains(argv, "--unit=worker.service") || !slices.Contains(argv, "-f") {
-			return fmt.Errorf("wrong command: %v", argv)
-		}
-		if attempts == 1 {
-			_, _ = io.WriteString(stderr, "connection lost\x1b[2J\n")
-			return errors.New("disconnected")
-		}
-		_, err := io.WriteString(stdout, "{\"MESSAGE\":\"reconnected\"}\n")
-		if err != nil {
-			return err
-		}
-		<-ctx.Done()
-		return ctx.Err()
-	}
-	ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
-	defer cancel()
-	var lines []string
-	err := service.Logs(ctx, "main", LogOptions{Source: "guest", Unit: "worker.service", Lines: 2, Follow: true},
-		func(line LogLine) error {
-			lines = append(lines, line.Text)
-			if line.Text == "reconnected" {
-				cancel()
+	for _, tc := range []struct {
+		name, firstCursor, lastCursor string
+		wantResume                    string
+	}{
+		{"resumes after latest cursor", "s=a;i=1", "s=a;i=2", "--after-cursor=s=a;i=2"},
+		{"drops hostile cursor", "--evil=$(command)", "s=a;i=2\x1b[0m", ""},
+		{"drops oversized cursor", strings.Repeat("a", 513), "", ""},
+		{"keeps last valid cursor", "s=a;i=1", "s=a;i=2\n", "--after-cursor=s=a;i=1"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			service, _, ssh, _ := fixture(t)
+			if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
+				t.Fatal(err)
 			}
-			return nil
+			writeEntry := func(out io.Writer, text, cursor string) error {
+				return json.NewEncoder(out).Encode(map[string]string{"MESSAGE": text, "__CURSOR": cursor})
+			}
+			var commands [][]string
+			ssh.stream = func(ctx context.Context, argv []string, stdout, stderr io.Writer) error {
+				commands = append(commands, slices.Clone(argv))
+				if len(commands) == 1 {
+					if err := writeEntry(stdout, "first", tc.firstCursor); err != nil {
+						return err
+					}
+					if err := writeEntry(stdout, "last", tc.lastCursor); err != nil {
+						return err
+					}
+					_, _ = io.WriteString(stderr, "connection lost\x1b[2J\n")
+					return errors.New("disconnected")
+				}
+				if err := writeEntry(stdout, "reconnected", "s=a;i=3"); err != nil {
+					return err
+				}
+				<-ctx.Done()
+				return ctx.Err()
+			}
+			ctx, cancel := context.WithTimeout(t.Context(), 3*time.Second)
+			defer cancel()
+			var lines []string
+			err := service.Logs(ctx, "main", LogOptions{Source: "guest", Unit: "worker.service", Lines: 2, Follow: true},
+				func(line LogLine) error {
+					lines = append(lines, line.Text)
+					if line.Text == "reconnected" {
+						cancel()
+					}
+					return nil
+				})
+			if !errors.Is(err, context.Canceled) || len(commands) != 2 ||
+				!slices.Equal(lines, []string{"first", "last", "Guest journal unavailable: connection lost", "reconnected"}) {
+				t.Fatalf("reconnect = %d attempts, %q, %v", len(commands), lines, err)
+			}
+			for _, args := range commands {
+				if !slices.Contains(args, "--unit=worker.service") || !slices.Contains(args, "-f") {
+					t.Fatalf("missing follow or unit in %q", args)
+				}
+			}
+			initial, reconnect := commands[0], commands[1]
+			if !slices.Equal(initial[len(initial)-2:], []string{"-n", "2"}) {
+				t.Fatalf("initial command = %q", initial)
+			}
+			want := initial[:len(initial)-2]
+			if tc.wantResume == "" {
+				want = initial
+			} else {
+				want = append(slices.Clone(want), tc.wantResume)
+			}
+			if !slices.Equal(reconnect, want) {
+				t.Fatalf("reconnect command = %q, want %q", reconnect, want)
+			}
 		})
-	if !errors.Is(err, context.Canceled) || attempts != 2 ||
-		!slices.Equal(lines, []string{"Guest journal unavailable: connection lost", "reconnected"}) {
-		t.Fatalf("reconnect = %d attempts, %q, %v", attempts, lines, err)
 	}
 }
 

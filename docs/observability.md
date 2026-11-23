@@ -81,7 +81,8 @@ sorts them by timestamp. Follow mode emits entries as they arrive. Box uses
 the arrival time for lines without a readable timestamp. The guest journal
 uses `--unit` for system units. During a disconnect, box reports that the
 journal is unavailable and leaves host-side logs readable. Reconnection
-requests the same bounded journal history, so recent guest lines can repeat.
+resumes after the last valid journal cursor. Until box receives a valid
+cursor, it requests the same bounded history and may repeat recent lines.
 
 ### Trust rules
 

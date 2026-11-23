@@ -84,7 +84,8 @@ terminal escape sequences and control characters, and displays the contents
 only. Per-run provisioning logs are readable only by the host owner.
 
 Box opens guest journal sessions over pinned SSH, including when following
-new entries. Ubuntu provisioning adds the VM user to the `systemd-journal`
+new entries. It accepts bounded journal cursors with a restricted character
+set solely to resume a disconnected stream. Ubuntu provisioning adds the VM user to the `systemd-journal`
 group, granting read access to the system journal without running the log
 reader as root.
 
