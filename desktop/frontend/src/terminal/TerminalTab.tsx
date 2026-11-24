@@ -16,21 +16,23 @@ type Output = { data?: string; ended?: boolean };
 type Status = { kind: "opening" | "connected" | "ended" } |
     { kind: "error" | "keyChanged"; message: string };
 
-export function HostKeyWarning({ vm }: { vm: VMRef }) {
-    const name = vm.kind === "local" ? vm.name : vm.alias;
+type ConnectionProps = { vm: VMRef; openSSHSettings?: () => void };
+
+export function HostKeyWarning({ vm, openSSHSettings }: ConnectionProps) {
     return (
         <div className="terminal-status terminal-host-key" role="alert">
             <strong>Host key changed</strong>
             <p>The VM answered with a different key from the one pinned when it was set up.
                 It may have been rebuilt, or another machine may be answering in its place.
                 The connection is blocked until you verify the VM.</p>
-            <p>If you rebuilt it on purpose, run <code>{`box repin ${name}`}</code> on
-                {vm.kind === "local" ? " this Mac." : " the Mac hosting the VM, then reinstall the laptop SSH config."}</p>
+            {openSSHSettings
+                ? <button type="button" onClick={openSSHSettings}>Open SSH host key settings</button>
+                : <p>If you rebuilt it on purpose, review and replace the SSH keys in Settings on the Mac hosting the VM, or run <code>{`box repin ${vm.kind === "remote" ? vm.alias : vm.name}`}</code> there. Then reinstall the laptop SSH config.</p>}
         </div>
     );
 }
 
-function TerminalPane({ vm, selected }: { vm: VMRef; selected: boolean }) {
+function TerminalPane({ vm, selected, openSSHSettings }: ConnectionProps & { selected: boolean }) {
     const host = useRef<HTMLDivElement>(null);
     const mirror = useRef<HTMLPreElement>(null);
     const fitAndFocus = useRef<() => void>(() => {});
@@ -210,7 +212,7 @@ function TerminalPane({ vm, selected }: { vm: VMRef; selected: boolean }) {
             {status.kind === "connected" && (
                 <span className="terminal-accessible">Terminal connected</span>
             )}
-            {status.kind === "keyChanged" && <HostKeyWarning vm={vm} />}
+            {status.kind === "keyChanged" && <HostKeyWarning vm={vm} openSSHSettings={openSSHSettings} />}
             {status.kind !== "connected" && status.kind !== "keyChanged" && (
                 <div className={`terminal-status terminal-status-${status.kind}`} role="status">
                     {status.kind === "opening" && "Connecting…"}
@@ -225,7 +227,7 @@ function TerminalPane({ vm, selected }: { vm: VMRef; selected: boolean }) {
     );
 }
 
-function Sessions({ vm: reference }: { vm: VMRef }) {
+function Sessions({ vm: reference, openSSHSettings }: ConnectionProps) {
     const [vm] = useState(reference);
     const [tabs, setTabs] = useState([1]);
     const [selected, setSelected] = useState(1);
@@ -256,7 +258,7 @@ function Sessions({ vm: reference }: { vm: VMRef }) {
                 <button type="button" className="terminal-add" aria-label="New terminal session" disabled={tabs.length >= 12} onClick={add}>+</button>
             </div>
             <div className="terminal-body">
-                {tabs.map((id) => <TerminalPane key={id} vm={vm} selected={id === selected} />)}
+                {tabs.map((id) => <TerminalPane key={id} vm={vm} selected={id === selected} openSSHSettings={openSSHSettings} />)}
             </div>
             <footer className="terminal-footer">
                 <span>SSH with the pinned host key · no agent or X11 forwarding</span>
@@ -266,9 +268,9 @@ function Sessions({ vm: reference }: { vm: VMRef }) {
     );
 }
 
-export function TerminalTab({ vm }: { vm: VMRef }) {
+export function TerminalTab({ vm, openSSHSettings }: ConnectionProps) {
     // A caller can recreate its VMRef on each render. Keep channel lifetimes
     // tied to the VM identity rather than the identity of the props object.
     const key = vm.kind === "local" ? vm.name : vm.alias;
-    return <Sessions key={`${vm.kind}:${key}`} vm={vm} />;
+    return <Sessions key={`${vm.kind}:${key}`} vm={vm} openSSHSettings={openSSHSettings} />;
 }

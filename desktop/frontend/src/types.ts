@@ -13,11 +13,12 @@ export interface VMStatus {
     state: string;
     uptime_seconds?: number;
     doctor?: DoctorResult;
-    provisioning?: { step?: string; error?: string };
+    provisioning?: { finished_at?: string; step?: string; error?: string };
     errors?: string[];
 }
 
 interface Usage {
+    source: string;
     cpu_percent: number;
     memory_bytes?: number;
 }
@@ -32,7 +33,7 @@ export interface VMDetail extends VMStatus {
         load?: number[];
         memory?: Storage;
         disk?: Storage;
-        processes?: { pid: number; name: string; cpu_percent: number }[];
+        processes?: { pid: number; name: string; cpu_percent: number; resident_bytes: number }[];
     };
     containers?: { id: string; name: string; image: string; status: string }[];
     agents?: { pid: number; name: string; cwd?: string }[];

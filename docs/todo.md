@@ -18,6 +18,10 @@ remote VMs, overview, logs, terminal, files and editor).
 
    The macOS app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
 
+- The local Settings tab and About close the host settings and version gaps.
+  The [parity audit](desktop-parity.md) tracks remaining coverage, including a
+  combined live resource view.
+
 - Measure end-to-end desktop latency, bandwidth and reconnect behavior over
   LAN and Tailscale. See [the remote-desktop spike](spikes/remote-desktop.md).
 

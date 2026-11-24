@@ -18,6 +18,8 @@ terminal and Monaco for the editor.
 | [Logs.html](desktop-mockups/Logs.html) | Live logs: source filter chips, unit filter, follow toggle, monospace stream |
 | [Terminal.html](desktop-mockups/Terminal.html) | Terminal: session tabs, xterm.js area, footer noting pinned keys and no forwarding |
 | [Files.html](desktop-mockups/Files.html) | Files and editor: tree with upload and download, Monaco editor, save blocked when the file changed in the VM |
+| Settings | Local VM port mapping controls, capacity form, key fingerprint review and copyable SSH configuration |
+| About homebox | Native app menu dialog with app and bundled CLI versions |
 | Desktop | Connect to Xfce, see connection or installation progress, install a missing layer, and reconnect after SSH loss |
 | [Remote.html](desktop-mockups/Remote.html) | A VM on another Mac: the host-key-changed alert and the other reachability hints |
 
@@ -30,7 +32,7 @@ terminal and Monaco for the editor.
   "Add a host" sits at the bottom.
 - The main area starts with the VM's name, status pills and actions (Run
   doctor, Stop or Start, and the primary "Open terminal"), then the tabs
-  Overview, Logs, Terminal, Files and Desktop.
+  Overview, Logs, Terminal, Files and Desktop, followed by Settings for local VMs.
 - Content pads 28 px left and right; cards sit in grids with 16 px gaps.
 
 The Desktop tab reuses the approved surface, button and warning tokens.
@@ -52,6 +54,14 @@ appears when the active state directory has no host settings. The operation
 panel above the VM view shows progress and failures. A local VM's **More**
 button opens actions for re-running provisioning and deleting the VM. The
 delete dialog requires typing the VM name and warns that the disks are deleted.
+
+### Settings and About
+
+The owner approved the Settings and About layout on 2026-11-24. The rendered
+screens are pending visual sign-off. Settings keeps host administration after
+the guest workspace tabs. It uses the existing cards, form controls, code
+surfaces and native confirmation dialogs. A local host-key warning opens
+Settings at the SSH host keys card. About uses the native macOS app menu.
 
 ## Tokens
 

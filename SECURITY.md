@@ -110,6 +110,12 @@ profile as a CLI start. The app serves no network API. Running doctor explicitly
 opens its short-lived diagnostic canaries, as in the CLI. The Vite development
 server listens only on host loopback and serves frontend files.
 
+Settings changes published ports through the same stopped-VM validation and
+host binding policy as `box ports`. Opening or copying a mapped URL uses the
+host loopback address. Local SSH host-key replacement requires reviewing saved
+and detected fingerprints and explicitly confirming an intentional change.
+The shared re-pin operation checks both fingerprint lists again before saving.
+
 Remote status runs the bounded, read-only guest probe over the laptop's own
 SSH login. Each check verifies the pinned key in `homebox_known_hosts` and
 disables agent forwarding, X11 forwarding, port forwarding and SSH

@@ -25,6 +25,8 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
     const [source, setSource] = useState(initialSource);
     const [input, setInput] = useState("");
     const [unit, setUnit] = useState("");
+    const [lineInput, setLineInput] = useState("");
+    const [lineCount, setLineCount] = useState<number | null>(null);
     const [follow, setFollow] = useState(true);
     const [lines, setLines] = useState<(LogLine & { key: number })[]>([]);
     const [error, setError] = useState("");
@@ -49,7 +51,7 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
             setLines((previous) => appendLogs(previous, incoming));
             setPending(false);
         });
-        const stream = Call.ByName("main.Local.StreamLogs", id, name, source, activeUnit, follow);
+        const stream = Call.ByName("main.Local.StreamLogs", id, name, source, activeUnit, lineCount, follow);
         void stream.then(
             () => { if (active) setPending(false); },
             (failure) => {
@@ -63,7 +65,7 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
             unsubscribe();
             void stream.cancel();
         };
-    }, [name, source, activeUnit, follow]);
+    }, [name, source, activeUnit, lineCount, follow]);
 
     useLayoutEffect(() => {
         const element = pane.current;
@@ -76,10 +78,12 @@ export function LogsTab({ name, initialSource }: { name: string; initialSource: 
                 {sources.map(([value, label]) => <button className="chip" key={value}
                     aria-pressed={source === value} onClick={() => setSource(value)}>{label}</button>)}
                 <span className="spacer" />
-                <form onSubmit={(event) => { event.preventDefault(); setUnit(input.trim()); }}>
+                <form onSubmit={(event) => { event.preventDefault(); setUnit(input.trim()); setLineCount(lineInput === "" ? null : Number(lineInput)); }}>
                     <label>Unit <input value={input} onChange={(event) => setInput(event.target.value)}
                         maxLength={128} disabled={!canFilterUnit} placeholder="e.g. vite.service" /></label>
-                    <button disabled={!canFilterUnit}>Apply</button>
+                    <label>Recent lines per source <input type="number" step="1" placeholder="Default" value={lineInput}
+                        onChange={(event) => setLineInput(event.target.value)} /></label>
+                    <button>Apply</button>
                 </form>
                 <label><input type="checkbox" checked={follow} onChange={(event) => setFollow(event.target.checked)} /> Follow</label>
             </div>

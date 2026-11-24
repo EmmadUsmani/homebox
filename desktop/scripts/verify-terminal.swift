@@ -229,7 +229,7 @@ func verify(bundle: String, state: String, screenshot: String, mode: String, sce
         try press("Open terminal")
         if kind.hasPrefix("wrong-") {
             try see("Host key changed")
-            try see("box repin \(vm)")
+            try see(local ? "Open SSH host key settings" : "box repin \(vm)")
             guard !accessibleText().contains("Reconnect") else { throw Failure(message: "Host key warning offers reconnect") }
             try capture(screenshot + "-key-changed.png")
             continue

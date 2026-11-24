@@ -85,7 +85,7 @@ type logBatch struct {
 	Lines []app.LogLine `json:"lines"`
 }
 
-func (l *Local) StreamLogs(ctx context.Context, id, name, source, unit string, follow bool) error {
+func (l *Local) StreamLogs(ctx context.Context, id, name, source, unit string, lineCount *int, follow bool) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	stop := context.AfterFunc(l.lifetime, cancel)
@@ -93,9 +93,13 @@ func (l *Local) StreamLogs(ctx context.Context, id, name, source, unit string, f
 	if err := l.lifetime.Err(); err != nil {
 		return err
 	}
+	options := app.LogOptions{Source: source, Unit: unit, Lines: app.DefaultLogLines, Follow: follow}
+	if lineCount != nil {
+		options.Lines = *lineCount
+	}
 	if !follow {
 		var lines []app.LogLine
-		err := l.box.Logs(ctx, name, app.LogOptions{Source: source, Unit: unit, Lines: 100}, func(line app.LogLine) error {
+		err := l.box.Logs(ctx, name, options, func(line app.LogLine) error {
 			lines = append(lines, line)
 			return ctx.Err()
 		})
@@ -104,15 +108,15 @@ func (l *Local) StreamLogs(ctx context.Context, id, name, source, unit string, f
 		}
 		return err
 	}
-	return l.followLogs(ctx, id, name, source, unit)
+	return l.followLogs(ctx, id, name, options)
 }
 
-func (l *Local) followLogs(ctx context.Context, id, name, source, unit string) error {
+func (l *Local) followLogs(ctx context.Context, id, name string, options app.LogOptions) error {
 	const batchSize = 64
 	lines := make(chan app.LogLine, batchSize)
 	done := make(chan error, 1)
 	go func() {
-		done <- l.box.Logs(ctx, name, app.LogOptions{Source: source, Unit: unit, Lines: 100, Follow: true}, func(line app.LogLine) error {
+		done <- l.box.Logs(ctx, name, options, func(line app.LogLine) error {
 			select {
 			case lines <- line:
 				return nil

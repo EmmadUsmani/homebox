@@ -197,6 +197,11 @@ See [SECURITY.md](SECURITY.md) for the full security model, and the
 
 ## Desktop app (macOS)
 
+For a VM on this Mac, use **Settings** to manage published ports, resize a
+stopped VM, review changed SSH host keys, or copy the laptop SSH setup.
+**About homebox** in the app menu shows the app and bundled `box` versions.
+See [Desktop and CLI parity](docs/desktop-parity.md).
+
 Build from the repository root with Go 1.27.4, Xcode Command Line Tools and
 Node.js 22 (22.12 or later), 24, or 26+. For local VMs, install Lima in a
 standard Homebrew location (`/opt/homebrew/bin` or `/usr/local/bin`).
@@ -234,7 +239,8 @@ the network daemon.
 Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for
 another SSH alias pinned in `~/.ssh/homebox_known_hosts`. Reachable VMs show
 live guest readings. A changed or missing pin blocks the connection. After an
-intentional rebuild, run `box repin NAME` on the VM's host and reinstall the
+intentional rebuild, review and replace the host keys in **Settings** on the
+VM's Mac or run `box repin NAME` there. Then reinstall the
 laptop SSH config.
 
 See the [spike report](docs/spikes/wails-desktop.md) for the build background.
@@ -255,6 +261,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
 - [Observability and the desktop app](docs/observability.md): status, live logs and the desktop app.
+- [Desktop and CLI parity](docs/desktop-parity.md).
 - [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
 - [Remote desktop spike](docs/spikes/remote-desktop.md) compares display servers over SSH.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.

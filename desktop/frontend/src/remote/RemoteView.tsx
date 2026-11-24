@@ -78,7 +78,7 @@ export function RemoteView({ vm, checkAgain }: { vm: RemoteVM; checkAgain: () =>
             {changed && <section className="remote-key-alert" role="alert">
                 <h2><Dot state={state} />Host key changed: not connecting</h2>
                 <p>SSH couldn’t verify this VM against its pinned key. The VM may have been rebuilt, its pin may be missing, or something else may be answering in its place.</p>
-                <p>If you rebuilt it on purpose, run <code>{command}</code> on that Mac using the VM’s name, then reinstall the laptop SSH config.</p>
+                <p>If you rebuilt it on purpose, review and replace the keys in Settings on that Mac, or run <code>{command}</code> there using the VM’s name. Then reinstall the laptop SSH config.</p>
                 <div className="remote-actions">
                     <button type="button" onClick={() => void copy()}>Copy command</button>
                     {retry}

@@ -38,17 +38,20 @@ func main() {
 		log.Fatal(err)
 	}
 	desktop := application.New(application.Options{
-		Name: "homebox",
-		Mac:  application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
+		Name:        "homebox",
+		Description: aboutDescription(),
+		Mac:         application.MacOptions{ApplicationShouldTerminateAfterLastWindowClosed: true},
 		Assets: application.AssetOptions{
 			Handler: application.BundledAssetFileServer(frontend),
 		},
 	})
+	setAboutMenu(desktop)
 	desktop.RegisterService(application.NewService(&Local{
 		box: service, load: service.Store.Load, findTool: exec.LookPath, emit: desktop.Event.Emit,
 	}))
 	desktop.RegisterService(application.NewService(&Lifecycle{box: service}))
 	desktop.RegisterService(application.NewService(remote))
+	desktop.RegisterService(application.NewService(&Settings{box: service}))
 	desktop.RegisterService(application.NewService(session.NewTerminal(sshPool)))
 	window := desktop.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title: "homebox", URL: "/", Width: 1280, Height: 800, MinWidth: 850, MinHeight: 540,
