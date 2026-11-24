@@ -66,7 +66,8 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 - `box desktop --install` runs the embedded [Ubuntu desktop layer](../guest/ubuntu/desktop.sh)
   over pinned SSH. Systemd starts Xfce on demand and keeps it alive independently
   of viewer connections. The guest service owns its Xauthority file under
-  `/run`. The host proxy keeps browser session credentials in memory.
+  `/run`. The optional layer includes `xclip` for the app's explicit clipboard
+  transfers over pinned SSH. The host proxy keeps browser session credentials in memory.
   `internal/displayproxy` accepts a dialer for its fixed guest endpoint and
   owns the local listener and HTTP connections. Its caller owns SSH and
   cancels the proxy when SSH is lost. The app leases that connection from

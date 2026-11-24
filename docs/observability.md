@@ -208,7 +208,11 @@ The Desktop tab uses the same proxy and installer as the CLI. It leases
 the app's pinned SSH connection for either a local VM or an SSH alias.
 Choose **Connect** to open the viewer. The tab shows setup progress,
 offers **Install desktop** if the layer is missing, and offers
-**Reconnect** after a drop. Leaving the tab, selecting another VM or
+**Reconnect** after a drop. Use **Paste to VM** to put Mac clipboard text
+on the Xfce clipboard, then paste in the guest app. Use **Copy from VM**
+to bring Xfce clipboard text to the Mac. The buttons transfer up to
+1 MiB of plain text per click. On an older desktop layer, run
+`box desktop NAME --install` to add clipboard support. Leaving the tab, selecting another VM or
 closing the app releases the viewer and closes its loopback listener.
 [Security](../SECURITY.md#macos-guest-viewer) describes the native WebKit
 view and its isolation verification.

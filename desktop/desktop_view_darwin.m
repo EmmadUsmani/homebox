@@ -110,3 +110,24 @@ void desktopViewClose(void *handle) {
     [view stopLoading];
     [view removeFromSuperview];
 }
+
+char *desktopClipboardRead(size_t limit, size_t *length) {
+    NSString *value = [NSPasteboard.generalPasteboard stringForType:NSPasteboardTypeString];
+    *length = [value lengthOfBytesUsingEncoding:NSUTF8StringEncoding];
+    if (value == nil || *length > limit) return NULL;
+
+    NSData *data = [value dataUsingEncoding:NSUTF8StringEncoding];
+    if (data == nil) return NULL;
+    char *text = malloc(MAX(data.length, 1));
+    if (text != NULL && data.length > 0) memcpy(text, data.bytes, data.length);
+    return text;
+}
+
+int desktopClipboardWrite(const char *text, size_t length) {
+    NSString *value = length == 0 ? @"" :
+        [[NSString alloc] initWithBytes:text length:length encoding:NSUTF8StringEncoding];
+    if (value == nil) return 0;
+    NSPasteboard *clipboard = NSPasteboard.generalPasteboard;
+    [clipboard clearContents];
+    return [clipboard setString:value forType:NSPasteboardTypeString];
+}

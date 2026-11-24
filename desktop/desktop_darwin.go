@@ -18,6 +18,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/displayproxy"
 	"github.com/wailsapp/wails/v3/pkg/application"
+	"golang.org/x/crypto/ssh"
 )
 
 func registerDesktop(desktop *application.App, window *application.WebviewWindow, box *app.Service, pool *session.Pool) {
@@ -35,6 +36,8 @@ type Desktop struct {
 type desktopView struct {
 	id     string
 	handle unsafe.Pointer
+	client *ssh.Client
+	ctx    context.Context
 }
 
 type DesktopBounds struct {
@@ -81,7 +84,7 @@ func (d *Desktop) Connect(ctx context.Context, ref session.VMRef, id string, bou
 			return nil
 		}
 		d.closeView()
-		view := &desktopView{id: id, handle: handle}
+		view := &desktopView{id: id, handle: handle, client: client, ctx: tunnel}
 		d.active = view
 		d.layout(bounds)
 		return view
@@ -97,6 +100,54 @@ func (d *Desktop) Connect(ctx context.Context, ref session.VMRef, id string, bou
 	d.emit("desktop:connected", id)
 	_ = proxy.Wait()
 	return DesktopResult{State: "disconnected"}
+}
+
+func (d *Desktop) PasteToVM(ctx context.Context, id string) error {
+	var view *desktopView
+	var value string
+	err := application.InvokeSyncWithResult(func() error {
+		view = d.active
+		if view == nil || view.id != id || view.ctx.Err() != nil || ctx.Err() != nil {
+			return errors.New("Desktop is disconnected")
+		}
+		var length C.size_t
+		text := C.desktopClipboardRead(displayproxy.ClipboardLimit, &length)
+		if length > displayproxy.ClipboardLimit {
+			return errors.New("Clipboard text exceeds 1 MiB")
+		}
+		if text == nil {
+			return errors.New("Mac clipboard has no readable plain text")
+		}
+		defer C.free(unsafe.Pointer(text))
+		value = C.GoStringN(text, C.int(length))
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	return displayproxy.PasteClipboard(view.ctx, view.client, value)
+}
+
+func (d *Desktop) CopyFromVM(ctx context.Context, id string) error {
+	view := application.InvokeSyncWithResult(func() *desktopView { return d.active })
+	if view == nil || view.id != id || view.ctx.Err() != nil || ctx.Err() != nil {
+		return errors.New("Desktop is disconnected")
+	}
+	value, err := displayproxy.CopyClipboard(view.ctx, view.client)
+	if err != nil {
+		return err
+	}
+	return application.InvokeSyncWithResult(func() error {
+		if d.active != view || view.ctx.Err() != nil || ctx.Err() != nil {
+			return errors.New("Desktop is disconnected")
+		}
+		text := C.CString(value)
+		defer C.free(unsafe.Pointer(text))
+		if C.desktopClipboardWrite(text, C.size_t(len(value))) == 0 {
+			return errors.New("Could not write to the Mac clipboard")
+		}
+		return nil
+	})
 }
 
 func (d *Desktop) Resize(id string, bounds DesktopBounds) {

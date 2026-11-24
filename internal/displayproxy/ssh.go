@@ -63,6 +63,14 @@ func Install(ctx context.Context, client *ssh.Client, profiles interface {
 // SSH's channel open has no context. An abandoned open closes its channel when
 // the peer eventually answers, without disrupting the other users of SSH.
 func runCommand(ctx context.Context, client *ssh.Client, command string, script io.Reader, output io.Writer) error {
+	if output == nil {
+		return runSSHCommand(ctx, client, command, script, nil, nil)
+	}
+	clean := &commandOutput{out: output}
+	return runSSHCommand(ctx, client, command, script, clean, clean)
+}
+
+func runSSHCommand(ctx context.Context, client *ssh.Client, command string, stdin io.Reader, stdout, stderr io.Writer) error {
 	type result struct {
 		session *ssh.Session
 		err     error
@@ -87,11 +95,7 @@ func runCommand(ctx context.Context, client *ssh.Client, command string, script 
 		}
 		session := reply.session
 		defer session.Close()
-		session.Stdin = script
-		if output != nil {
-			clean := &commandOutput{out: output}
-			session.Stdout, session.Stderr = clean, clean
-		}
+		session.Stdin, session.Stdout, session.Stderr = stdin, stdout, stderr
 		done := make(chan error, 1)
 		go func() { done <- session.Run(command) }()
 		select {

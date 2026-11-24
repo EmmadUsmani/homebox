@@ -16,6 +16,8 @@ remote VMs, overview, logs, terminal, files and editor).
    selection of KasmVNC. Both `box desktop NAME` and the app's Desktop tab
    are built and verified on a local Mac and VM.
 
+   The macOS app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+
 - Measure end-to-end desktop latency, bandwidth and reconnect behavior over
   LAN and Tailscale. See [the remote-desktop spike](spikes/remote-desktop.md).
 

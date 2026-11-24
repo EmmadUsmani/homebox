@@ -48,7 +48,8 @@ int main(int argc, const char **argv) {
             styleMask:NSWindowStyleMaskTitled backing:NSBackingStoreBuffered defer:NO];
         [window center];
         [window makeKeyAndOrderFront:nil];
-        [app activate];
+        [window orderFrontRegardless];
+        [app activateIgnoringOtherApps:YES];
         void *handle = desktopViewOpen((__bridge void *)window, argv[1]);
         if (!handle) return 1;
         desktopViewLayout(handle, 0, 0, 600, 420);

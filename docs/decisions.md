@@ -171,6 +171,12 @@ desktop in a separate native WKWebView layered over the tab. It loads the
 same proxy as the CLI and keeps the guest page outside the Wails view and
 its bindings. See [the isolation verification](../SECURITY.md#macos-guest-viewer).
 
+**Explicit desktop clipboard transfers** (owner, 2026-11-24). The app
+offers **Paste to VM** and **Copy from VM** for one-shot plain-text transfers.
+To keep clipboard access outside the guest viewer, the trusted app uses its
+existing pinned SSH connection and the guest's X11 clipboard. KasmVNC
+clipboard transfer stays disabled. See [clipboard controls](../SECURITY.md#macos-guest-viewer).
+
 **Remote host inventory and refresh** (worker M, implementation, 2026-11-22).
 Keep aliases in the macOS user application-support directory so they are
 independent of box's host records. Refresh each alias separately every 15
