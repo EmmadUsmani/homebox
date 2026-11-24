@@ -158,14 +158,16 @@ code runs on the laptop and on a host; on a host it also sees the local VMs.
 The local VM list and Overview refresh every few seconds, retaining readings
 on refresh errors. The Overview memory card uses the guest's used and total
 memory for the bar and shows the host process footprint separately. Local
-lifecycle actions and doctor use the shared service.
+host setup, lifecycle actions and doctor use the shared service. The
+window-wide operation panel keeps the latest provisioning output visible
+across VM and tab changes and offers a retry after a provisioning failure.
 Logs follow the CLI sources, support a guest-unit filter and retain the most
 recent 5,000 lines while open. Leaving the view cancels the stream.
 
 | Screen | What it does |
 |---|---|
-| VM list | Local VMs and remote ones (level A), with state, health and a reachability badge |
-| VM detail | Status, resource use, published ports (open one in the browser), recent network denials, last doctor result; start, stop and doctor for local VMs |
+| VM list | Local VMs, including stopped VMs, and remote ones (level A), with state, health and a reachability badge. **New VM** opens the local creation form. |
+| VM detail | Status, resource use, published ports (open one in the browser), recent network denials and last doctor result. Local actions include start, stop, doctor, re-run provisioning and delete. |
 | Logs | The live log stream, filterable by source |
 | Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
 | Files | Implemented. Browse from the SSH user’s home, show hidden files, and stream uploads and downloads through native file dialogs over the shared SSH connection. |

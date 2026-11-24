@@ -218,7 +218,7 @@ func verify(bundle: String, scratch: String, screenshot: String, mode: String, n
     try noListeners()
     guard let name else {
         try read("No VMs on this Mac")
-        try read("box new NAME")
+        try read("Set up this Mac")
         try capture("")
         try closeWindow()
         return

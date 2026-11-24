@@ -47,6 +47,7 @@ func main() {
 	desktop.RegisterService(application.NewService(&Local{
 		box: service, load: service.Store.Load, findTool: exec.LookPath, emit: desktop.Event.Emit,
 	}))
+	desktop.RegisterService(application.NewService(&Lifecycle{box: service}))
 	desktop.RegisterService(application.NewService(remote))
 	desktop.RegisterService(application.NewService(session.NewTerminal(sshPool)))
 	window := desktop.Window.NewWithOptions(application.WebviewWindowOptions{
