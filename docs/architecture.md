@@ -69,7 +69,10 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   `/run`. The host proxy keeps browser session credentials in memory.
   `internal/displayproxy` accepts a dialer for its fixed guest endpoint and
   owns the local listener and HTTP connections. Its caller owns SSH and
-  cancels the proxy when SSH is lost.
+  cancels the proxy when SSH is lost. The app leases that connection from
+  `desktop/session` and overlays a native WebKit view on the selected tab.
+  WKWebView is configured independently of the app's Wails view. See
+  [guest viewer isolation](../SECURITY.md#macos-guest-viewer).
 - `desktop/session` also leases a shared SFTP channel per SSH transport for
   the Files tab. Its bounded listings use pkg/sftp v2's directory handle
   API. The pinned upstream revision includes bounds on directory entry and

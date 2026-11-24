@@ -1,8 +1,8 @@
 # Observability and the desktop app
 
 The CLI (status, top, list and logs) and the macOS desktop app are built.
-The remote desktop is available through the CLI. The macOS Desktop tab is
-pending. The owner agreed this design on 2026-11-22. The decisions and what was turned down are also in
+The remote desktop is available through the CLI and the macOS app. The
+owner agreed this design on 2026-11-22. The decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
 
@@ -170,7 +170,7 @@ recent 5,000 lines while open. Leaving the view cancels the stream.
 | Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
 | Files | Implemented. Browse from the SSH user’s home, show hidden files, and stream uploads and downloads through native file dialogs over the shared SSH connection. |
 | Editor | Implemented. Open and edit up to 2 MiB of UTF-8 text with locally bundled Monaco. Save over SFTP with ⌘S and find with ⌘F. |
-| Desktop | The VM's remote desktop, once phase 2 adds one (below) |
+| Desktop | Connect to Xfce over pinned SSH, install the desktop layer if needed, and reconnect after SSH loss |
 
 - **SSH in the app** obeys the same rules as box's SSH config: it uses only the
   pinned host keys from `homebox_known_hosts` (or box's local ones for VMs on
@@ -204,9 +204,14 @@ browser. `--no-open` prints the one-time URL. Closing the viewer or stopping
 the local proxy leaves Xfce running until the guest or desktop service stops.
 Guest startup failures go to the `homebox-desktop@<user>.service` journal.
 
-The planned Desktop tab will reuse the proxy and supply its own pinned
-SSH connection. It requires an unprivileged web view isolated from Wails
-bindings and host clipboard access.
+The Desktop tab uses the same proxy and installer as the CLI. It leases
+the app's pinned SSH connection for either a local VM or an SSH alias.
+Choose **Connect** to open the viewer. The tab shows setup progress,
+offers **Install desktop** if the layer is missing, and offers
+**Reconnect** after a drop. Leaving the tab, selecting another VM or
+closing the app releases the viewer and closes its loopback listener.
+[Security](../SECURITY.md#macos-guest-viewer) describes the native WebKit
+view and its isolation verification.
 
 ## Build order
 
@@ -215,7 +220,7 @@ bindings and host clipboard access.
 2. **Desktop app.** Local VMs, level A for remote ones, terminal, files and
    the light editor.
 3. **Remote desktop.** With phase 2's desktop in the VM: `box desktop NAME` and
-   the app's Desktop tab. The CLI is built.
+   the app's Desktop tab. Both are built.
 
 ## Desktop implementation decisions
 

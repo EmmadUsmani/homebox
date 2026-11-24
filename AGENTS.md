@@ -58,7 +58,10 @@ and its published HTTP port, and the owner signed Claude Code and Codex in
 inside that VM. Phase 1b's first two steps are built: the observability CLI
 (`box status`, `box top`, `box logs`, `--json`, in the e2e test) and the macOS
 desktop app in `desktop/` (verified by driving the built app through
-Accessibility with the scripts in `desktop/scripts/`).
+Accessibility with the scripts in `desktop/scripts/`). The remote desktop
+uses the same pinned SSH proxy in the CLI and the app. The Desktop tab was
+verified on a local VM, including the native viewer isolation fixture.
+LAN and Tailscale measurement remains open.
 [docs/todo.md](docs/todo.md) lists the agreed follow-ups.
 [docs/architecture.md](docs/architecture.md) holds the code layout, dependency
 rules and known limitations; follow it.

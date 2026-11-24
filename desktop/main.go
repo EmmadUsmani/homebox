@@ -62,6 +62,7 @@ func main() {
 			return desktop.Dialog.SaveFile().AttachToWindow(window).SetFilename(name).PromptForSingleSelection()
 		},
 	)))
+	registerDesktop(desktop, window, service, sshPool)
 	if err := desktop.Run(); err != nil {
 		log.Fatal(err)
 	}

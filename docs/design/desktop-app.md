@@ -18,6 +18,7 @@ terminal and Monaco for the editor.
 | [Logs.html](desktop-mockups/Logs.html) | Live logs: source filter chips, unit filter, follow toggle, monospace stream |
 | [Terminal.html](desktop-mockups/Terminal.html) | Terminal: session tabs, xterm.js area, footer noting pinned keys and no forwarding |
 | [Files.html](desktop-mockups/Files.html) | Files and editor: tree with upload and download, Monaco editor, save blocked when the file changed in the VM |
+| Desktop | Connect to Xfce, see connection or installation progress, install a missing layer, and reconnect after SSH loss |
 | [Remote.html](desktop-mockups/Remote.html) | A VM on another Mac: the host-key-changed alert and the other reachability hints |
 
 ## Layout
@@ -29,8 +30,15 @@ terminal and Monaco for the editor.
   "Add a host" sits at the bottom.
 - The main area starts with the VM's name, status pills and actions (Run
   doctor, Stop or Start, and the primary "Open terminal"), then the tabs
-  Overview, Logs, Terminal and Files.
+  Overview, Logs, Terminal, Files and Desktop.
 - Content pads 28 px left and right; cards sit in grids with 16 px gaps.
+
+The Desktop tab reuses the approved surface, button and warning tokens.
+Its status panel shows **Connect**, VM-specific connection or installation
+progress, **Install desktop** for a missing layer, or **Reconnect** after
+SSH loss. Stopped VM and host-key errors use the app's existing status and
+warning styles. The connected viewer fills the tab beneath the VM header.
+The Desktop tab's look is pending owner sign-off.
 
 ## Tokens
 

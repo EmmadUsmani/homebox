@@ -44,6 +44,10 @@ func Start(ctx context.Context, dial func(context.Context) (net.Conn, error)) (*
 }
 
 func start(ctx context.Context, dial func(context.Context) (net.Conn, error), ttl time.Duration) (*Proxy, error) {
+	return startWithPolicy(ctx, dial, ttl, false)
+}
+
+func startWithPolicy(ctx context.Context, dial func(context.Context) (net.Conn, error), ttl time.Duration, viewer bool) (*Proxy, error) {
 	transport := &http.Transport{
 		DialContext:           func(ctx context.Context, _, _ string) (net.Conn, error) { return dial(ctx) },
 		ResponseHeaderTimeout: 5 * time.Second,
@@ -102,6 +106,10 @@ func start(ctx context.Context, dial func(context.Context) (net.Conn, error), tt
 			w.Header().Set("Referrer-Policy", "no-referrer")
 			w.Header().Set("X-Frame-Options", "DENY")
 			w.Header().Set("Permissions-Policy", "clipboard-read=(), clipboard-write=()")
+			if viewer {
+				w.Header().Add("Content-Security-Policy", fmt.Sprintf(
+					"default-src 'self'; connect-src 'self' ws://%s; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; sandbox allow-scripts allow-same-origin", host))
+			}
 			if r.Host != host {
 				http.Error(w, "invalid desktop host", http.StatusMisdirectedRequest)
 				return

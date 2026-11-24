@@ -9,11 +9,15 @@ details. Anything that changes the design document waits for the owner.
 Agreed by the owner on 2026-11-22; design in [observability.md](observability.md).
 Steps 1 and 2 were built on 2026-11-22: the CLI (`box status`, `box top`,
 `box logs`, a richer `box ls`, `--json`) and the macOS desktop app (local and
-remote VMs, overview, logs, terminal, files and editor). Left:
+remote VMs, overview, logs, terminal, files and editor).
 
 3. Remote desktop, with phase 2's desktop in the VM. The
    [display-server spike](spikes/remote-desktop.md) led to the owner's
-   selection of KasmVNC. `box desktop NAME` is built. Add the app's Desktop tab.
+   selection of KasmVNC. Both `box desktop NAME` and the app's Desktop tab
+   are built and verified on a local Mac and VM.
+
+- Measure end-to-end desktop latency, bandwidth and reconnect behavior over
+  LAN and Tailscale. See [the remote-desktop spike](spikes/remote-desktop.md).
 
 - Optional second display server for macOS Screen Sharing (RFB), selectable per VM alongside KasmVNC.
 

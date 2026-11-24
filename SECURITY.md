@@ -157,9 +157,34 @@ while it is valid. Closing the tunnel ends its browser session. The guest
 session keeps running until its service or VM stops.
 
 KasmVNC rejects clipboard transfer in both directions, and the browser
-endpoint disables the Clipboard API through Permissions Policy. The
-macOS app's remote desktop remains subject to its separate requirement for
-an isolated web view without Wails bindings.
+proxy sends a Permissions Policy disabling the Clipboard API in browsers
+that enforce it.
+
+### macOS guest viewer
+
+The app hosts guest content in a [separate native WKWebView](desktop/desktop_view_darwin.m)
+with a nonpersistent data store and its own content controller. This view
+has no Wails scripts, message handlers or asset scheme. Its navigation
+delegate allows main-frame navigation only to the exact loopback proxy
+origin, including after redirects. It declines popups, downloads, file
+pickers and media capture. The proxy adds a viewer Content Security Policy
+that restricts network resources and frames. The proxy retains its
+authorization, Host, Origin and `X-Frame-Options: DENY` checks.
+
+The native viewer suppresses AppKit clipboard actions, and a document-start
+script blocks Clipboard API writes, legacy editing commands and clipboard
+and drag events before guest scripts run. This is separate from KasmVNC's
+guest-side clipboard settings.
+
+On macOS 27.2.1, the [native isolation fixture](desktop/scripts/verify-desktop-isolation.js)
+used a real click to attempt a Wails binding, a post to the Wails
+`external` message handler, a Wails runtime request, popup and external
+navigation (direct and via redirect), and legacy and asynchronous clipboard
+writes from the guest document and an attempted child frame. The checks
+passed, the second origin received zero requests, and the host
+pasteboard change count stayed the same. The
+[bundle verification](desktop/scripts/verify-desktop.swift) checks the
+same native view in the running app with a real VM.
 
 ### Logs
 
