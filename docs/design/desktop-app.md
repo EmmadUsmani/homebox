@@ -40,6 +40,10 @@ SSH loss. Stopped VM and host-key errors use the app's existing status and
 warning styles. The connected viewer fills the tab beneath the VM header.
 The owner approved the Desktop tab's look on 2026-11-24.
 
+The connected view adds **Paste to VM** and **Copy from VM** above the
+viewer using the existing toolbar button tokens. The toolbar shows transfer
+feedback. The layout and styling of these additions are pending owner review.
+
 ### Local lifecycle controls (pending owner sign-off)
 
 **New VM** appears under **This Mac** and in the empty view. Its dialog has

@@ -223,7 +223,11 @@ the VM file changed since you opened it. Open **Desktop** and choose
 **Connect** to use Xfce in the app. If the layer is missing, choose
 **Install desktop** on a running Ubuntu VM. Leaving the tab or switching
 VMs closes the tunnel. Reconnecting returns to the same Xfce session.
-Use **Files** to move files between your Mac and the VM.
+Use **Paste to VM** and **Copy from VM** in the connected Desktop toolbar
+to transfer plain text, up to 1 MiB per click. After **Paste to VM**,
+paste from the clipboard in the guest app. Run `box desktop NAME --install`
+to add clipboard support to an existing desktop layer. Use **Files** to
+move files between your Mac and the VM.
 
 The bundle embeds the frontend and includes the matching `box` executable for
 the network daemon.

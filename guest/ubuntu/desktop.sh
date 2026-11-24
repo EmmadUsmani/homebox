@@ -28,9 +28,27 @@ if [ ! -f "$dir/kasmvnc-$digest" ] ||
     apt-get -o DPkg::Lock::Timeout=120 install -y --no-install-recommends \
         xfce4-session xfwm4 xfce4-panel xfdesktop4 xfce4-settings xfce4-terminal \
         xfconf thunar dbus-x11 xauth x11-utils x11-xserver-utils fonts-dejavu-core \
-        libseccomp2 python3 "$deb"
+        libseccomp2 python3 xclip "$deb"
     touch "$dir/kasmvnc-$digest"
 fi
+
+if [ "$(dpkg-query -W -f='${Status}' xclip 2>/dev/null || true)" != "install ok installed" ]; then
+    apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
+    apt-get -o DPkg::Lock::Timeout=120 install -y --no-install-recommends xclip
+fi
+
+cat > "$dir/clipboard" <<'CLIPBOARD'
+#!/bin/sh
+set -eu
+export DISPLAY=:2
+instance=$(systemd-escape "$(id -un)")
+export XAUTHORITY="/run/homebox-desktop-$instance/Xauthority"
+case "${1:-}" in
+    paste) exec xclip -selection clipboard -target UTF8_STRING -in -silent >/dev/null 2>&1 ;;
+    copy) exec xclip -selection clipboard -target UTF8_STRING -out ;;
+    *) exit 2 ;;
+esac
+CLIPBOARD
 
 # KasmVNC 1.5.2 starts its UDP transport even when the client uses WebSockets.
 # Refuse IPv4/IPv6 datagram sockets in Xkasmvnc, before it opens any listeners.
@@ -160,5 +178,5 @@ if ! sudo -n systemctl start "$unit"; then
     exit 1
 fi
 START
-chmod 755 "$dir/session" "$dir/ready" "$dir/start"
+chmod 755 "$dir/session" "$dir/ready" "$dir/start" "$dir/clipboard"
 systemctl daemon-reload

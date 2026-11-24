@@ -55,6 +55,7 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         guard status == 0 else { throw Failure(message: "Guest check failed (\(status)): \(script)") }
         return output
     }
+    _ = try ssh("command -v xdotool >/dev/null || { echo 'Install xdotool in the test guest' >&2; exit 1; }")
     guard running() == nil else { throw Failure(message: "This app copy is already running") }
     try FileManager.default.createDirectory(atPath: screenshots, withIntermediateDirectories: true)
     let config = screenshots + "/ssh-config"
@@ -153,6 +154,63 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     }
     try screenshot("desktop-connected.png")
 
+    let clipboard = NSPasteboard.general
+    let clipboardTool = "/usr/local/lib/homebox-desktop/clipboard"
+    let macText = "printf clipboard-paste > ~/\(marker)"
+    let guestText = "Copied from Xfce — café"
+    let previousItems = (clipboard.pasteboardItems ?? []).map { original in
+        let item = NSPasteboardItem()
+        for type in original.types {
+            if let data = original.data(forType: type) { item.setData(data, forType: type) }
+        }
+        return item
+    }
+    defer {
+        if let text = clipboard.string(forType: .string), [macText, guestText].contains(text) {
+            clipboard.clearContents()
+            clipboard.writeObjects(previousItems)
+        }
+    }
+    let readGuest = "\(clipboardTool) copy 2>/dev/null || true"
+    _ = try ssh("printf %s initial-guest-text | \(clipboardTool) paste")
+    _ = try waitFor("initial guest clipboard") {
+        try ssh(readGuest) == "initial-guest-text" ? true : nil
+    }
+    clipboard.clearContents()
+    guard clipboard.setString(macText, forType: .string) else {
+        throw Failure(message: "Could not seed the Mac clipboard")
+    }
+    let macChange = clipboard.changeCount
+    Thread.sleep(forTimeInterval: 1)
+    guard try ssh(readGuest) == "initial-guest-text", clipboard.changeCount == macChange else {
+        throw Failure(message: "The Mac clipboard synced without a toolbar action")
+    }
+
+    try press("Paste to VM")
+    _ = try waitFor("Mac text in VM clipboard") {
+        try ssh(readGuest) == macText ? true : nil
+    }
+    // Let Xfce handle its own Paste shortcut on the focused terminal.
+    _ = try ssh("\(display) xdotool key --clearmodifiers --delay 250 ctrl+shift+v Return")
+    _ = try waitFor("clipboard text pasted into the Xfce terminal") {
+        try ssh("cat ~/\(marker)") == "clipboard-paste" ? true : nil
+    }
+    try screenshot("desktop-clipboard-paste.png")
+
+    _ = try ssh("printf %s '\(guestText)' | \(clipboardTool) paste")
+    _ = try waitFor("new guest clipboard") {
+        try ssh(readGuest) == guestText ? true : nil
+    }
+    Thread.sleep(forTimeInterval: 1)
+    guard clipboard.changeCount == macChange, clipboard.string(forType: .string) == macText else {
+        throw Failure(message: "The VM clipboard synced without a toolbar action")
+    }
+    try press("Copy from VM")
+    _ = try waitFor("guest text in Mac clipboard") {
+        clipboard.string(forType: .string) == guestText ? true : nil
+    }
+    try screenshot("desktop-clipboard-copy.png")
+
     let after = try sshProcesses()
     let connections = after.subtracting(before)
     guard connections.count == 1, let connection = connections.first, Int(connection) != nil else {
@@ -187,7 +245,7 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     _ = try waitFor("viewer after installation") { viewer() }
     try press("Overview")
     _ = try waitFor("listener closed after installation check") { try listeners().isEmpty ? true : nil }
-    print("Desktop input, reconnect, listener cleanup, missing layer and installation verified")
+    print("Desktop input, explicit clipboard transfer, no automatic sync, reconnect, listener cleanup, missing layer and installation verified")
 }
 
 do {

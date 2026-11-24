@@ -181,6 +181,17 @@ script blocks Clipboard API writes, legacy editing commands and clipboard
 and drag events before guest scripts run. This is separate from KasmVNC's
 guest-side clipboard settings.
 
+The trusted app toolbar offers one-shot plain-text transfer in either
+direction. **Paste to VM** reads the Mac pasteboard on that action.
+**Copy from VM** writes to the Mac pasteboard after a successful read from
+the active VM. Each transfer uses a short-lived command channel on the
+viewer's pinned SSH connection. The guest helper runs as the SSH user and
+uses `xclip` with the Xfce display's Xauthority file. Clipboard text travels
+as UTF-8 data on stdin or stdout, with a 1 MiB limit in each direction.
+The app does not send clipboard text through Wails or evaluate it as code.
+KasmVNC's clipboard channels and the native viewer's clipboard access stay
+disabled. The app does not monitor either clipboard.
+
 On macOS 27.2.1, the [native isolation fixture](desktop/scripts/verify-desktop-isolation.js)
 used a real click to attempt a Wails binding, a post to the Wails
 `external` message handler, a Wails runtime request, popup and external
