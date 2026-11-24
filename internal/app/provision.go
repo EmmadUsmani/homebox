@@ -33,6 +33,26 @@ type NewOptions struct {
 	DiskGiB   int
 }
 
+// NewDefaults returns the defaults used when creating a VM on this host.
+func (s *Service) NewDefaults() (NewOptions, error) {
+	var options NewOptions
+	err := s.resolveNewOptions(&options)
+	return options, err
+}
+
+// ProvisionError identifies a failure after the VM record was reserved.
+type ProvisionError struct {
+	Name string
+	Err  error
+}
+
+func (e *ProvisionError) Error() string {
+	return fmt.Sprintf("provision %s: %v; retry with box provision %s or remove with box rm %s",
+		e.Name, e.Err, e.Name, e.Name)
+}
+
+func (e *ProvisionError) Unwrap() error { return e.Err }
+
 func defaultUser() (string, error) {
 	current, err := user.Current()
 	if err != nil {
@@ -60,14 +80,10 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
 		return errors.New("CPU, memory and disk sizes must be positive")
 	}
-	if err := s.sizeNewBox(&options); err != nil {
+	if err := s.resolveNewOptions(&options); err != nil {
 		return err
 	}
-	profileName := options.Profile
-	if profileName == "" {
-		profileName = guest.DefaultProfile
-	}
-	profile, err := s.Profiles.Get(profileName)
+	profile, err := s.Profiles.Get(options.Profile)
 	if err != nil {
 		return err
 	}
@@ -95,9 +111,9 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 			return err
 		}
 		box := state.Box{
-			Name: options.Name, Profile: profileName, Driver: s.Driver.Name(), Index: index,
+			Name: options.Name, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
 			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
-			DiskGiB: sizeOrDefault(options.DiskGiB, 50), User: username, SSHPort: state.SSHPort(index),
+			DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
 			Forwards: state.DefaultForwards(index, host.LAN), CreatedAt: time.Now().UTC(),
 		}
 		if err := s.validatePorts(box); err != nil {
@@ -110,13 +126,17 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	})
 }
 
-func (s *Service) sizeNewBox(options *NewOptions) error {
+func (s *Service) resolveNewOptions(options *NewOptions) error {
 	defaults, err := s.checkHostSize(options.CPUs, options.MemoryGiB)
 	if err != nil {
 		return err
 	}
 	options.CPUs = sizeOrDefault(options.CPUs, defaults.CPUs)
 	options.MemoryGiB = sizeOrDefault(options.MemoryGiB, defaults.MemoryGiB)
+	options.DiskGiB = sizeOrDefault(options.DiskGiB, 50)
+	if options.Profile == "" {
+		options.Profile = guest.DefaultProfile
+	}
 	return nil
 }
 
@@ -168,8 +188,7 @@ func (s *Service) Provision(ctx context.Context, name string) error {
 func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Profile) (err error) {
 	defer func() {
 		if err != nil {
-			err = fmt.Errorf("provision %s: %w; retry with box provision %s or remove with box rm %s",
-				box.Name, err, box.Name, box.Name)
+			err = &ProvisionError{Name: box.Name, Err: err}
 		}
 	}()
 	run := state.ProvisionRun{PID: os.Getpid(), StartedAt: time.Now().UTC(), Step: "prepare"}

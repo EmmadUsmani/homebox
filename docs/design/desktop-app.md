@@ -40,6 +40,15 @@ SSH loss. Stopped VM and host-key errors use the app's existing status and
 warning styles. The connected viewer fills the tab beneath the VM header.
 The owner approved the Desktop tab's look on 2026-11-24.
 
+### Local lifecycle controls (pending owner sign-off)
+
+**New VM** appears under **This Mac** and in the empty view. Its dialog has
+labeled inputs for VM name, profile, CPUs, memory and disk. **Set up this Mac**
+appears when the active state directory has no host settings. The operation
+panel above the VM view shows progress and failures. A local VM's **More**
+button opens actions for re-running provisioning and deleting the VM. The
+delete dialog requires typing the VM name and warns that the disks are deleted.
+
 ## Tokens
 
 | Token | Value |

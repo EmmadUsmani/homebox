@@ -169,13 +169,18 @@ func (s *Store) NextIndex() (int, error) {
 	return 0, fmt.Errorf("all box indices from %d through %d are in use", first, MaxIndex)
 }
 
+// HostSettings reports whether explicit host settings have been saved.
+func (s *Store) HostSettings() (host Host, configured bool, err error) {
+	err = readJSON(filepath.Join(s.Root, "host.json"), &host)
+	if errors.Is(err, os.ErrNotExist) {
+		return Host{}, false, nil
+	}
+	return host, err == nil, err
+}
+
 // LoadHost reads host settings, defaulting to loopback and no extra keys.
 func (s *Store) LoadHost() (Host, error) {
-	var host Host
-	err := readJSON(filepath.Join(s.Root, "host.json"), &host)
-	if errors.Is(err, os.ErrNotExist) {
-		err = nil
-	}
+	host, _, err := s.HostSettings()
 	return host, err
 }
 
