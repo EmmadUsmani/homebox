@@ -97,6 +97,11 @@ reporting channel for these commands.
 
 ### Desktop app
 
+Local lifecycle actions use the same host service and isolation setup as
+`box`. Provisioning output is cleaned for display and rendered as plain text.
+The delete action requires the exact VM name and removes the Lima disks through
+the shared remove operation.
+
 The packaged desktop app uses WKWebView's in-process Wails asset and binding
 handlers with embedded frontend files. Local status and logs use the same
 bounded, pinned SSH reads as the CLI and render guest content as text. Starting

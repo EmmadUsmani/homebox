@@ -2,6 +2,8 @@ import { useState } from "react";
 import { Call } from "@wailsio/runtime";
 import { DesktopTab } from "./desktop/DesktopTab";
 import { confirmDiscard, FilesTab } from "./files/FilesTab";
+import { CreateVM, LifecycleStatus, VMActions } from "./lifecycle/LifecycleControls";
+import { useLifecycle } from "./lifecycle/useLifecycle";
 import { LogsTab, type LogSource } from "./logs/LogsTab";
 import { OverviewTab } from "./overview/OverviewTab";
 import { statePill } from "./pill";
@@ -65,7 +67,14 @@ export default function App() {
     const [revision, setRevision] = useState(0);
     const [pending, setPending] = useState<Action>();
     const [actionError, setActionError] = useState("");
+    const [creating, setCreating] = useState(false);
+    const refresh = () => setRevision((value) => value + 1);
+    const lifecycle = useLifecycle(refresh, async (name) => {
+        if (await select({ kind: "local", name })) setTab("Overview");
+    });
+    const lifecycleBusy = !!lifecycle.job?.active;
     const inventory = usePolling("local", listLocal, revision);
+    const canCreate = lifecycle.host?.data === true && !lifecycleBusy && !pending && !inventory?.error;
     const localVMs = inventory?.data ?? [];
     const selectedLocal = localVMs.find((vm) => selection?.kind === "local" && selection.name === vm.name);
     const remote = remoteHosts.vms.find((vm) => selection?.kind === "remote" && selection.alias === vm.id);
@@ -80,9 +89,10 @@ export default function App() {
 
     async function select(next: VMRef) {
         const sameVM = next.kind === "local" ? next.name === local?.name : next.alias === remote?.id;
-        if (!sameVM && filesDirty && !await confirmDiscard()) return;
+        if (!sameVM && filesDirty && !await confirmDiscard()) return false;
         setSelection(next);
         setActionError("");
+        return true;
     }
 
     async function changeTab(next: Tab, source: LogSource = "") {
@@ -100,7 +110,7 @@ export default function App() {
         } catch (error) {
             setActionError(`${local.name}: ${String(error)}`);
         } finally {
-            setRevision((value) => value + 1);
+            refresh();
             setPending(undefined);
         }
     }
@@ -112,10 +122,11 @@ export default function App() {
                 <nav className="sidebar" aria-label="Virtual machines">
                     <div className="vm-list">
                         <h2>This Mac</h2>
+                        <button className="new-vm-button" type="button" disabled={!canCreate} onClick={() => setCreating(true)}>New VM</button>
                         {localVMs.map((entry) => <VMRow key={entry.name} name={entry.name} state={entry.state}
                             selected={local?.name === entry.name} select={() => select({ kind: "local", name: entry.name })} />)}
                         {inventory && !inventory.error && localVMs.length === 0 &&
-                            <p className="sidebar-hint">No VMs here. Create one with <code>box new NAME</code>.</p>}
+                            <p className="sidebar-hint">No VMs here.</p>}
                         {inventory?.error && <p className="notice" role="status">{inventory.error}</p>}
                         <h2>Other hosts</h2>
                         {remoteHosts.vms.map((entry) => <VMRow key={entry.id} id={`remote-row-${entry.id}`} name={entry.name}
@@ -126,6 +137,7 @@ export default function App() {
                     <AddRemoteHost add={remoteHosts.add} />
                 </nav>
                 <main>
+                    <LifecycleStatus lifecycle={lifecycle} />
                     {remote && remote.check?.state !== "reachable" && !retainDraft && tab !== "Desktop"
                         ? <RemoteView key={remote.id} vm={remote} checkAgain={() => void remoteHosts.check(remote.id)} />
                         : vm && (current || retainDraft || tab === "Desktop") ? <>
@@ -138,8 +150,9 @@ export default function App() {
                             {local && <DoctorPill result={local.doctor} />}
                             <span className="spacer" />
                             {local && <>
-                                <button disabled={!running || !!pending} onClick={() => void run("Doctor")}>Run doctor</button>
-                                <button disabled={transitioning || !!pending} onClick={() => void run(running ? "Stop" : "Start")}>{running ? "Stop" : "Start"}</button>
+                                <button disabled={!running || !!pending || lifecycleBusy} onClick={() => void run("Doctor")}>Run doctor</button>
+                                <button disabled={transitioning || !!pending || lifecycleBusy} onClick={() => void run(running ? "Stop" : "Start")}>{running ? "Stop" : "Start"}</button>
+                                <VMActions key={local.name} name={local.name} busy={transitioning || !!pending || lifecycleBusy} lifecycle={lifecycle} />
                             </>}
                             {remote && <button disabled={remote.checking} onClick={() => void remoteHosts.check(remote.id)}>Check again</button>}
                             <button className="primary" onClick={() => void changeTab("Terminal")}>Open terminal</button>
@@ -169,11 +182,16 @@ export default function App() {
                         </div>
                     </> : <div className="content empty">
                         {inventory?.error ? <><h1>Local VMs unavailable</h1><p role="alert">{inventory.error}</p></>
-                            : inventory?.data ? <><h1>No VMs on this Mac</h1><p>Create one in your terminal with <code>box new NAME</code>.</p></>
+                            : inventory?.data ? <><h1>No VMs on this Mac</h1>
+                                <p><button type="button" className="primary" disabled={!canCreate} onClick={() => setCreating(true)}>New VM</button></p></>
                                 : <p role="status">Loading virtual machines…</p>}
                     </div>}
                 </main>
             </div>
+            {creating && <CreateVM close={() => setCreating(false)} create={(options) => {
+                setCreating(false);
+                void lifecycle.run("Create", options.Name, options);
+            }} />}
         </>
     );
 }

@@ -21,6 +21,8 @@ remote VMs, overview, logs, terminal, files and editor).
 
 - Optional second display server for macOS Screen Sharing (RFB), selectable per VM alongside KasmVNC.
 
+- Review the desktop app's [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
+
 ## Tighten the host sandboxes further
 
 Both host processes now allow-list file reads and Mach service lookups. See

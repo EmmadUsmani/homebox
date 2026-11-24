@@ -206,8 +206,13 @@ node desktop/scripts/build.js
 open desktop/dist/homebox.app
 ```
 
-The app lists local VMs and shows their status, resources, listening servers,
-network denials and live logs. Start, stop and run doctor from the window.
+Choose **Set up this Mac** when prompted, then **New VM** under **This Mac**.
+The form starts with the same profile and sizes as `box new`, and the operation
+panel shows provisioning steps and logs while you browse other VMs.
+The app lists local VMs, including stopped ones, and shows their status,
+resources, listening servers, network denials and live logs. Start, stop and
+run doctor from the window. Use **More** on a local VM to re-run provisioning
+or permanently delete the VM and its disks by typing its name.
 **Open terminal** starts a pinned SSH session. The session tabs share a
 connection and run separate shells. For remote VMs, the app offers SSH agent
 keys first, then tries unencrypted default SSH keys. **Files** browses the
@@ -220,8 +225,8 @@ the VM file changed since you opened it. Open **Desktop** and choose
 VMs closes the tunnel. Reconnecting returns to the same Xfce session.
 Use **Files** to move files between your Mac and the VM.
 
-Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
-and includes the matching `box` executable for the network daemon.
+The bundle embeds the frontend and includes the matching `box` executable for
+the network daemon.
 Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for
 another SSH alias pinned in `~/.ssh/homebox_known_hosts`. Reachable VMs show
 live guest readings. A changed or missing pin blocks the connection. After an

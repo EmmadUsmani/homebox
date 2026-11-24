@@ -110,6 +110,10 @@ original if it exists.
 The desktop stores added SSH aliases in its own
 [`settings.json`](observability.md#desktop-implementation-decisions).
 The laptop's SSH config and pins stay under `~/.ssh`.
+The desktop app reads the same local records as the CLI. Its
+[lifecycle service](../desktop/lifecycle.go) checks for saved host settings
+and calls the shared app operations. It keeps a bounded tail of the active
+operation's output in memory and reads step names from the provision record.
 
 ## Ports
 

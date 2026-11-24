@@ -1,0 +1,49 @@
+.new-vm-button { margin: 4px 0 8px 8px; }
+.lifecycle-dialog {
+    max-width: calc(100% - 40px);
+    width: 440px;
+    padding: 24px;
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+}
+.lifecycle-dialog::backdrop { background: #0009; }
+.lifecycle-dialog h1 { margin-bottom: 16px; }
+.lifecycle-form, .lifecycle-form label { display: grid; gap: 8px; }
+.lifecycle-form p { margin: 0 0 4px; }
+.lifecycle-form input, .lifecycle-form select {
+    min-width: 0;
+    width: 100%;
+    height: 36px;
+    padding: 0 10px;
+    background: var(--sidebar);
+    border: 1px solid var(--button-border);
+    border-radius: var(--button-radius);
+    color: inherit;
+    font: inherit;
+}
+.lifecycle-sizes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lifecycle-buttons { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+.lifecycle-danger { color: var(--bad-text); }
+.lifecycle-status {
+    margin: 12px var(--gutter) 0;
+    padding: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+}
+.lifecycle-status p { margin: 0 0 8px; overflow-wrap: anywhere; }
+.lifecycle-status-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.lifecycle-status pre {
+    margin: 8px 0 0;
+    padding: 8px;
+    max-height: 132px;
+    overflow: auto;
+    background: var(--code);
+    color: var(--secondary);
+    font: 12px/1.5 var(--mono);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+.lifecycle-status pre + button { margin-top: 8px; }
