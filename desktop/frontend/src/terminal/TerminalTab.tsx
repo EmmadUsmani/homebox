@@ -16,7 +16,7 @@ type Output = { data?: string; ended?: boolean };
 type Status = { kind: "opening" | "connected" | "ended" } |
     { kind: "error" | "keyChanged"; message: string };
 
-function HostKeyWarning({ vm }: { vm: VMRef }) {
+export function HostKeyWarning({ vm }: { vm: VMRef }) {
     const name = vm.kind === "local" ? vm.name : vm.alias;
     return (
         <div className="terminal-status terminal-host-key" role="alert">

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Call } from "@wailsio/runtime";
+import { DesktopTab } from "./desktop/DesktopTab";
 import { confirmDiscard, FilesTab } from "./files/FilesTab";
 import { LogsTab, type LogSource } from "./logs/LogsTab";
 import { OverviewTab } from "./overview/OverviewTab";
@@ -11,7 +12,7 @@ import type { DoctorResult, LocalStatus, VMRef, VMStatus } from "./types";
 import { usePolling } from "./usePolling";
 import "./styles.css";
 
-const tabs = ["Overview", "Logs", "Terminal", "Files"] as const;
+const tabs = ["Overview", "Logs", "Terminal", "Files", "Desktop"] as const;
 type Tab = typeof tabs[number];
 type Action = "Start" | "Stop" | "Doctor";
 const progress: Record<Action, string> = { Start: "Starting VM…", Stop: "Stopping VM…", Doctor: "Running isolation checks…" };
@@ -125,9 +126,9 @@ export default function App() {
                     <AddRemoteHost add={remoteHosts.add} />
                 </nav>
                 <main>
-                    {remote && remote.check?.state !== "reachable" && !retainDraft
+                    {remote && remote.check?.state !== "reachable" && !retainDraft && tab !== "Desktop"
                         ? <RemoteView key={remote.id} vm={remote} checkAgain={() => void remoteHosts.check(remote.id)} />
-                        : vm && (current || retainDraft) ? <>
+                        : vm && (current || retainDraft || tab === "Desktop") ? <>
                         <header className="vm-header" role="group" aria-label="VM status and actions" id="vm-header">
                             <h1>{current?.name ?? remote?.name}</h1>
                             <span className={`pill ${pill.tone}`}>
@@ -163,6 +164,7 @@ export default function App() {
                             {tab === "Logs" && (local ? <LogsTab key={`${local.name}:${logSource}`} name={local.name} initialSource={logSource} />
                                 : <p className="content">View guest logs for this VM from its host Mac.</p>)}
                             {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} />}
+                            {tab === "Desktop" && <DesktopTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} />}
                             {tab === "Files" && <FilesTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} onDirtyChange={setFilesDirty} />}
                         </div>
                     </> : <div className="content empty">

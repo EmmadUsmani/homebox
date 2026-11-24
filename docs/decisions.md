@@ -166,6 +166,11 @@ idle cost. Selkies had a faster median and used more CPU when idle.
 TigerVNC/noVNC had a slightly faster p95 and used substantially more bandwidth
 in motion. A selectable RFB server for macOS Screen Sharing is future work.
 
+**Native guest viewer** (implementation, 2026-11-24). The app hosts the
+desktop in a separate native WKWebView layered over the tab. It loads the
+same proxy as the CLI and keeps the guest page outside the Wails view and
+its bindings. See [the isolation verification](../SECURITY.md#macos-guest-viewer).
+
 **Remote host inventory and refresh** (worker M, implementation, 2026-11-22).
 Keep aliases in the macOS user application-support directory so they are
 independent of box's host records. Refresh each alias separately every 15

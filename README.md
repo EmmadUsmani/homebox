@@ -214,7 +214,12 @@ keys first, then tries unencrypted default SSH keys. **Files** browses the
 selected VM over SFTP, starting in the SSH user's home directory. Upload and
 download use native file dialogs. Open UTF-8 text files up to 2 MiB for light
 editing, press ⌘S to save or ⌘F to find, and use **Reload and compare** if
-the VM file changed since you opened it.
+the VM file changed since you opened it. Open **Desktop** and choose
+**Connect** to use Xfce in the app. If the layer is missing, choose
+**Install desktop** on a running Ubuntu VM. Leaving the tab or switching
+VMs closes the tunnel. Reconnecting returns to the same Xfce session.
+Use **Files** to move files between your Mac and the VM.
+
 Create VMs with `box new NAME` in your terminal. The bundle embeds the frontend
 and includes the matching `box` executable for the network daemon.
 Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for
