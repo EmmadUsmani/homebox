@@ -9,12 +9,13 @@ import { OverviewTab } from "./overview/OverviewTab";
 import { statePill } from "./pill";
 import { AddRemoteHost, RemoteView } from "./remote/RemoteView";
 import { useRemoteHosts } from "./remote/useRemoteHosts";
+import { SettingsTab } from "./settings/SettingsTab";
 import { TerminalTab } from "./terminal/TerminalTab";
 import type { DoctorResult, LocalStatus, VMRef, VMStatus } from "./types";
 import { usePolling } from "./usePolling";
 import "./styles.css";
 
-const tabs = ["Overview", "Logs", "Terminal", "Files", "Desktop"] as const;
+const tabs = ["Overview", "Logs", "Terminal", "Files", "Desktop", "Settings"] as const;
 type Tab = typeof tabs[number];
 type Action = "Start" | "Stop" | "Doctor";
 const progress: Record<Action, string> = { Start: "Starting VM…", Stop: "Stopping VM…", Doctor: "Running isolation checks…" };
@@ -62,6 +63,7 @@ export default function App() {
     const remoteHosts = useRemoteHosts();
     const [selection, setSelection] = useState<VMRef>();
     const [tab, setTab] = useState<Tab>("Overview");
+    const [focusSSHKeys, setFocusSSHKeys] = useState(false);
     const [filesDirty, setFilesDirty] = useState(false);
     const [logSource, setLogSource] = useState<LogSource>("");
     const [revision, setRevision] = useState(0);
@@ -90,16 +92,20 @@ export default function App() {
     async function select(next: VMRef) {
         const sameVM = next.kind === "local" ? next.name === local?.name : next.alias === remote?.id;
         if (!sameVM && filesDirty && !await confirmDiscard()) return false;
+        if (next.kind === "remote" && tab === "Settings") setTab("Overview");
         setSelection(next);
         setActionError("");
         return true;
     }
 
-    async function changeTab(next: Tab, source: LogSource = "") {
+    async function changeTab(next: Tab, source: LogSource = "", focusKeys = false) {
         if (next !== tab && filesDirty && !await confirmDiscard()) return;
         if (next === "Logs") setLogSource(source);
+        setFocusSSHKeys(focusKeys);
         setTab(next);
     }
+
+    const openSSHSettings = local ? () => void changeTab("Settings", "", true) : undefined;
 
     async function run(action: Action) {
         if (!local || pending) return;
@@ -163,7 +169,7 @@ export default function App() {
                             {local.provisioning.step}{local.provisioning.error && ` · ${local.provisioning.error}`}
                         </p>}
                         <div className="tabs" id="vm-tabs" role="tablist" aria-label="VM views">
-                            {tabs.map((item) => <button key={item} id={`tab-${item}`} aria-controls="vm-view"
+                            {tabs.filter((item) => local || item !== "Settings").map((item) => <button key={item} id={`tab-${item}`} aria-controls="vm-view"
                                 role="tab" aria-selected={tab === item} onClick={() => void changeTab(item)}>{item}</button>)}
                         </div>
                         <div className="view" id="vm-view" role="tabpanel" aria-labelledby={`tab-${tab}`}>
@@ -176,8 +182,9 @@ export default function App() {
                             </> : current && <OverviewTab key={remote?.id} kind="remote" status={current} />)}
                             {tab === "Logs" && (local ? <LogsTab key={`${local.name}:${logSource}`} name={local.name} initialSource={logSource} />
                                 : <p className="content">View guest logs for this VM from its host Mac.</p>)}
-                            {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} />}
-                            {tab === "Desktop" && <DesktopTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} />}
+                            {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} openSSHSettings={openSSHSettings} />}
+                            {tab === "Desktop" && <DesktopTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} openSSHSettings={openSSHSettings} />}
+                            {tab === "Settings" && local && <SettingsTab key={local.name} name={local.name} state={local.state} focusSSHKeys={focusSSHKeys} />}
                             {tab === "Files" && <FilesTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} onDirtyChange={setFilesDirty} />}
                         </div>
                     </> : <div className="content empty">

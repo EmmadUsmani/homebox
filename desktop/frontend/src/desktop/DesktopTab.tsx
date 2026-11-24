@@ -20,7 +20,7 @@ function bounds(element: HTMLElement) {
     return { X: x, Y: y, Width: width, Height: height };
 }
 
-export function DesktopTab({ vm }: { vm: VMRef }) {
+export function DesktopTab({ vm, openSSHSettings }: { vm: VMRef; openSSHSettings?: () => void }) {
     const viewport = useRef<HTMLDivElement>(null);
     const pending = useRef<Pending>();
     const clipboardRequest = useRef<Pending>();
@@ -98,7 +98,7 @@ export function DesktopTab({ vm }: { vm: VMRef }) {
             <span role="status">{clipboardMessage}</span>
         </div>}
         <div ref={viewport} className="terminal-body desktop-pane" aria-label="Remote desktop">
-            {status.state === "keyChanged" && <HostKeyWarning vm={vm} />}
+            {status.state === "keyChanged" && <HostKeyWarning vm={vm} openSSHSettings={openSSHSettings} />}
             {status.state !== "connected" && status.state !== "keyChanged" &&
                 <div className="terminal-status">
                     <p role={status.state === "error" ? "alert" : "status"}>

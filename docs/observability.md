@@ -161,18 +161,21 @@ memory for the bar and shows the host process footprint separately. Local
 host setup, lifecycle actions and doctor use the shared service. The
 window-wide operation panel keeps the latest provisioning output visible
 across VM and tab changes and offers a retry after a provisioning failure.
-Logs follow the CLI sources, support a guest-unit filter and retain the most
-recent 5,000 lines while open. Leaving the view cancels the stream.
+Logs follow the CLI sources, support a guest-unit filter and a recent-line
+count per source, and retain the most recent 5,000 lines while open. Leaving
+the view cancels the stream.
 
 | Screen | What it does |
 |---|---|
 | VM list | Local VMs, including stopped VMs, and remote ones (level A), with state, health and a reachability badge. **New VM** opens the local creation form. |
 | VM detail | Status, resource use, published ports (open one in the browser), recent network denials and last doctor result. Local actions include start, stop, doctor, re-run provisioning and delete. |
-| Logs | The live log stream, filterable by source |
+| Logs | Live or recent log lines, filterable by source and guest unit |
 | Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
 | Files | Implemented. Browse from the SSH user’s home, show hidden files, and stream uploads and downloads through native file dialogs over the shared SSH connection. |
 | Editor | Implemented. Open and edit up to 2 MiB of UTF-8 text with locally bundled Monaco. Save over SFTP with ⌘S and find with ⌘F. |
 | Desktop | Connect to Xfce over pinned SSH, install the desktop layer if needed, and reconnect after SSH loss |
+| Settings | Local VM port mappings and size, SSH host key review and replacement, and laptop SSH exports |
+| About homebox | App and bundled CLI versions in the macOS app menu |
 
 - **SSH in the app** obeys the same rules as box's SSH config: it uses only the
   pinned host keys from `homebox_known_hosts` (or box's local ones for VMs on

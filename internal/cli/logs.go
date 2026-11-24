@@ -48,7 +48,7 @@ func logsCommand(service Application) *cobra.Command {
 	cmd.Flags().BoolVarP(&options.Follow, "follow", "f", false, "Follow new log lines")
 	cmd.Flags().StringVar(&options.Source, "source", "", "Show one source: provision, host, net, or guest")
 	cmd.Flags().StringVar(&options.Unit, "unit", "", "Filter by a guest systemd system unit")
-	cmd.Flags().IntVarP(&options.Lines, "lines", "n", 100, "Number of recent lines per source (0–1000)")
+	cmd.Flags().IntVarP(&options.Lines, "lines", "n", app.DefaultLogLines, "Number of recent lines per source (0–1000)")
 	cmd.Flags().BoolVar(&jsonOutput, "json", false, "Print one JSON object per line")
 	return cmd
 }

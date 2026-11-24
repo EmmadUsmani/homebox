@@ -30,6 +30,9 @@ type LogLine struct {
 	Text       string    `json:"text"`
 }
 
+// DefaultLogLines is the number of recent entries requested per source.
+const DefaultLogLines = 100
+
 // LogOptions selects a source and limits the initial history per source.
 type LogOptions struct {
 	Source string

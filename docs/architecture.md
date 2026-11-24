@@ -215,6 +215,13 @@ labeled fallback when a Virtualization process cannot be identified. The
 physical footprint from `proc_pid_rusage`. Each listener's `processes` field
 contains the process names and PIDs available from the guest's `ss` output.
 
+## Desktop settings
+
+The desktop [Settings service](../desktop/settings.go) calls the same port,
+resize, SSH export and pinning operations as the CLI. Port and size edits
+require a stopped VM. The app compares the reviewed fingerprints against
+the current saved and detected fingerprints inside the shared re-pin lock.
+
 ## Testing
 
 - `go test ./...` runs unit tests only; they need no VM, network or Lima.

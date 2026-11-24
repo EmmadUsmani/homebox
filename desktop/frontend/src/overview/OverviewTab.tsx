@@ -34,7 +34,7 @@ export function OverviewTab(props: OverviewProps) {
     const agents = status.agents ?? [];
     const ports = status.ports ?? [];
     const denials = (local?.denials ?? []).slice(0, 5);
-    const load = status.guest?.load?.[0];
+    const load = status.guest?.load?.map((value) => value.toFixed(2)).join(" / ");
     const memory = status.guest?.memory;
     const processes = status.guest?.processes ?? [];
     const containers = status.containers ?? [];
@@ -58,15 +58,18 @@ export function OverviewTab(props: OverviewProps) {
             <div className="metrics">
                 <section className="card">
                     <div className="muted">{local ? local.hostagent && !local.host ? "CPU (Lima hostagent)" : "CPU (seen from the Mac)" : "Guest load"}</div>
-                    <div className="metric">{local ? usage ? `${number.format(usage.cpu_percent)}%` : "—" : load?.toFixed(2) ?? "—"}</div>
-                    {local && <div className="muted">{local.cpus} cores{load !== undefined && ` · load ${load.toFixed(2)}`}</div>}
+                    <div className="metric">{local ? usage ? `${number.format(usage.cpu_percent)}%` : "—" : load ?? "—"}</div>
+                    {local && <div className="muted">{local.cpus} cores{usage && ` · ${usage.source}`}</div>}
+                    {local && load && <div className="muted">Guest load {load}</div>}
+                    {local?.host && local.hostagent && <div className="muted">Lima hostagent {number.format(local.hostagent.cpu_percent)}% CPU
+                        {agentMemory !== undefined && ` · ${footprint.format(agentMemory / gib)} GiB`}</div>}
                 </section>
                 <StorageCard title="Memory" used={memory?.used_bytes} total={memory?.total_bytes} detail={memoryDetail} />
                 <StorageCard title="Disk" used={status.guest?.disk?.used_bytes} total={status.guest?.disk?.total_bytes} />
                 <section className="card">
                     <div className="muted">Coding agents</div>
                     <div className="metric">{status.guest ? `${agents.length} running` : "—"}</div>
-                    <div className="muted">{agents.map((agent) => agent.cwd ? `${agent.name} in ${agent.cwd}` : agent.name).join(" · ")}</div>
+                    <div className="muted">{agents.map((agent) => <div key={agent.pid}>{agent.name} (pid {agent.pid}){agent.cwd && ` in ${agent.cwd}`}</div>)}</div>
                 </section>
             </div>
             <div className="details">
@@ -98,19 +101,30 @@ export function OverviewTab(props: OverviewProps) {
                     <div className="detail-row">
                         <button className="text-button" onClick={props.showNetworkLogs}>See all in Logs</button>
                     </div>
-                </section> : <section className="card">
+                </section> : null}
+                <section className="card">
                     <h2>Top processes</h2>
                     {!processes.length && <p className="muted">No guest processes reported</p>}
-                    {processes.map((process, index) => <div className="detail-row" key={index}>
+                    {processes.map((process) => <div className="detail-row" key={process.pid}>
                         <span className="description">{process.name} (pid {process.pid})</span>
-                        <span className="muted">{number.format(process.cpu_percent)}% CPU</span>
+                        <span className="muted">{number.format(process.cpu_percent)}% CPU · {number.format(process.resident_bytes / 1024 ** 2)} MiB</span>
+                    </div>)}
+                </section>
+                {containers.length > 0 && <section className="card">
+                    <h2>Containers</h2>
+                    {containers.map((container) => <div className="detail-row" key={container.id}>
+                        <span className="description">{container.name} · {container.image} <code>{container.id}</code></span><span className="muted">{container.status}</span>
                     </div>)}
                 </section>}
-                {!local && containers.length > 0 && <section className="card">
-                    <h2>Containers</h2>
-                    {containers.map((container, index) => <div className="detail-row" key={index}>
-                        <span className="description">{container.name}</span><span className="muted">{container.status}</span>
-                    </div>)}
+                {local && <section className="card">
+                    <h2>Health and provisioning</h2>
+                    {local.doctor ? <>
+                        <p>{new Date(local.doctor.checked_at).toLocaleString()} · {local.doctor.passed} passed · {local.doctor.failed} failed · {local.doctor.skipped} skipped</p>
+                        {local.doctor.failing_checks?.map((check) => <p className="warning" key={check}>{check}</p>)}
+                    </> : <p className="muted">Doctor has not run.</p>}
+                    {local.provisioning?.finished_at && <p>Provisioned {new Date(local.provisioning.finished_at).toLocaleString()}</p>}
+                    {local.provisioning?.step && <p>{local.provisioning.step}</p>}
+                    {local.provisioning?.error && <p className="warning">{local.provisioning.error}</p>}
                 </section>}
             </div>
             {!local && <p className="muted">Host CPU, memory footprint, published ports, provisioning, isolation checks and blocked network attempts are only visible on the host Mac.</p>}

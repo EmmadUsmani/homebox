@@ -70,7 +70,7 @@ func TestStreamLogsCancelsWhenCallOrAppEnds(t *testing.T) {
 				},
 			}
 			done := make(chan error, 1)
-			go func() { done <- local.StreamLogs(ctx, "test", "sample", "guest", "ssh.service", true) }()
+			go func() { done <- local.StreamLogs(ctx, "test", "sample", "guest", "ssh.service", nil, true) }()
 			select {
 			case batch := <-events:
 				if batch.ID != "test" || len(batch.Lines) != 1 || batch.Lines[0].Text != "ready" {
