@@ -38,7 +38,7 @@ Its status panel shows **Connect**, VM-specific connection or installation
 progress, **Install desktop** for a missing layer, or **Reconnect** after
 SSH loss. Stopped VM and host-key errors use the app's existing status and
 warning styles. The connected viewer fills the tab beneath the VM header.
-The Desktop tab's look is pending owner sign-off.
+The owner approved the Desktop tab's look on 2026-11-24.
 
 ## Tokens
 
