@@ -12,7 +12,7 @@ desktop/           independent Go module with Wails and embedded React/Vite outp
 internal/wiring    assembles the local app.Service for both entry points
 internal/cli       commands, flags, output; calls app, nothing else
 internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
-                   doctor, host init, status, top, logs); the only place that knows the order of steps
+                   doctor, host init, status, top, logs, desktop); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
 internal/guest     loads guest profiles (images + provisioning steps)
@@ -27,7 +27,10 @@ internal/vmnet     per-VM network daemon, IPv4 gateway and process monitoring
 internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
-                   reads guest public host keys and renders OpenSSH config and pins
+                   reads guest public host keys and renders OpenSSH config and pins;
+                   opens a Go SSH transport using saved pins for the desktop CLI
+internal/displayproxy  scopes HTTP and WebSockets to one authorized browser session
+                       and dials the guest over its caller's pinned SSH transport
 internal/doctor    host-side controls and reporting for isolation checks
 internal/hostinfo  host sizing, process liveness and macOS VM resource usage
 internal/untrusted cleans text that came from a VM (escape sequences, control
@@ -60,6 +63,13 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   active VM. Terminal tabs lease that connection and open independent PTY
   channels. The web view pulls bounded chunks and waits for xterm.js to
   consume each chunk before requesting more.
+- `box desktop --install` runs the embedded [Ubuntu desktop layer](../guest/ubuntu/desktop.sh)
+  over pinned SSH. Systemd starts Xfce on demand and keeps it alive independently
+  of viewer connections. The guest service owns its Xauthority file under
+  `/run`. The host proxy keeps browser session credentials in memory.
+  `internal/displayproxy` accepts a dialer for its fixed guest endpoint and
+  owns the local listener and HTTP connections. Its caller owns SSH and
+  cancels the proxy when SSH is lost.
 - `desktop/session` also leases a shared SFTP channel per SSH transport for
   the Files tab. Its bounded listings use pkg/sftp v2's directory handle
   API. The pinned upstream revision includes bounds on directory entry and

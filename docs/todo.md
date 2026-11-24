@@ -12,8 +12,10 @@ Steps 1 and 2 were built on 2026-11-22: the CLI (`box status`, `box top`,
 remote VMs, overview, logs, terminal, files and editor). Left:
 
 3. Remote desktop, with phase 2's desktop in the VM. The
-   [display-server spike](spikes/remote-desktop.md) is complete. Review its
-   recommendation, then build `box desktop NAME` and the app's Desktop tab.
+   [display-server spike](spikes/remote-desktop.md) led to the owner's
+   selection of KasmVNC. `box desktop NAME` is built. Add the app's Desktop tab.
+
+- Optional second display server for macOS Screen Sharing (RFB), selectable per VM alongside KasmVNC.
 
 ## Tighten the host sandboxes further
 

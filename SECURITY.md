@@ -131,9 +131,35 @@ rename, the save fails. SFTP exposes second-resolution timestamps and has
 no conditional rename, so edits with identical size and timestamp or
 changes between the final check and rename can escape conflict detection.
 
-Phase 2's remote desktop is a proposal. The [display-server spike](docs/spikes/remote-desktop.md#authentication-and-data-channels)
-records loopback listener checks, the KasmVNC UDP bind caveat and proposed
-browser session and clipboard controls.
+## Remote desktop
+
+The Ubuntu layer installs SHA-256-pinned KasmVNC 1.5.2. Its web listener
+binds only to guest loopback. X11 accepts local Unix-socket connections
+with an Xauthority cookie. A process-scoped seccomp filter blocks IPv4 and
+IPv6 UDP sockets in KasmVNC before launch. Failure to install the filter
+prevents KasmVNC from starting. Xfce applications use the existing VM
+network policy. Box reserves guest port 8444 for the pinned SSH tunnel and
+requires removal of an existing publish on that port before setup.
+
+KasmVNC Basic auth is disabled. The guest display belongs to the same trust
+boundary as the other processes in this single-user development VM. Any
+process inside the guest that can reach its loopback may access the desktop.
+SSH host-key verification and client authentication control access across
+the guest boundary. The browser proxy authorizes local viewers independently,
+so there are no display passwords to store or copy.
+
+The local HTTP proxy binds an OS-assigned IPv4 loopback port and checks the
+exact Host and WebSocket Origin. It exchanges a one-minute single-use link
+for an HttpOnly SameSite=Strict cookie scoped to an unguessable path. It
+strips browser cookies and authorization headers before proxying and strips
+guest Set-Cookie headers on the return path. Keep the one-time link private
+while it is valid. Closing the tunnel ends its browser session. The guest
+session keeps running until its service or VM stops.
+
+KasmVNC rejects clipboard transfer in both directions, and the browser
+endpoint disables the Clipboard API through Permissions Policy. The
+macOS app's remote desktop remains subject to its separate requirement for
+an isolated web view without Wails bindings.
 
 ### Logs
 

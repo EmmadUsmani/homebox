@@ -27,3 +27,7 @@ Ubuntu installs Node 24 LTS and Python 3.14 via mise. The agent installers run
 without signing in. To select full permissions after signing in, use
 `claude --dangerously-skip-permissions` or `codex --dangerously-bypass-approvals-and-sandbox`.
 Tailscale is installed with the service stopped and disabled.
+
+`box desktop NAME --install` runs [Ubuntu's optional desktop layer](ubuntu/desktop.sh)
+over pinned SSH. It adds KasmVNC and Xfce to an existing guest. Its separate
+systemd service starts on demand when a viewer connects.
