@@ -158,9 +158,13 @@ on your own Mac open normally.
 
 **Remote desktop: low latency and bandwidth first** (owner, 2026-11-22), over
 image quality and extra features. One server in the VM, reached over SSH, with
-one web client used by the browser and the app. The owner initially favoured
-KasmVNC. The [display-server spike](spikes/remote-desktop.md) is complete and
-server selection awaits the owner. macOS Screen Sharing is nice to have (owner).
+one web client used by the browser and the app. The owner selected **KasmVNC 1.5.2** (2026-11-24), using the SHA-256-pinned
+GitHub release package, a server-controlled rate of 60 fps and WebSockets
+over SSH with UDP blocked. In the [display-server spike](spikes/remote-desktop.md),
+this combination had the lowest scrolling bandwidth and near-zero connected
+idle cost. Selkies had a faster median and used more CPU when idle.
+TigerVNC/noVNC had a slightly faster p95 and used substantially more bandwidth
+in motion. A selectable RFB server for macOS Screen Sharing is future work.
 
 **Remote host inventory and refresh** (worker M, implementation, 2026-11-22).
 Keep aliases in the macOS user application-support directory so they are

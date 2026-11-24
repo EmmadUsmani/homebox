@@ -1,8 +1,8 @@
 # Observability and the desktop app
 
-The CLI (status, top, list and logs) and the macOS desktop app are built; the
-remote desktop (step 3) is not. The owner agreed
-this design on 2026-11-22. The decisions and what was turned down are also in
+The CLI (status, top, list and logs) and the macOS desktop app are built.
+The remote desktop is available through the CLI. The macOS Desktop tab is
+pending. The owner agreed this design on 2026-11-22. The decisions and what was turned down are also in
 [decisions.md](decisions.md#observability-and-the-desktop-app). The plan places
 it in phase 1b, before phase 2; [plan.md](plan.md) wins if the two disagree.
 
@@ -193,35 +193,20 @@ recent 5,000 lines while open. Leaving the view cancels the stream.
 
 ## Remote desktop (phase 2)
 
-The plan's phase 2 adds a desktop to the VM (Xfce). The display design is
-modular: one server in the VM, reached over SSH, with any client.
+The opt-in Ubuntu layer runs Xfce with KasmVNC 1.5.2 at server-controlled
+60 fps over WebSockets. The [display-server spike](spikes/remote-desktop.md)
+compares latency, bandwidth and guest CPU. [Security](../SECURITY.md#remote-desktop)
+describes the listener, SSH, browser and clipboard controls.
 
-```
-VM: Xfce ── display server (guest loopback only)
-                 ▲
-                 │ SSH port forward (pinned keys; works over Tailscale too)
-                 │
-   ┌─────────────┴──────────────┐
-   browser (box desktop NAME)    desktop app (same web client, in its window)
-```
+`box desktop NAME --install` adds the layer to an existing Ubuntu box.
+`box desktop NAME` starts the guest session over pinned SSH and opens the
+browser. `--no-open` prints the one-time URL. Closing the viewer or stopping
+the local proxy leaves Xfce running until the guest or desktop service stops.
+Guest startup failures go to the `homebox-desktop@<user>.service` journal.
 
-- **The server listens only on the guest's loopback.** No new published port;
-  the SSH forward is the only way in, so it reuses the pinned SSH login.
-- **One web client** serves both the browser and the app. `box desktop NAME`
-  opens the forward and the browser; the app opens the same page in its window.
-- **Priority: low latency and low bandwidth** over image quality and extra
-  features (owner). A basic, responsive keyboard and mouse matter most.
-- **Favoured server: KasmVNC.** It's built for the browser. It mixes JPEG and
-  WebP and drops quality in areas with lots of motion, to save bandwidth. It
-  doesn't support ordinary VNC viewers, so macOS Screen Sharing wouldn't work.
-  The owner rates Screen Sharing as nice to have, not required.
-- **Display-server spike complete.** The [spike report](spikes/remote-desktop.md)
-  compares KasmVNC, TigerVNC with noVNC, and Selkies on latency, idle and
-  motion bandwidth, and guest CPU. It recommends server-tuned KasmVNC with
-  UDP blocked, pending the owner's package and backend decision.
-- **Clipboard and file transfer** are data channels between the VM and the
-  laptop. Copying from the VM to the laptop is off by default, or at least
-  always visible, so a compromised VM can't plant something you then paste.
+The planned Desktop tab will reuse the proxy and supply its own pinned
+SSH connection. It requires an unprivileged web view isolated from Wails
+bindings and host clipboard access.
 
 ## Build order
 
@@ -230,7 +215,7 @@ VM: Xfce ── display server (guest loopback only)
 2. **Desktop app.** Local VMs, level A for remote ones, terminal, files and
    the light editor.
 3. **Remote desktop.** With phase 2's desktop in the VM: `box desktop NAME` and
-   the app's desktop tab, after the display-server spike.
+   the app's Desktop tab. The CLI is built.
 
 ## Desktop implementation decisions
 

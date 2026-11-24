@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/EmmadUsmani/homebox/internal/displayproxy"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
@@ -122,6 +123,9 @@ func (s *Service) validatePorts(box state.Box) error {
 	}
 	guests := map[int]bool{22: true}
 	for _, forward := range box.Forwards {
+		if forward.GuestPort == displayproxy.GuestPort {
+			return fmt.Errorf("guest port %d is reserved for the SSH desktop tunnel", forward.GuestPort)
+		}
 		if guests[forward.GuestPort] {
 			return fmt.Errorf("guest port %d already has a forward", forward.GuestPort)
 		}

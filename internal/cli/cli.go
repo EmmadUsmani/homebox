@@ -19,6 +19,8 @@ import (
 
 // Application contains the operations exposed by the CLI.
 type Application interface {
+	DesktopInstall(context.Context, string) error
+	Desktop(context.Context, string, bool, func(string) error) error
 	New(context.Context, app.NewOptions) error
 	Provision(context.Context, string) error
 	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
@@ -83,6 +85,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 		}},
 		sshConfigCommand(service),
 		openCommand(service),
+		desktopCommand(service),
 		&cobra.Command{Use: "doctor [NAME]", Short: "Check VM isolation", Args: cobra.MaximumNArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 			name := ""
 			if len(args) == 1 {

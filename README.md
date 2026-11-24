@@ -97,6 +97,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
 | `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
 | `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
+| `box desktop NAME [--install \| --no-open]` | Installs the optional Ubuntu desktop or opens it over pinned SSH |
 | `box doctor [NAME]` | Checks guest networking, host sandbox isolation and SSH listener ownership, then saves the result for `box status` and `box ls` |
 
 Each VM gets an index `n`: SSH on host port `2200+n`, and guest ports
@@ -109,6 +110,24 @@ On macOS, host CPU and physical memory footprint come from the Virtualization pr
 `box status` also shows Lima's hostagent separately. If box cannot identify
 the VM process, it labels the hostagent-only measurements. Guest resource
 readings come from SSH.
+
+## Remote desktop
+
+On the VM host, install Xfce and KasmVNC in a running Ubuntu box:
+
+```sh
+box desktop main --install
+box desktop main
+```
+
+The installer also works on existing boxes. The second command starts Xfce
+on demand and opens the browser on macOS. Use `--no-open` to print the
+one-time URL and open it in a browser on the same machine within one minute.
+Keep the command running while you use the viewer. Ctrl-C closes the
+tunnel. You can run the command again to return to the same Xfce session
+until the guest or its desktop service stops. Guest TCP port 8444 is
+reserved for the SSH tunnel. Remove any existing published mapping for
+that guest port before installing.
 
 ## Logs
 

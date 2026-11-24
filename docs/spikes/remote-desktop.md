@@ -216,7 +216,7 @@ local loopback is reachable by other processes and browser origins.
   Keep the default same-origin restriction on the streaming WebSocket.
   [Selkies options](https://pypi.org/project/selkies/2.2.1/).
 
-## Recommendation pending owner review
+## Recommendation accepted by the owner on 2026-11-24
 
 Start phase 2 with **KasmVNC at server-controlled 60 fps over WebSockets**,
 provided the owner accepts a pinned GitHub release asset and the desktop
@@ -234,11 +234,9 @@ Ubuntu-package fallback if third-party assets or KasmVNC's UDP mitigation
 are unacceptable. It had the lowest p95 and higher motion traffic. macOS
 Screen Sharing is a possible bonus for the fallback.
 
-The owner still needs to choose whether the pinned GitHub package is
-acceptable and whether the laptop workflow favours normal editing or sustained
-video strongly enough to select Selkies. Review clips on the target laptop
-before committing to a lower-quality server preset. The spike used still
-captures for visual inspection.
+The owner accepted the pinned GitHub package and selected KasmVNC with
+server-controlled 60 fps and UDP blocked. The spike used still captures for
+visual inspection. Motion quality on the target laptop remains unmeasured.
 
 ## Proposed CLI and Desktop tab
 
