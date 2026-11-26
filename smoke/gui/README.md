@@ -17,6 +17,14 @@ in a temporary directory and uses Playwright's Chromium on the Mac. Allow
 several minutes on a fresh 2-CPU, 4-GiB VM for package and browser downloads and
 for the checks to run.
 
+Open `gui/index.html` in the run directory printed by `smoke/run.sh` to see
+the captures and check results. Each preview links to its full-size PNG.
+Guest images remain in `~/homebox-smoke/artifacts/gui/` until the smoke runner
+stages a new run. The Mac copies them into the run's `gui/` folder and adds
+the browser's remote desktop views before input, after typing and saving, and
+after the clipboard round trip. The OpenGL captures are framebuffer readbacks
+from the X-backed and surfaceless EGL fixtures.
+
 - GTK4 (C), Qt 6 (C++), Tkinter, PySide6, SDL2, Swing and Electron each open
   an X window in the KasmVNC desktop. The test captures the window over X11
   and checks its dimensions and a known painted pixel.
