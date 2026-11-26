@@ -98,6 +98,10 @@ image would mean hosting multi-gigabyte files, a build per distro and CPU type,
 trust in a binary blob, and frequent rebuilds as the agents update. It's a
 possible later step, after checking whether Claude Code may be redistributed.
 
+**Commit a build recipe for every project image** (owner, 2026-11-26).
+Developers can reproduce the environment on another Mac using the
+[image recipes](../images/README.md) while archives stay out of Git and releases.
+
 **Copy the disk from a stopped Lima instance** (implementation, 2026-11-26).
 A VZ Linux disk is standalone. Box can save it using APFS copy-on-write or a
 sparse copy, then create a normal Lima config for each new VM. `limactl clone`

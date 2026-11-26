@@ -25,6 +25,9 @@ the other is everything else.
 
 ## Images
 
+[Project image recipes](../images/README.md) reproduce project-maintained
+VM disks locally from source.
+
 - **Saving:** stop a VM and run `box image save NAME IMAGE`. Box
   archives the standalone disk and the VZ EFI variables used to boot it.
   APFS shares blocks through `clonefile`. Other filesystems fall back to a

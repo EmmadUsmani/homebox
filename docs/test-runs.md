@@ -18,3 +18,4 @@ partial passes separately.
 | 2026-11-26T23:09:22.914Z | f9db8e3bbd8c | no | Mac14,10 | 27.2.1 | full | partial | gui | PASS | 9/0/0 | 343.6s |
 | 2026-11-26T23:31:03.686Z | f9db8e3bbd8c | no | Mac14,10 | 27.2.1 | batch | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e | PASS | 17/0/0 | 1299.3s |
 | 2026-11-26T23:39:38.273Z | f9db8e3bbd8c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services | PASS | 14/0/1 | 514.5s |
+| 2026-11-26T23:45:41.330Z | c518f9c8735a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 4/0/0 | 3.1s |
