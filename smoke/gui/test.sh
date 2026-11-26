@@ -7,7 +7,9 @@ set -eu
 # shellcheck source=smoke/gui/session.sh
 . ./session.sh
 scratch=$(mktemp -d)
-export scratch
+gui_artifacts="$HOME/homebox-smoke/artifacts/gui"
+mkdir -p "$gui_artifacts"
+export scratch gui_artifacts
 trap 'rm -rf "$scratch"' EXIT
 export GDK_BACKEND=x11 QT_QPA_PLATFORM=xcb LIBGL_ALWAYS_SOFTWARE=1
 mise="$HOME/.local/bin/mise"
@@ -30,8 +32,10 @@ check 'Sandboxed Electron window paints pixels' timeout 45 ./window.sh SmokeElec
 
 check_sh 'GLX reports a Mesa software renderer' 'timeout 15 glxinfo -B | grep -Ei "OpenGL renderer string:.*(llvmpipe|softpipe)"'
 check 'Build OpenGL triangle fixture' cc gl.c -lEGL -lGL -o "$scratch/gl"
-check 'OpenGL triangle on the desktop reads back foreground and background pixels' timeout 15 "$scratch/gl"
-check 'Surfaceless EGL triangle reads back pixels without X' timeout 15 env -u DISPLAY EGL_PLATFORM=surfaceless "$scratch/gl"
+check 'OpenGL triangle on the desktop reads back foreground and background pixels' timeout 15 bash -o pipefail -c \
+    '"$scratch/gl" | convert ppm:- "$gui_artifacts/opengl-desktop.png"'
+check 'Surfaceless EGL triangle reads back pixels without X' timeout 15 bash -o pipefail -c \
+    'env -u DISPLAY EGL_PLATFORM=surfaceless "$scratch/gl" | convert ppm:- "$gui_artifacts/egl-offscreen.png"'
 check_sh 'Vulkan enumerates Mesa lavapipe' 'timeout 30 vulkaninfo --summary 2>/dev/null | grep -i "deviceName.*llvmpipe"'
 check_sh 'Lavapipe executes a Vulkan compute shader and returns four expected values' '
     glslangValidator -V compute.comp -o "$scratch/compute.spv" &&
@@ -39,23 +43,25 @@ check_sh 'Lavapipe executes a Vulkan compute shader and returns four expected va
     timeout 25 env VK_LOADER_DRIVERS_SELECT="*lvp*" "$scratch/vulkan" "$scratch/compute.spv"'
 check_sh 'Cairo PNG and ImageMagick transform preserve expected colors' '
     cc cairo.c $(pkg-config --cflags --libs cairo) -o "$scratch/cairo" &&
-    "$scratch/cairo" "$scratch/cairo.png" &&
-    convert "$scratch/cairo.png" -resize 32x32 "$scratch/cairo-small.png" &&
-    test "$(convert "$scratch/cairo-small.png" -format "%[pixel:p{16,16}] %[pixel:p{0,0}]" info:)" = "srgb(255,0,0) srgb(0,0,255)"'
+    "$scratch/cairo" "$gui_artifacts/cairo.png" &&
+    convert "$gui_artifacts/cairo.png" -resize 32x32 "$gui_artifacts/cairo-resized.png" &&
+    test "$(convert "$gui_artifacts/cairo-resized.png" -format "%[pixel:p{16,16}] %[pixel:p{0,0}]" info:)" = "srgb(255,0,0) srgb(0,0,255)"'
 check_sh 'Noto fallback and Pango render CJK, emoji and shaped Arabic' '
     fc-match -f "%{family}" "Noto Sans CJK JP:lang=ja" | grep -q "Noto Sans CJK" &&
     fc-match -f "%{family}" "emoji:charset=1f600" | grep -q "Noto Color Emoji" &&
-    pango-view --no-display --font="Noto Sans 20" --text="日本語 😀 العربية" --output="$scratch/fonts.png" &&
-    test "$(identify -format "%k" "$scratch/fonts.png")" -gt 20'
+    pango-view --no-display --font="Noto Sans 20" --text="日本語 😀 العربية" --output="$gui_artifacts/fonts.png" &&
+    test "$(identify -format "%k" "$gui_artifacts/fonts.png")" -gt 20'
 check_sh 'FFmpeg encodes and decodes 24 VP8 frames' '
     ffmpeg -v error -f lavfi -i testsrc2=size=160x120:rate=24 -frames:v 24 -c:v libvpx "$scratch/video.webm" &&
-    test "$(ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "$scratch/video.webm")" = 24'
+    test "$(ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "$scratch/video.webm")" = 24 &&
+    ffmpeg -v error -y -i "$scratch/video.webm" -frames:v 1 "$gui_artifacts/ffmpeg-frame.png"'
 check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 dbus-run-session -- ./audio.sh
 
 for engine in chromium firefox webkit; do
     for mode in headless headed; do
         check "Playwright $engine $mode renders and responds to clicks" timeout 70 \
-            "$mise" exec -- node browser.cjs "$playwright" "$engine" "$mode" "$scratch/video.webm"
+            "$mise" exec -- node browser.cjs "$playwright" "$engine" "$mode" "$scratch/video.webm" "$gui_artifacts"
     done
 done
+check 'Capture the full KasmVNC desktop' timeout 10 import -window root "$gui_artifacts/kasmvnc-desktop.png"
 finish

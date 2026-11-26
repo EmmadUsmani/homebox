@@ -1,5 +1,5 @@
 #include <assert.h>
-#include <stddef.h>
+#include <stdio.h>
 #include <EGL/egl.h>
 #include <GL/gl.h>
 
@@ -34,6 +34,17 @@ int main(void) {
     assert(glGetError() == GL_NO_ERROR);
     assert(center[0] == 255 && center[1] == 0 && center[2] == 0);
     assert(corner[0] == 0 && corner[1] == 0 && corner[2] == 255);
+    // OpenGL reads from the lower-left corner; PPM starts with the top row.
+    GLubyte pixels[64][64 * 3];
+    glReadPixels(0, 0, 64, 64, GL_RGB, GL_UNSIGNED_BYTE, pixels);
+    assert(glGetError() == GL_NO_ERROR);
+    puts("P6\n64 64\n255");
+    for (int row = 63; row >= 0; row--) {
+        if (fwrite(pixels[row], 1, sizeof pixels[row], stdout) != sizeof pixels[row])
+            return 1;
+    }
+    if (fflush(stdout) == EOF)
+        return 1;
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroyContext(display, context);
     eglDestroySurface(display, surface);

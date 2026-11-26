@@ -3,7 +3,7 @@ const path = require("node:path");
 const { execFileSync } = require("node:child_process");
 const assertSandboxedRenderer = require("./renderer-sandbox.cjs");
 
-const [playwrightPath, engine, mode, videoFile] = process.argv.slice(2);
+const [playwrightPath, engine, mode, videoFile, artifacts] = process.argv.slice(2);
 const playwright = require(playwrightPath);
 
 async function run() {
@@ -22,7 +22,9 @@ async function run() {
         `);
         await page.getByRole("button", { name: "click me" }).click();
         assert.equal(await page.getByRole("button").textContent(), "clicked");
-        const screenshot = await page.screenshot();
+        const screenshot = await page.screenshot({
+            path: path.join(artifacts, `playwright-${engine}-${mode}.png`),
+        });
         const [blue, red] = execFileSync("magick", [
             "png:-", "-format", "%[fx:p{200,150}.b] %[fx:p{200,150}.r]", "info:",
         ], { input: screenshot, encoding: "utf8", timeout: 5000 }).trim().split(/\s+/).map(Number);
@@ -36,7 +38,9 @@ async function run() {
             for (const { id } of renderers) assertSandboxedRenderer(id);
 
             await page.evaluate(() => {
-                const gl = document.createElement("canvas").getContext("webgl");
+                const canvas = document.createElement("canvas");
+                document.body.append(canvas);
+                const gl = canvas.getContext("webgl", { preserveDrawingBuffer: true });
                 if (!gl) throw new Error("WebGL context unavailable");
                 gl.clearColor(0, 1, 0, 1);
                 gl.clear(gl.COLOR_BUFFER_BIT);
@@ -44,12 +48,19 @@ async function run() {
                 gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixel);
                 if (String(pixel) !== "0,255,0,255") throw new Error(`Unexpected WebGL pixel ${pixel}`);
             });
+            await page.locator("canvas").screenshot({
+                path: path.join(artifacts, `playwright-chromium-${mode}-webgl.png`),
+            });
             await page.goto(new URL(`file://${path.resolve(videoFile)}`).href);
             await page.locator("video").evaluate(async (video) => {
                 video.muted = true;
                 await video.play();
             });
             await page.waitForFunction(() => document.querySelector("video").currentTime > 0.2);
+            await page.locator("video").evaluate((video) => video.pause());
+            await page.locator("video").screenshot({
+                path: path.join(artifacts, `playwright-chromium-${mode}-video.png`),
+            });
         }
     } finally {
         await browser.close();
