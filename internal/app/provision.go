@@ -245,17 +245,18 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 		if err := setStep("create"); err != nil {
 			return err
 		}
-		var savedDisk *vm.Image
+		var imageDisk string
+		var imageFirmware []byte
 		if box.Image != "" {
 			image, path, err := s.Store.LoadImage(box.Image)
 			if err != nil {
 				return err
 			}
-			savedDisk = &vm.Image{URL: path, Digest: "sha256:" + image.SHA256}
+			imageDisk, imageFirmware = path, image.Firmware
 		}
 		s.progress("Creating %s", box.Name)
 		if err := s.Driver.Create(ctx, vm.Spec{
-			Name: box.Name, SavedDisk: savedDisk, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
+			Name: box.Name, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,
 			// Keep the built-in host resolver unused until the guest configures public DNS.

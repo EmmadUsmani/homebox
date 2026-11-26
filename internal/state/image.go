@@ -19,22 +19,25 @@ import (
 )
 
 const imageFormat = 1
+const maxFirmwareBytes = 256 << 10
 const bytesPerGiB = 1 << 30
 
 // Image records the provenance and logical size of a saved VM disk.
 type Image struct {
-	Format     int       `json:"format"`
-	Name       string    `json:"name"`
-	Profile    string    `json:"profile"`
-	Driver     string    `json:"driver"`
-	Arch       string    `json:"arch"`
-	CPUs       int       `json:"cpus"`
-	MemoryGiB  int       `json:"memory_gib"`
-	DiskGiB    int       `json:"disk_gib"`
-	DiskBytes  int64     `json:"disk_bytes"`
-	CreatedAt  time.Time `json:"created_at"`
-	BoxVersion string    `json:"box_version"`
-	SHA256     string    `json:"sha256"`
+	Format         int       `json:"format"`
+	Name           string    `json:"name"`
+	Profile        string    `json:"profile"`
+	Driver         string    `json:"driver"`
+	Arch           string    `json:"arch"`
+	CPUs           int       `json:"cpus"`
+	MemoryGiB      int       `json:"memory_gib"`
+	DiskGiB        int       `json:"disk_gib"`
+	DiskBytes      int64     `json:"disk_bytes"`
+	CreatedAt      time.Time `json:"created_at"`
+	BoxVersion     string    `json:"box_version"`
+	Firmware       []byte    `json:"efi_variables,omitempty"`
+	FirmwareSHA256 string    `json:"efi_sha256,omitempty"`
+	SHA256         string    `json:"sha256"`
 }
 
 func (image Image) validate() error {
@@ -46,7 +49,18 @@ func (image Image) validate() error {
 		image.CreatedAt.IsZero() || err != nil || len(digest) != sha256.Size {
 		return fmt.Errorf("invalid image metadata")
 	}
+	if len(image.Firmware) > maxFirmwareBytes || image.FirmwareSHA256 != firmwareDigest(image.Firmware) {
+		return fmt.Errorf("invalid image EFI variables or SHA-256 digest")
+	}
 	return nil
+}
+
+func firmwareDigest(data []byte) string {
+	if len(data) == 0 {
+		return ""
+	}
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
 }
 
 func (s *Store) imagesDir() string { return filepath.Join(s.Root, "images") }
@@ -98,15 +112,18 @@ func (s *Store) RemoveImage(name string) error {
 }
 
 // SaveImage copies a stopped disk into an unpublished directory before hashing it.
-func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, copyDisk func(string) error) error {
+func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, copyDisk func(string) ([]byte, error)) error {
 	image := Image{
 		Format: imageFormat, Name: name, Profile: box.Profile, Driver: box.Driver, Arch: runtime.GOARCH,
 		CPUs: box.CPUs, MemoryGiB: box.MemoryGiB, DiskGiB: box.DiskGiB, CreatedAt: time.Now().UTC(), BoxVersion: version,
 	}
 	return s.stageImage(&image, func(path string) error {
-		if err := copyDisk(path); err != nil {
+		firmware, err := copyDisk(path)
+		if err != nil {
 			return err
 		}
+		image.Firmware = firmware
+		image.FirmwareSHA256 = firmwareDigest(firmware)
 		file, err := os.Open(path)
 		if err != nil {
 			return err
@@ -154,12 +171,19 @@ func (s *Store) stageImage(image *Image, stageDisk func(string) error) error {
 
 // ExportImage writes gzip-compressed metadata followed by raw disk bytes.
 func (s *Store) ExportImage(ctx context.Context, name, destination string) error {
-	image, path, err := s.LoadImage(name)
-	if err != nil {
+	var image Image
+	var disk *os.File
+	// An open file keeps the immutable disk available if its image is removed
+	// during compression. Release the state lock once the file is open.
+	if err := s.WithLock(func() error {
+		metadata, path, err := s.LoadImage(name)
+		if err != nil {
+			return err
+		}
+		image = metadata
+		disk, err = os.Open(path)
 		return err
-	}
-	disk, err := os.Open(path)
-	if err != nil {
+	}); err != nil {
 		return err
 	}
 	defer disk.Close()
@@ -195,7 +219,7 @@ func (s *Store) ImportImage(ctx context.Context, path string) (string, error) {
 		return "", err
 	}
 	defer compressed.Close()
-	reader := bufio.NewReaderSize(compressed, 16<<10)
+	reader := bufio.NewReaderSize(compressed, 512<<10)
 	header, err := reader.ReadSlice('\n')
 	if err != nil {
 		return "", fmt.Errorf("read image metadata: %w", err)

@@ -11,7 +11,7 @@ import (
 
 func (s *Service) SaveImage(ctx context.Context, name, image, version string) error {
 	driver, ok := s.Driver.(interface {
-		SaveDisk(context.Context, string, string) error
+		SaveDisk(context.Context, string, string) ([]byte, error)
 	})
 	if !ok {
 		return fmt.Errorf("driver %q does not support saving images", s.Driver.Name())
@@ -28,7 +28,7 @@ func (s *Service) SaveImage(ctx context.Context, name, image, version string) er
 		if instance.Status != vm.StatusStopped {
 			return fmt.Errorf("VM %q must be stopped; run box stop %s first", name, name)
 		}
-		return s.Store.SaveImage(ctx, box, image, version, func(disk string) error {
+		return s.Store.SaveImage(ctx, box, image, version, func(disk string) ([]byte, error) {
 			return driver.SaveDisk(ctx, name, disk)
 		})
 	})
@@ -49,7 +49,7 @@ func (s *Service) RemoveImage(name string) error {
 }
 
 func (s *Service) ExportImage(ctx context.Context, name, path string) error {
-	return s.Store.WithLock(func() error { return s.Store.ExportImage(ctx, name, path) })
+	return s.Store.ExportImage(ctx, name, path)
 }
 
 func (s *Service) ImportImage(ctx context.Context, path string) (string, error) {

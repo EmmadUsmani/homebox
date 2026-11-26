@@ -9,8 +9,8 @@ import (
 
 type imageDriver struct{ testDriver }
 
-func (imageDriver) SaveDisk(_ context.Context, _, path string) error {
-	return os.WriteFile(path, []byte("disk"), 0600)
+func (imageDriver) SaveDisk(_ context.Context, _, path string) ([]byte, error) {
+	return nil, os.WriteFile(path, []byte("disk"), 0600)
 }
 
 func TestNewFromImage(t *testing.T) {
@@ -38,7 +38,7 @@ func TestNewFromImage(t *testing.T) {
 	}
 	spec := driver.Specs["clone"]
 	source := driver.Specs["source"]
-	if spec.DiskGiB != source.DiskGiB || spec.User != source.User || spec.SavedDisk == nil || spec.SSHPort == source.SSHPort {
+	if spec.DiskGiB != source.DiskGiB || spec.User != source.User || spec.ImageDisk == "" || spec.SSHPort == source.SSHPort {
 		t.Fatalf("clone spec = %+v; source = %+v", spec, source)
 	}
 	if !isolation.Running("clone") || len(ssh.calls) != 0 {

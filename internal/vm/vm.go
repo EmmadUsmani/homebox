@@ -51,7 +51,6 @@ type SocketAttachment struct {
 // Spec is everything a driver needs to create a VM.
 type Spec struct {
 	Name      string
-	SavedDisk *Image  // a local, driver-native disk to copy into the new VM
 	Images    []Image // the driver picks the one matching the host's arch
 	CPUs      int
 	MemoryGiB int
@@ -60,6 +59,10 @@ type Spec struct {
 	SSHPort   int           // host loopback port the driver binds for the guest's sshd
 	Forwards  []PortForward // published ports other than SSH
 	Socket    SocketAttachment
+
+	ImageDisk     string // a local, driver-native disk to copy into the new VM
+	ImageFirmware []byte // EFI boot variables saved with ImageDisk
+
 	// DNS, when set, replaces the guest's resolvers (e.g. a host-side resolver
 	// reachable through the VM's network). Empty keeps the driver's default.
 	DNS []string

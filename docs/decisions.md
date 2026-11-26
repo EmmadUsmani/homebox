@@ -66,6 +66,9 @@ A VZ Linux disk is standalone. Box can save it using APFS copy-on-write or a
 sparse copy, then create a normal Lima config for each new VM. `limactl clone`
 also copies instance-level configuration. Building a normal instance keeps the
 allocated ports, confinement and identity setup on the existing creation path.
+Preserve the VZ EFI variables so the guest retains its configured boot
+entries. Lima still generates a new VZ machine identifier, and box pins
+the guest's new SSH host keys.
 See [Lima 2.3 disk handling](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driverutil/disk.go).
 
 ## Access and networking

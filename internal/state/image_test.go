@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -16,8 +17,8 @@ func TestImageArchive(t *testing.T) {
 	disk := []byte("test disk data")
 	box := Box{Profile: "ubuntu", Driver: "lima", CPUs: 2, MemoryGiB: 4, DiskGiB: 20}
 	save := func() error {
-		return source.SaveImage(t.Context(), box, "test-image", "dev", func(path string) error {
-			return os.WriteFile(path, disk, 0600)
+		return source.SaveImage(t.Context(), box, "test-image", "dev", func(path string) ([]byte, error) {
+			return []byte("EFI fixture"), os.WriteFile(path, disk, 0600)
 		})
 	}
 	if err := save(); err != nil {
@@ -42,7 +43,7 @@ func TestImageArchive(t *testing.T) {
 		t.Fatal(err)
 	}
 	imported, path, err := destination.LoadImage(name)
-	if err != nil || imported != original {
+	if err != nil || !reflect.DeepEqual(imported, original) {
 		t.Fatalf("metadata changed: %+v, %v", imported, err)
 	}
 	data, err := os.ReadFile(path)
@@ -54,17 +55,23 @@ func TestImageArchive(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		name string
-		data []byte
+		name        string
+		data        []byte
+		badFirmware bool
 	}{
-		{"wrong digest", bytes.Repeat([]byte("x"), len(disk))},
-		{"truncated", disk[:len(disk)-1]},
-		{"trailing bytes", append(bytes.Clone(disk), 'x')},
+		{name: "wrong digest", data: bytes.Repeat([]byte("x"), len(disk))},
+		{name: "truncated", data: disk[:len(disk)-1]},
+		{name: "trailing bytes", data: append(bytes.Clone(disk), 'x')},
+		{name: "wrong firmware digest", data: disk, badFirmware: true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			var invalid bytes.Buffer
 			writer := gzip.NewWriter(&invalid)
-			if err := json.NewEncoder(writer).Encode(original); err != nil {
+			metadata := original
+			if test.badFirmware {
+				metadata.Firmware = []byte("changed EFI fixture")
+			}
+			if err := json.NewEncoder(writer).Encode(metadata); err != nil {
 				t.Fatal(err)
 			}
 			if _, err := writer.Write(test.data); err != nil {

@@ -26,12 +26,14 @@ the other is everything else.
 ## Images
 
 - **Saving:** stop a VM and run `box image save NAME IMAGE`. Box
-  archives the standalone disk. APFS shares blocks through `clonefile`. Other
+  archives the standalone disk and the VZ EFI variables used to boot it.
+  APFS shares blocks through `clonefile`. Other
   filesystems fall back to a sparse copy. Computing the disk digest takes a
   full read of the logical disk even when APFS clones the data.
 - **Using:** `box new NAME --image IMAGE` builds a fresh Lima instance with the
-  usual user, index, ports and isolation settings. It boots a copy of the saved
-  disk without running the full profile scripts. Its disk is at least as large
+  usual user, index, ports and isolation settings. The driver stages the disk
+  and EFI variables before the first start to skip Lima's disk preparation. It
+  boots the saved disk without running the full profile scripts. Its disk is at least as large
   as the source allocation. The copied files keep their original ownership and
   paths, including any older accounts and home directories.
 - **Identity:** Lima supplies a fresh hostname and cloud-init instance ID. A
@@ -40,8 +42,9 @@ the other is everything else.
   enforce its pins. Lima itself uses a per-boot cloud-init instance ID.
 - **Export and import:** an archive contains a versioned JSON record and the
   raw disk, compressed as a single gzip file. The record includes the profile,
-  sizes, time, box version, host architecture and a SHA-256 of the raw disk.
-  Import verifies the length and digest before publishing the image locally.
+  sizes, time, box version, host architecture, EFI variables, and separate
+  SHA-256 digests for the raw disk and EFI variables. Import verifies the
+  disk length and both digests before publishing the image locally.
   Use a Mac with the same CPU architecture. Only import images you trust.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
