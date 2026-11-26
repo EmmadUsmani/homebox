@@ -150,10 +150,10 @@ existing Ubuntu VMs to enable guest journal access.
 
 ## What's in the VM
 
-Ubuntu 26.04 LTS with build tools, Docker (with Compose and Buildx), Node and
-Python via mise, Claude Code, Codex, Playwright with Chromium, Xvfb for headed
-apps, and Tailscale (installed, off). Log the agents in yourself; for full
-permissions use `claude --dangerously-skip-permissions` or
+Ubuntu 26.04 LTS with build tools, Docker (with Compose and Buildx), Node,
+Python and uv via mise, Claude Code, Codex, Playwright with Chromium, Xvfb
+for headed apps, and Tailscale (installed, off). Log the agents in yourself;
+for full permissions use `claude --dangerously-skip-permissions` or
 `codex --dangerously-bypass-approvals-and-sandbox`.
 
 ## Stopping and starting

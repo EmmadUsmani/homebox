@@ -79,9 +79,7 @@ that runs box as the owner and starts every marked VM through box. Don't use
 (owner). The spike checks that a VM starts from a boot-time job with nobody
 logged in; automatic login is the fallback.
 
-## Add uv to the guest (low priority)
+## Add uv to the guest (done)
 
-The owner agreed on 2026-11-22 to add Astral's uv, now the usual Python package and
-project tool; exeuntu ships it too. Install it through mise in
-`guest/common/mise.sh` (`mise use --global uv`), so it works the same on every
-distro, and list it under "What's in the VM" in the README.
+The owner agreed on 2026-11-22 to add Astral's Python project tool. The guest
+installs [uv through mise](../guest/common/mise.sh).
