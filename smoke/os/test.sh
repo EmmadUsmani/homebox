@@ -60,7 +60,7 @@ run 'systemd user timer runs a deferred job' 20 '
     systemd-run --user --on-active=1s --timer-property=AccuracySec=100ms --collect /usr/bin/touch "$scratch/timer"
     until test -f "$scratch/timer"; do sleep 1; done
 '
-run 'cron executes a scheduled job' 85 '
+full_only run 'cron executes a scheduled job' 85 '
     systemctl is-active cron
     printf "* * * * * %s /usr/bin/touch %s/cron\n" "$USER" "$scratch" |
       sudo -n tee /etc/cron.d/homebox-smoke-os >/dev/null

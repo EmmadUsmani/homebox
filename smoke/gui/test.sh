@@ -19,24 +19,27 @@ check 'Start the installed KasmVNC desktop' timeout 35 /usr/local/lib/homebox-de
 check 'KasmVNC X display' timeout 5 xdpyinfo
 check_sh 'GTK4 C window paints pixels' 'cc gtk.c $(pkg-config --cflags --libs gtk4) -o "$scratch/gtk" &&
     timeout 30 ./window.sh SmokeGTK "$scratch/gtk"'
-check_sh 'Qt 6 C++ window paints pixels' 'c++ qt.cpp $(pkg-config --cflags --libs Qt6Widgets) -o "$scratch/qt" &&
+full_only check_sh 'Qt 6 C++ window paints pixels' 'c++ qt.cpp $(pkg-config --cflags --libs Qt6Widgets) -o "$scratch/qt" &&
     timeout 30 ./window.sh SmokeQt "$scratch/qt"'
-check 'Tkinter window paints pixels' timeout 30 ./window.sh SmokeTk /usr/bin/python3 window.py tk
-check 'PySide6 window paints pixels' timeout 30 ./window.sh SmokePySide /usr/bin/python3 window.py pyside
-check_sh 'SDL2 window paints pixels' 'cc sdl.c $(pkg-config --cflags --libs sdl2) -o "$scratch/sdl" &&
+full_only check 'Tkinter window paints pixels' timeout 30 ./window.sh SmokeTk /usr/bin/python3 window.py tk
+full_only check 'PySide6 window paints pixels' timeout 30 ./window.sh SmokePySide /usr/bin/python3 window.py pyside
+full_only check_sh 'SDL2 window paints pixels' 'cc sdl.c $(pkg-config --cflags --libs sdl2) -o "$scratch/sdl" &&
     timeout 30 ./window.sh SmokeSDL "$scratch/sdl"'
-check_sh 'Swing window paints pixels' 'javac -d "$scratch" SmokeSwing.java &&
+full_only check_sh 'Swing window paints pixels' 'javac -d "$scratch" SmokeSwing.java &&
     timeout 30 ./window.sh SmokeSwing java -cp "$scratch" SmokeSwing'
-check 'Sandboxed Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
+full_only check 'Sandboxed Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
     "$HOME/.cache/homebox-smoke-gui/node_modules/.bin/electron" electron.cjs
 
 check_sh 'GLX reports a Mesa software renderer' 'timeout 15 glxinfo -B | grep -Ei "OpenGL renderer string:.*(llvmpipe|softpipe)"'
-check 'Build OpenGL triangle fixture' cc gl.c -lEGL -lGL -o "$scratch/gl"
-check 'OpenGL triangle on the desktop reads back foreground and background pixels' timeout 15 bash -o pipefail -c \
-    '"$scratch/gl" | convert ppm:- "$gui_artifacts/opengl-desktop.png"'
-check 'Surfaceless EGL triangle reads back pixels without X' timeout 15 bash -o pipefail -c \
-    'env -u DISPLAY EGL_PLATFORM=surfaceless "$scratch/gl" | convert ppm:- "$gui_artifacts/egl-offscreen.png"'
-check_sh 'Vulkan enumerates Mesa lavapipe' 'timeout 30 vulkaninfo --summary 2>/dev/null | grep -i "deviceName.*llvmpipe"'
+build_gl() { cc gl.c -lEGL -lGL -o "$scratch/gl"; }
+render_gl() {
+    test -x "$scratch/gl" || build_gl || return
+    timeout 15 bash -o pipefail -c '"$@" "$scratch/gl" | convert ppm:- "$0"' "$@"
+}
+check 'Build OpenGL triangle fixture' build_gl
+check 'OpenGL triangle on the desktop reads back foreground and background pixels' render_gl "$gui_artifacts/opengl-desktop.png"
+full_only check 'Surfaceless EGL triangle reads back pixels without X' render_gl "$gui_artifacts/egl-offscreen.png" env -u DISPLAY EGL_PLATFORM=surfaceless
+full_only check_sh 'Vulkan enumerates Mesa lavapipe' 'timeout 30 vulkaninfo --summary 2>/dev/null | grep -i "deviceName.*llvmpipe"'
 check_sh 'Lavapipe executes a Vulkan compute shader and returns four expected values' '
     glslangValidator -V compute.comp -o "$scratch/compute.spv" &&
     cc vulkan.c -lvulkan -o "$scratch/vulkan" &&
@@ -51,16 +54,28 @@ check_sh 'Noto fallback and Pango render CJK, emoji and shaped Arabic' '
     fc-match -f "%{family}" "emoji:charset=1f600" | grep -q "Noto Color Emoji" &&
     pango-view --no-display --font="Noto Sans 20" --text="日本語 😀 العربية" --output="$gui_artifacts/fonts.png" &&
     test "$(identify -format "%k" "$gui_artifacts/fonts.png")" -gt 20'
-check_sh 'FFmpeg encodes and decodes 24 VP8 frames' '
+make_video() {
     ffmpeg -v error -f lavfi -i testsrc2=size=160x120:rate=24 -frames:v 24 -c:v libvpx "$scratch/video.webm" &&
     test "$(ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "$scratch/video.webm")" = 24 &&
-    ffmpeg -v error -y -i "$scratch/video.webm" -frames:v 1 "$gui_artifacts/ffmpeg-frame.png"'
+    ffmpeg -v error -y -i "$scratch/video.webm" -frames:v 1 "$gui_artifacts/ffmpeg-frame.png"
+}
+check 'FFmpeg encodes and decodes 24 VP8 frames' make_video
 check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 dbus-run-session -- ./audio.sh
+
+browser_check() {
+    if [[ $1 == chromium && ! -s "$scratch/video.webm" ]]; then
+        make_video || return
+    fi
+    timeout 70 "$mise" exec -- node browser.cjs "$playwright" "$1" "$2" "$scratch/video.webm" "$gui_artifacts"
+}
 
 for engine in chromium firefox webkit; do
     for mode in headless headed; do
-        check "Playwright $engine $mode renders and responds to clicks" timeout 70 \
-            "$mise" exec -- node browser.cjs "$playwright" "$engine" "$mode" "$scratch/video.webm" "$gui_artifacts"
+        if [[ $engine == chromium && $mode == headed ]]; then
+            check "Playwright $engine $mode renders and responds to clicks" browser_check "$engine" "$mode"
+        else
+            full_only check "Playwright $engine $mode renders and responds to clicks" browser_check "$engine" "$mode"
+        fi
     done
 done
 check 'Capture the full KasmVNC desktop' timeout 10 import -window root "$gui_artifacts/kasmvnc-desktop.png"

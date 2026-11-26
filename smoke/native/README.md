@@ -1,5 +1,13 @@
 # Native development smoke tests
 
+Quick covers GCC C and C++20, Make, system C libraries, strace, GCC address
+and undefined-behavior sanitizers, Go cgo, Rust with Cargo and Tokio, and
+the apt install lifecycle.
+
+Full adds Clang, musl, C++23, other build systems, GDB and Valgrind,
+additional tracing and sanitizers, Go race and cross-builds, QEMU and
+binfmt, Rust lint, HTTP and WASI, Zig, Homebrew, Nix and apt source fetches.
+
 After `box new` finishes provisioning, run `smoke/run.sh NAME native`.
 Use a disposable Ubuntu VM. Allow about 15 minutes for the first run on a
 2-CPU, 4-GiB guest, with internet access to the toolchain and package registries.

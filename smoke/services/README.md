@@ -1,5 +1,13 @@
 # Service and network smoke tests
 
+Quick uses Postgres as the representative database and Redis as the
+representative cache. It also covers RabbitMQ, Garage S3, HTTP/TLS,
+WebSocket, SSE, GraphQL, gRPC, local WebRTC, DNS A lookup, public HTTPS,
+and the Mac’s published-port and isolation checks.
+
+Full adds SQLite, MariaDB, Valkey, Memcached and MongoDB, larger transfers,
+public STUN and more DNS record types and HTTPS destinations.
+
 Run this area against a disposable Ubuntu homebox VM with two CPUs and 4 GiB.
 
 ```sh

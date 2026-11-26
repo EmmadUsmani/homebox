@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# The guest-profile change slice only uses runtimes installed at first boot.
-if [[ ${SMOKE_LEVEL:-full} == quick && ${SMOKE_MATCH:-} == "$(<profile-match)" ]]; then
-    echo "Using the runtimes provisioned by the guest profile"
+if [[ ${SMOKE_LEVEL:-full} == quick ]]; then
+    echo "Using the Node and Python runtimes provisioned by the guest profile"
 else
     timeout --kill-after=10s 5m sudo -n apt-get update
     timeout --kill-after=10s 10m sudo -n env DEBIAN_FRONTEND=noninteractive apt-get install -y \

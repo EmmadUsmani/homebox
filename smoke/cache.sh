@@ -16,6 +16,9 @@ name=$1
 area=$2
 here=$(cd "$(dirname "$0")" && pwd)
 
+# shellcheck source=smoke/lib.sh
+. "$here/lib.sh"
+
 guest() { "$box" ssh "$name" -- "$1"; }
 
 pull() {
@@ -32,6 +35,11 @@ pull() {
     done
 }
 
+image_archive() {
+    key=$(printf '%s\n' "$1" "$2" | shasum -a 256) || return
+    printf '%s/%s.tar\n' "$cache" "${key%% *}"
+}
+
 stage_image() (
     ref=$1
     platforms=$2
@@ -39,12 +47,21 @@ stage_image() (
     case "$ref$tag" in
         *[!a-zA-Z0-9._/@:-]*) echo "Invalid smoke image reference: $ref" >&2; exit 1 ;;
     esac
-    key=$(printf '%s\n' "$ref" "$platforms" | shasum -a 256) || exit 1
-    archive="$cache/${key%% *}.tar"
-    if [ "${SMOKE_IMAGE_CACHE_REFRESH:-0}" != 1 ] && [ -f "$archive" ]; then
-        printf 'Cache hit: %s (%s)\n' "$ref" "$platforms"
-        guest "timeout 600 docker load" <"$archive"
-        exit
+    archive=$(image_archive "$ref" "$platforms") || exit 1
+    if [ "${SMOKE_IMAGE_CACHE_REFRESH:-0}" != 1 ]; then
+        if [ -f "$archive" ]; then
+            printf 'Cache hit: %s (%s)\n' "$ref" "$platforms"
+            guest "timeout 600 docker load" <"$archive"
+            exit
+        fi
+        if [ "$3" != "$platforms" ]; then
+            multi_archive=$(image_archive "$ref" "$3") || exit 1
+            if [ -f "$multi_archive" ]; then
+                printf 'Cache hit: %s (%s from multi-platform archive)\n' "$ref" "$platforms"
+                guest "timeout 600 docker load --platform '$platforms'" <"$multi_archive"
+                exit
+            fi
+        fi
     fi
 
     printf 'Cache miss: %s (%s)\n' "$ref" "$platforms"
@@ -75,15 +92,18 @@ case "$area" in
 esac
 native="linux/$(guest 'dpkg --print-architecture')"
 mkdir -p "$cache"
-while read -r ref targets; do
+while read -r ref targets level; do
     case "$ref" in ''|\#*) continue ;; esac
+    [ "$area" = newsdigest ] || smoke_image_enabled "$level" || continue
     case "$targets" in
         ''|native) platforms=$native ;;
         both) platforms=linux/amd64,linux/arm64 ;;
         amd64) platforms=linux/amd64 ;;
         *) echo "Invalid smoke platform selector: $targets" >&2; exit 1 ;;
     esac
-    stage_image "$ref" "$platforms" </dev/null || exit 1
+    selected_platforms=$platforms
+    [ "${SMOKE_LEVEL:-full}" = full ] || selected_platforms=$native
+    stage_image "$ref" "$selected_platforms" "$platforms" </dev/null || exit 1
 done <<EOF_MANIFEST
 $manifest
 EOF_MANIFEST

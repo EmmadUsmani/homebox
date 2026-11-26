@@ -7,11 +7,8 @@ from contextlib import closing
 import boto3
 import pika
 import psycopg
-import pymongo
-import pymysql
 import redis
 from botocore.config import Config
-from pymemcache.client.base import Client
 
 
 def sqlite(phase):
@@ -40,6 +37,8 @@ def postgres(phase):
 
 
 def mariadb(phase):
+    import pymysql
+
     with pymysql.connect(unix_socket="/run/mysqld/mysqld.sock",
                          user=os.environ["USER"], database="homebox_smoke",
                          autocommit=True, read_timeout=5) as db, db.cursor() as cursor:
@@ -66,6 +65,8 @@ def redis_store(phase, port):
 
 
 def memcached(phase):
+    from pymemcache.client.base import Client
+
     with closing(Client(("127.0.0.1", 11211), connect_timeout=5, timeout=5)) as db:
         if phase == "write":
             assert db.set("homebox-smoke", b"smoke", noreply=False)
@@ -106,6 +107,8 @@ def s3(phase):
 
 
 def mongo(phase):
+    import pymongo
+
     with pymongo.MongoClient("mongodb://127.0.0.1:19001", serverSelectionTimeoutMS=5000) as db:
         notes = db.homebox_smoke.notes
         if phase == "write":
