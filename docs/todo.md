@@ -89,3 +89,10 @@ logged in; automatic login is the fallback.
 
 The owner agreed on 2026-11-22 to add Astral's Python project tool. The guest
 installs [uv through mise](../guest/common/mise.sh).
+
+## Docker Hub pull limits in smoke runs
+
+Two workers hit Docker Hub's anonymous pull limit (HTTP 429) on 2026-11-26
+while running the containers area, and finished with a registry mirror set
+only in their scratch VM. Options: a pull-through cache on the host, signing
+in to Docker Hub inside the VM, or fewer distinct images per run. Not decided.
