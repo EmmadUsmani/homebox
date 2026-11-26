@@ -253,6 +253,13 @@ archives as sensitive files and only import archives you trust. SHA-256 verifies
 disk integrity. A VM created from an image still uses the normal host isolation
 and gets fresh SSH host keys and pins.
 
+The [project image recipes](images/README.md) build signed-out guests and
+check known credential paths and common plaintext token formats before saving.
+The [smoke image](images/homebox-smoke/README.md) regenerates its PostgreSQL
+TLS key when a new guest boots.
+The scanner cannot inspect secrets inside compressed archives or arbitrary
+binary formats. Review any additional data that goes into a distributable disk.
+
 ## Tailscale inside the VM
 
 Tailscale is installed in the VM but off. If you turn it on, the VM joins your

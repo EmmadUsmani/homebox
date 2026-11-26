@@ -78,7 +78,8 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 
 Saved-image commands are available. Automatically building and refreshing a
 profile's base image, including `box image rebuild [--profile P]`, remains open.
-See [Images](plan.md#images).
+Future project images, including profile base images for `box image rebuild`,
+follow the [image recipe convention](../images/README.md). See [Images](plan.md#images).
 
 ## Start VMs again when the host boots
 

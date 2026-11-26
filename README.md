@@ -353,6 +353,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
 - [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
+- [Image build recipes](images/README.md) for building project images locally.
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
 - [Observability and the desktop app](docs/observability.md): status, live logs and the desktop app.
