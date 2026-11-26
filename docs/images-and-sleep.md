@@ -37,9 +37,9 @@ the other is everything else.
   as the source allocation. The copied files keep their original ownership and
   paths, including any older accounts and home directories.
 - **Identity:** Lima supplies a fresh hostname and cloud-init instance ID. A
-  first-boot command replaces the disk's machine ID and SSH host keys. On
-  subsequent boots that command leaves them in place, and box continues to
-  enforce its pins. Lima itself uses a per-boot cloud-init instance ID.
+  first-boot command replaces the disk's machine ID and SSH host keys. Box
+  restarts the clone once so early services such as journald load the new
+  machine ID, then pins the new SSH keys. Later starts keep that identity. Lima itself uses a per-boot cloud-init instance ID.
 - **Export and import:** an archive contains a versioned JSON record and the
   raw disk, compressed as a single gzip file. The record includes the profile,
   sizes, time, box version, host architecture, EFI variables, and separate

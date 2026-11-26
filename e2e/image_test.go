@@ -68,6 +68,9 @@ func checkImage(t *testing.T, name, binary string, store *state.Store, box func(
 	if out, err := run(time.Minute, "ssh", "-F", store.SSHConfigPath(), clone, "cat ~/saved-marker"); err != nil || strings.TrimSpace(out) != "image-test" {
 		t.Fatalf("pinned SSH did not read copied data: %v\n%s", err, out)
 	}
+	box(time.Minute, "ssh", clone, "--", `sudo -n systemd-run --wait --collect --unit=homebox-image-journal /bin/echo fresh-identity &&
+		sudo -n journalctl --sync &&
+		journalctl -b -u homebox-image-journal -o cat --no-pager | grep -Fx fresh-identity`)
 	box(2*time.Minute, "doctor", clone)
 	box(2*time.Minute, "stop", clone)
 	box(3*time.Minute, "start", clone)

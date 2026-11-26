@@ -240,6 +240,7 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 }
 
 func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest.Profile, setStep func(string) error, log *provisionLog) error {
+	restoringImage := box.Image != "" && !box.Provisioned
 	instance, err := s.Driver.Get(ctx, box.Name)
 	if errors.Is(err, vm.ErrNotFound) {
 		if err := setStep("create"); err != nil {
@@ -276,19 +277,27 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	// remove their proxy configuration and install the new resolver settings.
 	if instance.Status == vm.StatusRunning && instance.HostPIDFile != "" && instance.Socket.Path == "" {
 		s.progress("Restarting %s to attach the egress network", box.Name)
-		if err := s.Driver.Stop(ctx, box.Name); err != nil {
-			return err
-		}
-		if err := s.releaseIsolation(ctx, box.Name); err != nil {
-			return err
-		}
-		instance, err = s.Driver.Get(ctx, box.Name)
+		instance, err = s.stopForProvision(ctx, box.Name)
 		if err != nil {
 			return err
 		}
 	}
 	if err := s.start(ctx, &box, instance); err != nil {
 		return err
+	}
+	if restoringImage {
+		// PID 1 and journald start before cloud-init replaces the machine ID.
+		if err := setStep("image-identity"); err != nil {
+			return err
+		}
+		s.progress("Restarting %s with its new machine ID", box.Name)
+		instance, err := s.stopForProvision(ctx, box.Name)
+		if err != nil {
+			return err
+		}
+		if err := s.start(ctx, &box, instance); err != nil {
+			return err
+		}
 	}
 	if err := setStep("ssh"); err != nil {
 		return err
@@ -302,7 +311,7 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	}
 	env := map[string]string{"HOMEBOX_USER": box.User}
 	steps := profile.Steps
-	if box.Image != "" && !box.Provisioned {
+	if restoringImage {
 		steps = nil
 	}
 	for _, step := range steps {
@@ -325,6 +334,16 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	}
 	s.progress("Provisioned %s", box.Name)
 	return nil
+}
+
+func (s *Service) stopForProvision(ctx context.Context, name string) (vm.Instance, error) {
+	if err := s.Driver.Stop(ctx, name); err != nil {
+		return vm.Instance{}, err
+	}
+	if err := s.releaseIsolation(ctx, name); err != nil {
+		return vm.Instance{}, err
+	}
+	return s.Driver.Get(ctx, name)
 }
 
 const (
