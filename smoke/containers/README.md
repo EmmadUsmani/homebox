@@ -28,7 +28,8 @@ available for repeat runs.
   inspect, exec and stats, cgroup quotas, and an actual memory-limit kill.
 - Build and run with rootless Podman, deploy and reach a kind workload,
   build and exec into a devcontainer, and run an HTTP integration test
-  with Testcontainers.
+  with Testcontainers. Kind loads the nginx image from the guest's Docker
+  Engine, which also supplies it to Testcontainers.
 - Reach a public HTTPS endpoint from a Docker bridge. Check representative
   private ranges and confirm a bridge container cannot reach temporary,
   locally verified HTTP canaries bound to Mac loopback and LAN interfaces.

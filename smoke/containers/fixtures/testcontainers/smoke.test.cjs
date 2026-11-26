@@ -3,7 +3,7 @@ const test = require("node:test");
 const { GenericContainer, Wait } = require("testcontainers");
 
 test("a fresh HTTP container responds over its mapped port", async () => {
-  const container = await new GenericContainer("nginx:1.28-alpine")
+  const container = await new GenericContainer(process.env.nginx)
     .withExposedPorts(80)
     .withWaitStrategy(Wait.forHttp("/", 80))
     .withStartupTimeout(60_000)
