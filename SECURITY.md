@@ -244,6 +244,13 @@ logins.
 - Images, when they exist (phase 2), will carry whatever was on the disk,
   logins included. Base images are built before anything is logged in.
 
+Saved images and exported archives include the whole guest disk. They can
+contain SSH credentials, API tokens, agent logins, local data and deleted data
+still present in filesystem blocks. Save and export warn about this. Treat the
+archives as sensitive files and only import archives you trust. SHA-256 verifies
+disk integrity. A VM created from an image still uses the normal host isolation
+and gets fresh SSH host keys and pins.
+
 ## Tailscale inside the VM
 
 Tailscale is installed in the VM but off. If you turn it on, the VM joins your

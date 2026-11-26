@@ -28,6 +28,7 @@ var (
 type NewOptions struct {
 	Name      string
 	Profile   string
+	Image     string
 	CPUs      int
 	MemoryGiB int
 	DiskGiB   int
@@ -80,18 +81,23 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
 		return errors.New("CPU, memory and disk sizes must be positive")
 	}
-	if err := s.resolveNewOptions(&options); err != nil {
-		return err
-	}
-	profile, err := s.Profiles.Get(options.Profile)
-	if err != nil {
-		return err
-	}
 	username, err := defaultUser()
 	if err != nil {
 		return err
 	}
 	return s.Store.WithLock(func() error {
+		if options.Image != "" {
+			if err := s.resolveImageOptions(&options); err != nil {
+				return err
+			}
+		}
+		if err := s.resolveNewOptions(&options); err != nil {
+			return err
+		}
+		profile, err := s.Profiles.Get(options.Profile)
+		if err != nil {
+			return err
+		}
 		if _, err := s.Store.Load(options.Name); err == nil {
 			return fmt.Errorf("box %q already exists", options.Name)
 		} else if !errors.Is(err, os.ErrNotExist) {
@@ -111,7 +117,7 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 			return err
 		}
 		box := state.Box{
-			Name: options.Name, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
+			Name: options.Name, Image: options.Image, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
 			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
 			DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
 			Forwards: state.DefaultForwards(index, host.LAN), CreatedAt: time.Now().UTC(),
@@ -234,14 +240,24 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 }
 
 func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest.Profile, setStep func(string) error, log *provisionLog) error {
+	restoringImage := box.Image != "" && !box.Provisioned
 	instance, err := s.Driver.Get(ctx, box.Name)
 	if errors.Is(err, vm.ErrNotFound) {
 		if err := setStep("create"); err != nil {
 			return err
 		}
+		var imageDisk string
+		var imageFirmware []byte
+		if box.Image != "" {
+			image, path, err := s.Store.LoadImage(box.Image)
+			if err != nil {
+				return err
+			}
+			imageDisk, imageFirmware = path, image.Firmware
+		}
 		s.progress("Creating %s", box.Name)
 		if err := s.Driver.Create(ctx, vm.Spec{
-			Name: box.Name, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
+			Name: box.Name, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,
 			// Keep the built-in host resolver unused until the guest configures public DNS.
@@ -261,19 +277,27 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	// remove their proxy configuration and install the new resolver settings.
 	if instance.Status == vm.StatusRunning && instance.HostPIDFile != "" && instance.Socket.Path == "" {
 		s.progress("Restarting %s to attach the egress network", box.Name)
-		if err := s.Driver.Stop(ctx, box.Name); err != nil {
-			return err
-		}
-		if err := s.releaseIsolation(ctx, box.Name); err != nil {
-			return err
-		}
-		instance, err = s.Driver.Get(ctx, box.Name)
+		instance, err = s.stopForProvision(ctx, box.Name)
 		if err != nil {
 			return err
 		}
 	}
 	if err := s.start(ctx, &box, instance); err != nil {
 		return err
+	}
+	if restoringImage {
+		// PID 1 and journald start before cloud-init replaces the machine ID.
+		if err := setStep("image-identity"); err != nil {
+			return err
+		}
+		s.progress("Restarting %s with its new machine ID", box.Name)
+		instance, err := s.stopForProvision(ctx, box.Name)
+		if err != nil {
+			return err
+		}
+		if err := s.start(ctx, &box, instance); err != nil {
+			return err
+		}
 	}
 	if err := setStep("ssh"); err != nil {
 		return err
@@ -286,7 +310,11 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 		return err
 	}
 	env := map[string]string{"HOMEBOX_USER": box.User}
-	for _, step := range profile.Steps {
+	steps := profile.Steps
+	if restoringImage {
+		steps = nil
+	}
+	for _, step := range steps {
 		if err := setStep(step.Name); err != nil {
 			return err
 		}
@@ -306,6 +334,16 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	}
 	s.progress("Provisioned %s", box.Name)
 	return nil
+}
+
+func (s *Service) stopForProvision(ctx context.Context, name string) (vm.Instance, error) {
+	if err := s.Driver.Stop(ctx, name); err != nil {
+		return vm.Instance{}, err
+	}
+	if err := s.releaseIsolation(ctx, name); err != nil {
+		return vm.Instance{}, err
+	}
+	return s.Driver.Get(ctx, name)
 }
 
 const (

@@ -1,4 +1,4 @@
-FROM alpine:3.22 AS build
+FROM public.ecr.aws/docker/library/alpine:3.22 AS build
 ARG TARGETARCH
 ARG CACHE_PHASE=write
 RUN --mount=type=cache,id=homebox-smoke,target=/cache \

@@ -20,6 +20,7 @@ smoke/run.sh NAME runtimes   # one area
 ```
 
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
+To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
 Setup scripts install tools a user would install themselves; tools nearly every
 VM needs belong in the guest profile (`guest/`) instead, so they're there from

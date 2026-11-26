@@ -194,9 +194,11 @@ check_case 'Rootless Podman runs a container and builds and runs its own image' 
 kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
-    timeout 120 docker pull "$nginx"
+    if ! timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"; then
+        timeout 120 docker pull --platform "$native" "$nginx"
+        timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
+    fi
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
     timeout 120 kind load image-archive "$scratch/nginx.tar" --name "$prefix"
     timeout 30 kubectl create deployment smoke --image="$nginx"
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s

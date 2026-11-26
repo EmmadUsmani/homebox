@@ -11,7 +11,7 @@ sudo -n apt-get -o DPkg::Lock::Timeout=120 install -y --no-install-recommends \
 mise="$HOME/.local/bin/mise"
 playwright="$HOME/.local/share/homebox/playwright/node_modules/.bin/playwright"
 "$mise" exec -- "$playwright" install-deps chromium firefox webkit
-"$mise" exec -- "$playwright" install chromium firefox webkit
+PLAYWRIGHT_SKIP_BROWSER_GC=1 "$mise" exec -- "$playwright" install chromium firefox webkit
 electron="$HOME/.cache/homebox-smoke-gui"
 mkdir -p "$electron"
 cp electron-package.json "$electron/package.json"

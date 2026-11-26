@@ -11,7 +11,9 @@ subordinate UID and GID ranges for rootless containers when the guest account
 lacks them. The full cold run took about 10 minutes on a 2-CPU, 6-GiB
 arm64 VM, excluding provisioning. The minimal-image builds add SDK downloads
 and emulated compilation. Docker's build cache and installed tools remain
-available for repeat runs.
+available for repeat runs. The Buildx and Compose fixtures use Docker Official
+Images from Amazon ECR Public when a fresh builder resolves its base images.
+Kind imports the guest's cached nginx image when its platform is available.
 A cold run can hit Docker Hub's anonymous pull quota. Docker, the standalone
 BuildKit builder and Podman each have their own registry settings.
 

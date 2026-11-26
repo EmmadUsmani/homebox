@@ -17,6 +17,7 @@ import (
 // Box describes a VM managed by box.
 type Box struct {
 	Name            string           `json:"name"`
+	Image           string           `json:"image,omitempty"`
 	Profile         string           `json:"profile"`
 	Driver          string           `json:"driver"`
 	Index           int              `json:"index"`
