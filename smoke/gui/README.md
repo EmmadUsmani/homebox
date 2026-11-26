@@ -41,9 +41,8 @@ physical audio, network latency, and the native macOS clipboard controls are
 outside this suite. The native viewer has separate verification scripts in
 [desktop/scripts](../../desktop/scripts).
 
-The guest's Ubuntu AppArmor policy blocks the bundled Chromium binary from
-creating its process sandbox. Electron's bundled setuid helper isn't configured. The fixtures use local generated
-content and run with Playwright's guest default and Electron's per-invocation
-`--no-sandbox`. The Mac browser uses its process sandbox, and the suite uses
-homebox's normal VM confinement. Electron's package manifest allows only its
-pinned package to run the npm install hook that fetches its binary.
+The Ubuntu profile allows unprivileged user namespaces for Chromium and
+Electron. The Playwright Chromium fixture sets `chromiumSandbox: true`.
+Both browser fixtures verify seccomp filtering and a nested PID namespace in
+their renderers. Electron's package manifest allows only its pinned package
+to run the npm install hook that fetches its binary.

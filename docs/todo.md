@@ -29,6 +29,12 @@ remote VMs, overview, logs, terminal, files and editor).
 
 - Review the desktop app's [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
 
+## Update existing Ubuntu VMs for browser sandboxing
+
+New VMs get the [browser sandbox setting](../SECURITY.md#browser-processes-inside-the-ubuntu-guest)
+during provisioning. Apply it to existing VMs such as `dev` with
+`box provision NAME` or **Re-run provisioning** in the app.
+
 ## Tighten the host sandboxes further
 
 Both host processes now allow-list file reads and Mach service lookups. See

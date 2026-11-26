@@ -25,8 +25,8 @@ check_sh 'SDL2 window paints pixels' 'cc sdl.c $(pkg-config --cflags --libs sdl2
     timeout 30 ./window.sh SmokeSDL "$scratch/sdl"'
 check_sh 'Swing window paints pixels' 'javac -d "$scratch" SmokeSwing.java &&
     timeout 30 ./window.sh SmokeSwing java -cp "$scratch" SmokeSwing'
-check 'Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
-    "$HOME/.cache/homebox-smoke-gui/node_modules/.bin/electron" --no-sandbox electron.cjs
+check 'Sandboxed Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
+    "$HOME/.cache/homebox-smoke-gui/node_modules/.bin/electron" electron.cjs
 
 check_sh 'GLX reports a Mesa software renderer' 'timeout 15 glxinfo -B | grep -Ei "OpenGL renderer string:.*(llvmpipe|softpipe)"'
 check 'Build OpenGL triangle fixture' cc gl.c -lEGL -lGL -o "$scratch/gl"
