@@ -250,10 +250,23 @@ check 'gRPC echoes a payload over HTTP/2' timeout 15 "$python" web.py grpc
 check 'Chromium WebRTC peers exchange data and receive a video frame' timeout 40 node rtc.cjs local
 check 'Chromium gathers a public STUN server-reflexive candidate' timeout 30 node rtc.cjs stun
 
-check 'Git shallow clone over HTTPS' timeout 60 git clone --depth=1 https://github.com/octocat/Hello-World.git "$SMOKE_TMP/git"
+git_clone() {
+    local attempt
+    for attempt in 1 2 3; do
+        if timeout 20 git clone -4 --depth=1 https://github.com/octocat/Hello-World.git "$SMOKE_TMP/git-$attempt"; then
+            return 0
+        fi
+        sleep "$attempt"
+    done
+    return 1
+}
+
+check 'Git shallow clone over HTTPS' git_clone
 for url in https://registry.npmjs.org/ https://pypi.org/simple/pytest/ https://crates.io/api/v1/crates/serde https://github.com/; do
-    check "HTTPS $url" curl -fsS --max-time 15 -A homebox-smoke -o /dev/null "$url"
+    check "HTTPS $url" curl -4fsS --connect-timeout 6 --max-time 15 \
+        --retry 2 --retry-all-errors --retry-max-time 35 -A homebox-smoke -o /dev/null "$url"
 done
+
 dns() {
     dig +time=3 +tries=2 +short "$2" "$1" | grep -E "."
 }

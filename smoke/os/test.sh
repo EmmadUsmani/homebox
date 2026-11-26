@@ -17,17 +17,18 @@ run() {
 }
 
 run 'systemd system service restarts after a failure and journals its output' 20 '
-    unit=homebox-smoke-restart
+    unit=homebox-smoke-restart-$$.service
     sudo -n systemd-run --unit="$unit" --wait --collect -p Restart=on-failure -p RestartSec=1s \
-        /bin/sh -c '\''if test -f "$1"; then echo "homebox restarted"; else touch "$1"; exit 1; fi'\'' sh "$scratch/restart"
-    journalctl -u "$unit" --no-pager -o cat | grep -Fx "homebox restarted"
+        /bin/sh -c '\''if test -f "$1"; then touch "$1.done"; else touch "$1"; exit 1; fi'\'' sh "$scratch/restart"
+    test -f "$scratch/restart.done"
+    journalctl -u "$unit" --no-pager -o cat | grep -F "Scheduled restart job"
 '
 run 'systemd user service can be enabled and restarts after a failure' 20 '
     unit=homebox-smoke-user-$$.service
-    trap "systemctl --user disable --now $unit || true" EXIT
+    trap "systemctl --user disable --now $unit >/dev/null 2>&1 || true" EXIT
     cat >"$scratch/user-job" <<JOB
 if test -f "$scratch/user-restart"; then
-    echo "homebox user restarted"
+    touch "$scratch/user-done"
 else
     touch "$scratch/user-restart"
     exit 1
@@ -36,16 +37,21 @@ JOB
     cat >"$scratch/$unit" <<UNIT
 [Service]
 ExecStart=/bin/sh $scratch/user-job
+Type=oneshot
+RemainAfterExit=yes
 Restart=on-failure
 RestartSec=1s
 [Install]
 WantedBy=default.target
 UNIT
-    systemctl --user enable --now "$scratch/$unit"
+    systemctl --user enable "$scratch/$unit"
     systemctl --user is-enabled "$unit"
-    until journalctl --user -u "$unit" --no-pager -o cat | grep -Fx "homebox user restarted"; do
+    systemctl --user start --no-block "$unit"
+    until test -f "$scratch/user-done" && systemctl --user is-active --quiet "$unit"; do
         sleep 1
     done
+    test "$(systemctl --user show -p NRestarts --value "$unit")" -eq 1
+    journalctl --user -u "$unit" --no-pager -o cat | grep -F "Scheduled restart job"
 '
 run 'systemd user timer runs a deferred job' 20 '
     systemd-run --user --on-active=1s --timer-property=AccuracySec=100ms --collect /usr/bin/touch "$scratch/timer"
