@@ -67,6 +67,32 @@ LAN and Tailscale measurement remains open.
 [docs/architecture.md](docs/architecture.md) holds the code layout, dependency
 rules and known limitations; follow it.
 
+## Testing before merging
+
+The owner agreed this on 2026-11-26. All tiers run with
+[`scripts/test.sh`](scripts/test.sh) on this laptop or the Mac mini (see the
+README's "Testing" section). GitHub CI is informative, not the gate: a change
+must pass on one of the Macs.
+
+- **Before every merge:** `scripts/test.sh change` passes. Paste its summary
+  line (commit, machine, result, duration) into the pull request, and commit
+  its row in [docs/test-runs.md](docs/test-runs.md).
+- **Every few merges, or at the end of a day's work:** `scripts/test.sh batch`.
+- **After changes to isolation, networking, SSH or confinement, and before a
+  release:** `scripts/test.sh full`, ideally on both Macs.
+- When a later tier finds a break, use `scripts/test.sh last` and
+  `scripts/test.sh bisect` to find the change, then fix it or revert it.
+- New behaviour gets a smoke check or a Go test in the same change, so the
+  tiers keep covering it.
+
+## VM images
+
+Images can't go in git or GitHub releases (they're gigabytes), so every image
+we create has a committed, repeatable build script: `images/NAME/build.sh`
+plus `images/NAME/README.md` (see [images/](images)). An image without its
+build script isn't done. Never save an image with signed-in agents, tokens or
+private keys other than the VM's own host keys.
+
 ## Hard rules
 
 - This repository is public. Never commit secrets, tokens, keys, or details of
