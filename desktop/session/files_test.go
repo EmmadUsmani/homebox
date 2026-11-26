@@ -21,10 +21,11 @@ import (
 func filesTestPool(t *testing.T, serve func(ssh.Channel)) *Pool {
 	t.Helper()
 	key, _ := keyForTest(t)
-	verify, err := pinnedKeys([]string{strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key.PublicKey())))})
+	clientConfig, err := pinnedClientConfig([]string{strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key.PublicKey())))})
 	if err != nil {
 		t.Fatal(err)
 	}
+	clientConfig.User = "test"
 	config := &ssh.ServerConfig{NoClientAuth: true}
 	config.AddHostKey(key)
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -33,7 +34,7 @@ func filesTestPool(t *testing.T, serve func(ssh.Channel)) *Pool {
 	}
 	t.Cleanup(func() { _ = listener.Close() })
 	pool := newPool(func(ctx context.Context, _ VMRef) (*ssh.Client, error) {
-		return dialSSH(ctx, listener.Addr().String(), &ssh.ClientConfig{User: "test", HostKeyCallback: verify})
+		return dialSSH(ctx, listener.Addr().String(), clientConfig)
 	})
 	t.Cleanup(pool.Close)
 	go func() {

@@ -137,28 +137,44 @@ type HostKeyChangedError struct{}
 
 func (*HostKeyChangedError) Error() string { return "SSH host key changed" }
 
-func pinnedKeys(lines []string) (ssh.HostKeyCallback, error) {
+func pinnedClientConfig(lines []string) (*ssh.ClientConfig, error) {
 	if len(lines) == 0 {
 		return nil, errors.New("no pinned SSH host keys")
 	}
 	keys := make([]ssh.PublicKey, 0, len(lines))
+	keyTypes := make(map[string]bool)
 	for _, line := range lines {
 		key, _, _, rest, err := ssh.ParseAuthorizedKey([]byte(line))
 		if err != nil || len(rest) != 0 || strings.Fields(line)[0] != key.Type() {
 			return nil, errors.New("invalid pinned SSH host key")
 		}
 		keys = append(keys, key)
+		keyTypes[key.Type()] = true
 	}
-	// Keep the default host-key algorithms so a replaced key of a different
-	// algorithm still reaches the callback and is reported as a mismatch.
-	return func(_ string, _ net.Addr, offered ssh.PublicKey) error {
+	// Prefer pinned key types so a server offering multiple algorithms can
+	// present the pinned key. Other supported algorithms still reach the
+	// callback and are reported as mismatches.
+	algorithms := ssh.SupportedAlgorithms().HostKeys
+	pinPriority := func(algorithm string) int {
+		switch algorithm {
+		case ssh.KeyAlgoRSASHA256, ssh.KeyAlgoRSASHA512:
+			algorithm = ssh.KeyAlgoRSA
+		}
+		if keyTypes[algorithm] {
+			return 0
+		}
+		return 1
+	}
+	slices.SortStableFunc(algorithms, func(a, b string) int { return pinPriority(a) - pinPriority(b) })
+	verify := func(_ string, _ net.Addr, offered ssh.PublicKey) error {
 		for _, key := range keys {
 			if bytes.Equal(key.Marshal(), offered.Marshal()) {
 				return nil
 			}
 		}
 		return &HostKeyChangedError{}
-	}, nil
+	}
+	return &ssh.ClientConfig{HostKeyAlgorithms: algorithms, HostKeyCallback: verify}, nil
 }
 
 func remotePins(data []byte, alias string) []string {
@@ -289,7 +305,7 @@ func NewPool(local *app.Service, files RemoteFiles) *Pool {
 			if endpoint.Host != "127.0.0.1" || !filepath.IsAbs(endpoint.IdentityFile) {
 				return nil, errors.New("invalid local SSH endpoint")
 			}
-			verify, err := pinnedKeys(box.SSHHostKeys)
+			config, err := pinnedClientConfig(box.SSHHostKeys)
 			if err != nil {
 				return nil, err
 			}
@@ -297,9 +313,9 @@ func NewPool(local *app.Service, files RemoteFiles) *Pool {
 			if err != nil {
 				return nil, err
 			}
-			return dialSSH(ctx, net.JoinHostPort(endpoint.Host, strconv.Itoa(endpoint.Port)), &ssh.ClientConfig{
-				User: endpoint.User, Auth: []ssh.AuthMethod{ssh.PublicKeys(key)}, HostKeyCallback: verify,
-			})
+			config.User = endpoint.User
+			config.Auth = []ssh.AuthMethod{ssh.PublicKeys(key)}
+			return dialSSH(ctx, net.JoinHostPort(endpoint.Host, strconv.Itoa(endpoint.Port)), config)
 		case "remote":
 			return dialRemote(ctx, files, ref.Alias)
 		default:
@@ -325,11 +341,11 @@ func dialRemote(ctx context.Context, files RemoteFiles, alias string) (*ssh.Clie
 	if err != nil {
 		return nil, err
 	}
-	verify, err := pinnedKeys(remotePins(data, host.pin))
+	config, err := pinnedClientConfig(remotePins(data, host.pin))
 	if err != nil {
 		return nil, err
 	}
-	config := &ssh.ClientConfig{User: host.user, HostKeyCallback: verify}
+	config.User = host.user
 	socket := agentSocket(ctx, os.Getenv, launchdSocket)
 	closeAuth := configureRemoteAuth(ctx, files.Home, socket, config)
 	defer closeAuth()
