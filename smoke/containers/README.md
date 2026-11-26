@@ -32,8 +32,9 @@ BuildKit builder and Podman each have their own registry settings.
   inspect, exec and stats, cgroup quotas, and an actual memory-limit kill.
 - Build and run with rootless Podman, deploy and reach a kind workload,
   build and exec into a devcontainer, and run an HTTP integration test
-  with Testcontainers. The kind workload image is pulled with Docker and
-  loaded into the cluster so it uses the guest's Docker registry settings.
+  with Testcontainers. Both use one nginx download from the guest's Docker
+  Engine. Kind loads a [single-platform archive](https://kind.sigs.k8s.io/docs/user/known-issues/#unable-to-kind-load-docker-images)
+  for the guest architecture.
 - Reach a public HTTPS endpoint from a Docker bridge. Check representative
   private ranges and confirm a bridge container cannot reach temporary,
   locally verified HTTP canaries bound to Mac loopback and LAN interfaces.

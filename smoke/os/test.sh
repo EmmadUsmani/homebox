@@ -16,6 +16,9 @@ run() {
     check "$1" timeout "$2" bash -euo pipefail -c "$3"
 }
 
+run 'Ubuntu allows unprivileged user namespaces for browser sandboxes' 10 '
+    test "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)" = 0
+'
 run 'systemd system service restarts after a failure and journals its output' 20 '
     unit=homebox-smoke-restart-$$.service
     sudo -n systemd-run --unit="$unit" --wait --collect -p Restart=on-failure -p RestartSec=1s \

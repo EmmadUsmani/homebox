@@ -18,6 +18,12 @@ locale-gen en_US.UTF-8
 update-locale LANG=en_US.UTF-8
 timedatectl set-timezone Etc/UTC
 
+# Allow Chromium and Electron to create their process sandboxes.
+cat > /etc/sysctl.d/99-homebox-userns.conf <<'EOF'
+kernel.apparmor_restrict_unprivileged_userns = 0
+EOF
+sysctl -p /etc/sysctl.d/99-homebox-userns.conf
+
 # The VM must never reach the laptop's SSH agent or display, whatever the
 # client asks for. A client that stops answering (a laptop that slept or left
 # the network) is dropped after about two minutes instead of keeping its

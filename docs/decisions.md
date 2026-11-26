@@ -33,6 +33,43 @@ isn't supported for Linux guests, so a Windows host can't give an isolated Linux
 VM the GPU. The GPU comes from a Linux host on a separate drive of the gaming
 PC instead (phase 5).
 
+## Browser sandboxes inside the Ubuntu guest
+
+**Allow unprivileged user namespaces** (owner, 2026-11-26).
+
+Chromium's Linux sandbox, which Electron inherits, runs each web page's
+renderer in its own user namespace (no view of the user's files, processes or
+network) and under a seccomp filter (a short list of allowed system calls), so
+a compromised page stays contained. Since 23.10, Ubuntu lets only programs
+with an AppArmor profile create user namespaces
+(`kernel.apparmor_restrict_unprivileged_userns = 1`), and npm- or
+Playwright-installed browsers have none, so they ran with `--no-sandbox`.
+[Ubuntu's AppArmor restriction](https://documentation.ubuntu.com/security/security-features/privilege-restriction/apparmor/)
+reduces the kernel attack surface available for local privilege escalation:
+user namespaces give unprivileged code root inside the namespace, which has
+exposed kernel bugs (for example in netfilter and overlayfs) that let an
+ordinary user become real root.
+That restriction adds little protection for the VM's development user, who
+already has passwordless sudo and root-equivalent Docker group membership.
+Allowing user namespaces lets Chromium and Electron isolate renderers when
+agents browse untrusted sites. The hypervisor, host network rules and host
+process confinement enforce the VM-to-Mac boundary. Standard
+[Fedora](https://packages.fedoraproject.org/pkgs/podman/podman/),
+[Debian](https://wiki.debian.org/LXC) and [Arch](https://wiki.archlinux.org/title/Security#Kernel_hardening)
+kernels allow unprivileged user namespaces by default.
+
+- **Per-path AppArmor profiles** would need to track versioned npm and
+  Playwright binary paths.
+- **A setuid `chrome-sandbox` helper** would require a root-owned setuid
+  binary for each installation, which fits poorly with user-local npm installs.
+- **`--no-sandbox`** would require a per-app workaround and leave renderers
+  without Chromium's process sandbox.
+
+New VMs get the setting from [`guest/ubuntu/base.sh`](../guest/ubuntu/base.sh);
+existing VMs get it by re-running provisioning (`box provision NAME`, or
+**Re-run provisioning** in the app). The GUI smoke tests check that the
+renderer sandbox is active.
+
 ## The box command
 
 **Our own `box` command** (owner). Lima can change, so box hides it behind a

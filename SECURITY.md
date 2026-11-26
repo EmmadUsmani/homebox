@@ -25,6 +25,16 @@ network, and can't undo the rules that stop it.
 
 ## The boundaries
 
+### Browser processes inside the Ubuntu guest
+
+Ubuntu provisioning allows unprivileged user namespaces so Chromium and
+Electron can sandbox their renderers when agents browse untrusted sites.
+This opens additional guest kernel attack surface to unprivileged code.
+The development account already has passwordless sudo and root-equivalent
+Docker group membership. The hypervisor, host network rules and host process
+confinement enforce the VM-to-Mac boundary independently. See the
+[decision and alternatives](docs/decisions.md#browser-sandboxes-inside-the-ubuntu-guest).
+
 ### The VM and the host
 
 - **A full VM.** Each VM is its own Linux kernel and disk under Apple's

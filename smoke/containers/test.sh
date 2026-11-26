@@ -11,6 +11,7 @@ scratch=$(mktemp -d) || exit 1
 export scratch
 export prefix="homebox-smoke-$$"
 export alpine=alpine:3.22
+export nginx=nginx:1.28-alpine
 
 cleanup() {
     timeout 45 docker compose -p "$prefix" -f "$fixtures/compose/compose.yaml" down -v --remove-orphans --rmi local >/dev/null 2>&1
@@ -193,14 +194,11 @@ check_case 'Rootless Podman runs a container and builds and runs its own image' 
 kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
+    timeout 120 docker pull "$nginx"
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    # Route image pulls through the guest's Docker registry configuration.
-    local image=nginx:1.28-alpine
-    timeout 120 docker pull --platform "$native" "$image"
-    # Kind imports all archive platforms. Include only the platform Docker pulled.
-    timeout 90 docker image save --platform "$native" -o "$scratch/nginx.tar" "$image"
-    timeout 120 kind load image-archive --name "$prefix" "$scratch/nginx.tar"
-    timeout 30 kubectl create deployment smoke --image="$image"
+    timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
+    timeout 120 kind load image-archive "$scratch/nginx.tar" --name "$prefix"
+    timeout 30 kubectl create deployment smoke --image="$nginx"
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s
     timeout 45 kubectl port-forward deployment/smoke :80 > "$scratch/port-forward.log" 2>&1 &
     local forward=$!
