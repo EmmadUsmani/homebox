@@ -4,6 +4,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 # shellcheck source=smoke/lib.sh
 . "$here/../lib.sh"
 # This phase collects the complete gallery and drives the desktop as a group.
+[ "${SMOKE_LEVEL:-full}" = full ] || exit 0
 smoke_matches 'Remote desktop host checks' || exit 0
 artifacts="$SMOKE_ARTIFACTS/gui"
 mkdir -p "$artifacts"

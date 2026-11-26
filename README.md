@@ -291,7 +291,8 @@ run the command locally.
   runtimes. CLI and core changes select `box doctor`. Desktop changes build
   the app and exercise native verifiers when Accessibility is available.
 - **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
-  smoke area at quick level on a freshly provisioned guest.
+  smoke area at quick level on a freshly provisioned guest. Targets 30–60
+  minutes. News Digest runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 - **Full**, run occasionally, includes every smoke area at full level, the
   remote desktop host checks, and native verification of Files, Settings,
   the Desktop tab and viewer isolation. News Digest
@@ -301,6 +302,7 @@ run the command locally.
 scripts/test.sh change
 scripts/test.sh change --base HEAD~1
 scripts/test.sh batch --area os
+scripts/test.sh full --area containers --match distroless
 scripts/test.sh full --area gui --match 'GTK|Qt'
 scripts/test.sh full --keep-vm
 scripts/test.sh last
@@ -309,7 +311,7 @@ scripts/test.sh bisect GOOD BAD batch --area os
 
 `--area` is repeatable and overrides automatic selection. Use a smoke area
 name, `doctor`, `e2e` or `desktop`. Static checks run at every tier.
-`--match` applies to smoke labels. `--keep-vm` prints the scratch state
+`--match` applies a case-insensitive regular expression to smoke labels. `--keep-vm` prints the scratch state
 location and removal command. Pick an unused index with `HOMEBOX_TEST_INDEX`
 (default 70) when running alongside other VMs or test runners.
 

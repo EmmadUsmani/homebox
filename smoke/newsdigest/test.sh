@@ -33,10 +33,10 @@ run_suite() {
     return 1
 }
 
-check 'News Digest typecheck' timeout 8m pnpm typecheck
-check 'News Digest lint' timeout 8m pnpm lint
-check 'News Digest unit tests' run_suite unit timeout 8m pnpm test:unit
-check 'News Digest isolated integration tests' run_suite integration timeout 20m pnpm test:integration
+full_only check 'News Digest typecheck' timeout 8m pnpm typecheck
+full_only check 'News Digest lint' timeout 8m pnpm lint
+full_only check 'News Digest unit tests' run_suite unit timeout 8m pnpm test:unit
+full_only check 'News Digest isolated integration tests' run_suite integration timeout 20m pnpm test:integration
 
 boot() {
     local postgres redis

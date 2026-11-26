@@ -18,10 +18,19 @@ scratch VM automatically. To use a VM already running on this Mac:
 ```sh
 smoke/run.sh NAME            # every area
 smoke/run.sh NAME runtimes   # one area
-SMOKE_LEVEL=quick SMOKE_MATCH='GTK|Qt' smoke/run.sh NAME gui
+SMOKE_LEVEL=quick SMOKE_MATCH='GTK' smoke/run.sh NAME gui
 ```
 
-Direct runs default to the full level. The GUI host harness runs as a group
+Direct runs default to the full level. Use the area README to see which
+checks the quick level runs. `--match` and `SMOKE_MATCH` select checks from
+the chosen level using a case-insensitive extended regular expression.
+
+```sh
+scripts/test.sh full --area containers --match 'Debian|Alpine|Fedora'
+scripts/test.sh full --area containers --match 'distroless'
+scripts/test.sh full --area gui --match 'GTK|Qt'
+scripts/test.sh batch --area services --match 'Postgres'
+``` The GUI host harness runs as a group
 labeled `Remote desktop host checks`; select it with its guest prerequisites
 or run GUI without a filter to collect the full gallery.
 
@@ -57,6 +66,7 @@ the first boot.
 `run.sh` loads the image archives for the containers and services areas into
 Docker before guest setup. The [containers](containers/images.txt) and
 [services](services/images.txt) manifests list the references and platforms.
+Quick runs stage only the native variants of rows marked `quick`.
 For an optional News Digest checkout, the runner reads that checkout's
 `docker compose config --images` after staging its source.
 

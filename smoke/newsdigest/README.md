@@ -1,5 +1,11 @@
 # News Digest
 
+Quick builds the app, runs Compose, migrates and seeds the database,
+renders the fixture in guest Chromium and probes the published HTTP
+port from the Mac. Full adds typecheck, lint, unit and integration tests and the Mac
+Chromium render. The guest build and Chromium installation serve both
+levels. Both levels require an explicitly configured checkout.
+
 Exercise a real Node 22 and pnpm monorepo on the Ubuntu guest. The smoke
 test builds the app, runs typecheck, lint and tests, and starts its
 Postgres and Redis Compose services. It migrates the database and adds two

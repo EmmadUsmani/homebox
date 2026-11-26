@@ -1,5 +1,12 @@
 # Containers
 
+Quick uses native Alpine for the distro package-manager check and native
+distroless Node for the shell-free image check, including its BusyBox
+sidecar. It also checks BuildKit caching, Compose, mounts, quotas,
+container egress, and the host port mapping and loopback/LAN canaries. Full adds the other distros, debug and minimal images, amd64 execution
+and multi-platform builds, Compose volume persistence, the OOM kill,
+rootless Podman, kind, Dev Containers and Testcontainers.
+
 Run `smoke/run.sh NAME containers` from the Mac with Node.js available for the
 host canary checks. Use a disposable Ubuntu VM with 2 CPUs, 6 GiB of memory,
 room for images and a box port mapping for guest TCP 8073. The runner uses the

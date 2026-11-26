@@ -2,6 +2,7 @@
 set -euo pipefail
 
 docker info >/dev/null
+[[ ${SMOKE_LEVEL:-full} == full ]] || exit 0
 sudo -n timeout 180 apt-get update
 sudo -n env DEBIAN_FRONTEND=noninteractive timeout 300 apt-get install -y --no-install-recommends \
     podman uidmap passt fuse-overlayfs qemu-user-binfmt

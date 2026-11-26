@@ -1,5 +1,9 @@
 # Operating system smoke tests
 
+Quick checks systemd services and a timer, inotify, browser user
+namespaces, resource limits, disk I/O, memory and swap, locales, sudo,
+clock sync, tmux and persistence across a restart. Full adds cron and installs its daemon.
+
 Run this area on a disposable Ubuntu homebox VM with two CPUs and 4 GiB.
 
 ```sh

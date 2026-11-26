@@ -37,7 +37,7 @@ host_browser() {
         PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=30000 "$work/node_modules/.bin/playwright" install chromium &&
         node "$here/browser.cjs" "$work/node_modules/playwright" "$origin" "$artifacts/newsdigest-mac"
 }
-check 'Mac Chromium renders persisted edition through the published port' host_browser
+full_only check 'Mac Chromium renders persisted edition through the published port' host_browser
 
 check 'Stop the guest API and remove its disposable Compose data' cleanup
 trap 'rm -rf "$work"' EXIT

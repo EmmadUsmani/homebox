@@ -72,7 +72,7 @@ minimal_program() {
 
 export -f minimal_build minimal_no_shell minimal_cleanup
 platforms=("$native")
-if [[ "$native" != linux/amd64 ]]; then
+if [[ ${SMOKE_LEVEL:-full} == full && "$native" != linux/amd64 ]]; then
     platforms+=(linux/amd64)
 fi
 for platform in "${platforms[@]}"; do
@@ -82,23 +82,23 @@ for platform in "${platforms[@]}"; do
     fi
     check_case "$node_label ($platform)" \
         minimal_service "$platform" node 'node:&lt;42&gt;' node --target distroless
-    check_case "Distroless Python runs pure Python and a native extension ($platform)" \
+    full_only check_case "Distroless Python runs pure Python and a native extension ($platform)" \
         minimal_program "$platform" python $'python:pure:42\npython:native:42' python --target distroless
-    check_case "Distroless Java serves HTTP from a Maven-built jar ($platform)" \
+    full_only check_case "Distroless Java serves HTTP from a Maven-built jar ($platform)" \
         minimal_service "$platform" java 'java:42' java
-    check_case "Distroless cc runs C++ with glibc and libstdc++ ($platform)" \
+    full_only check_case "Distroless cc runs C++ with glibc and libstdc++ ($platform)" \
         minimal_program "$platform" cpp 'cpp:42' cpp
-    check_case "Distroless base runs a dynamically linked cgo binary ($platform)" \
+    full_only check_case "Distroless base runs a dynamically linked cgo binary ($platform)" \
         minimal_program "$platform" cgo 'cgo:42' golang --target base
-    check_case "Distroless static Go validates HTTPS with its CA bundle ($platform)" \
+    full_only check_case "Distroless static Go validates HTTPS with its CA bundle ($platform)" \
         minimal_program "$platform" static 'https:200' golang --target static
-    check_case "Scratch static Go validates HTTPS with a copied CA bundle ($platform)" \
+    full_only check_case "Scratch static Go validates HTTPS with a copied CA bundle ($platform)" \
         minimal_program "$platform" scratch 'https:200' golang --target bare
-    check_case "Chainguard Node slim serves HTTP using node_modules ($platform)" \
+    full_only check_case "Chainguard Node slim serves HTTP using node_modules ($platform)" \
         minimal_service "$platform" wolfi-node 'node:&lt;42&gt;' node \
         --target wolfi
-    check_case "Chainguard Python runs a pure-Python dependency ($platform)" \
+    full_only check_case "Chainguard Python runs a pure-Python dependency ($platform)" \
         minimal_program "$platform" wolfi-python 'python:pure:42' python --target wolfi
-    check_case "Ubuntu chiseled ASP.NET serves HTTP ($platform)" \
+    full_only check_case "Ubuntu chiseled ASP.NET serves HTTP ($platform)" \
         minimal_service "$platform" dotnet 'dotnet:42' dotnet
 done
