@@ -7,15 +7,14 @@ area=$PWD
 cd source
 unit=homebox-smoke-newsdigest
 export COMPOSE_PROJECT_NAME=$unit
+compose=(docker compose -f compose.yaml -f "$area/compose.smoke.yaml")
 if [ "${1:-}" = --cleanup ]; then
     if systemctl is-active --quiet "$unit"; then
         sudo -n systemctl stop "$unit"
     fi
-    exec timeout 2m docker compose down --volumes
+    exec timeout 2m "${compose[@]}" down --volumes
 fi
 
-export DATABASE_URL=postgres://postgres@127.0.0.1:5432/news_digest
-export REDIS_URL=redis://127.0.0.1:6379
 export READER_PUBLISHED_ONLY=1
 node_home=$("$HOME/.local/bin/mise" where node@22)
 export PATH="$area/tools/node_modules/.bin:$node_home/bin:$PATH"
@@ -40,10 +39,15 @@ check 'News Digest unit tests' run_suite unit timeout 8m pnpm test:unit
 check 'News Digest isolated integration tests' run_suite integration timeout 20m pnpm test:integration
 
 boot() {
-    timeout 5m docker compose up -d || return
+    local postgres redis
+    timeout 5m "${compose[@]}" up -d || return
     timeout 60s bash -c \
-        'until docker compose exec -T postgres pg_isready -h 127.0.0.1 -U postgres -d news_digest &&
-              docker compose exec -T redis redis-cli ping | grep -qx PONG; do sleep 1; done' || return
+        'until "$@" exec -T postgres pg_isready -h 127.0.0.1 -U postgres -d news_digest &&
+              "$@" exec -T redis redis-cli ping | grep -qx PONG; do sleep 1; done' bash "${compose[@]}" || return
+    postgres=$(timeout 10s "${compose[@]}" port postgres 5432) || return
+    redis=$(timeout 10s "${compose[@]}" port redis 6379) || return
+    export DATABASE_URL="postgres://postgres@$postgres/news_digest"
+    export REDIS_URL="redis://$redis"
     timeout 2m pnpm migrate || return
     timeout 30s node "$area/seed.cjs" || return
     sudo -n systemd-run --unit="$unit" --collect --uid="$(id -u)" --gid="$(id -g)" \

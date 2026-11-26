@@ -20,6 +20,7 @@ smoke/run.sh NAME runtimes   # one area
 ```
 
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
+To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
 ## From another machine on the LAN
 
@@ -44,6 +45,34 @@ published host port for guest port 8000 if it differs from 12000. Guest port
 Setup scripts install tools a user would install themselves; tools nearly every
 VM needs belong in the guest profile (`guest/`) instead, so they're there from
 the first boot.
+
+## Container image cache
+
+`run.sh` loads the image archives for the containers and services areas into
+Docker before guest setup. The [containers](containers/images.txt) and
+[services](services/images.txt) manifests list the references and platforms.
+For an optional News Digest checkout, the runner reads that checkout's
+`docker compose config --images` after staging its source.
+
+The Mac stores archives under `${XDG_CACHE_HOME:-$HOME/.cache}/homebox/smoke-images/v1`.
+Set `SMOKE_IMAGE_CACHE_DIR` to override the directory above `v1`. Keys include
+the reference, including any pinned digest, and the platform set.
+Docker pulls misses in the guest and retries rate-limit responses with backoff.
+Cold runs can still hit Docker Hub limits. To authenticate pulls, run
+`docker login` inside the scratch guest before running smoke. The Ubuntu
+profile's separate first-boot self-test still pulls `hello-world`.
+
+```sh
+SMOKE_IMAGE_CACHE_REFRESH=1 smoke/run.sh NAME containers
+smoke/cache.sh prune
+```
+
+Refresh pulls again and replaces each archive after a successful save. Prune
+clears cache archives on the Mac. Both operations use the same cache directory
+as the runner. The Mac transfers archives over pinned SSH. Podman imports its
+Alpine base from the guest's Docker store, and Buildx uses Docker's built-in
+builder so it can consume the same local platform variants. The containers
+suite still needs public network access for package repositories.
 
 ## Where it has run
 

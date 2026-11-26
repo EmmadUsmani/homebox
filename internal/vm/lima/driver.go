@@ -50,9 +50,15 @@ func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {
 		return err
 	}
+	if spec.ImageDisk != "" && runtime.GOOS != "darwin" {
+		return errors.New("creating a VM from a saved image requires Lima with VZ on macOS")
+	}
 	data, err := renderConfig(spec, runtime.GOOS)
 	if err != nil {
 		return fmt.Errorf("render Lima config for %q: %w", spec.Name, err)
+	}
+	if spec.ImageDisk != "" {
+		return d.createFromImage(ctx, spec, data)
 	}
 	dir, err := os.MkdirTemp("", "homebox-lima-")
 	if err != nil {

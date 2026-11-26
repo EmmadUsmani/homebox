@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -89,14 +90,17 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 	box(time.Minute, "host", "init", "--authorized-key", laptopKey+".pub")
 	store := &state.Store{Root: root}
-	t.Cleanup(func() {
-		if _, err := store.Load(name); !errors.Is(err, os.ErrNotExist) {
-			if output, err := run(2*time.Minute, binary, "rm", "-f", name); err != nil {
-				cleanupOK = false
-				t.Errorf("clean up VM (state kept at %s): %v\n%s", root, err, output)
+	cleanupVM := func(name string) {
+		t.Cleanup(func() {
+			if _, err := store.Load(name); !errors.Is(err, os.ErrNotExist) {
+				if output, err := run(2*time.Minute, binary, "rm", "-f", name); err != nil {
+					cleanupOK = false
+					t.Errorf("clean up VM (state kept at %s): %v\n%s", root, err, output)
+				}
 			}
-		}
-	})
+		})
+	}
+	cleanupVM(name)
 
 	box(12*time.Minute, "new", name, "--cpus", "2", "--memory", "4", "--disk", "20")
 	record, err := store.Load(name)
@@ -283,6 +287,9 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 	t.Log("SSH rejected the tampered host key")
 	checkResize(t, name, binary, box, run)
 	t.Log(box(2*time.Minute, "doctor", name))
+	if runtime.GOOS == "darwin" {
+		checkImage(t, name, binary, store, box, run, cleanupVM)
+	}
 	box(2*time.Minute, "rm", "-f", name)
 	if output := box(time.Minute, "ls"); strings.Contains(output, name) {
 		t.Fatalf("removed VM still in listing:\n%s", output)

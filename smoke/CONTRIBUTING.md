@@ -15,6 +15,11 @@ Read [README.md](README.md), [run.sh](run.sh) and [lib.sh](lib.sh) first.
   or its network rules is a known limit: `skip` it with the reason and record
   it in the area's README. Never weaken isolation to make a check pass.
 
+- List each container image the area consumes in `images.txt`. Use
+  `native` (the default), `amd64`, or `both` after the reference. Include the
+  digest in the reference if the fixture pins it. Keep the manifest and build,
+  Compose and test fixtures in sync.
+
 ## Checks from another machine
 
 Add `AREA/remote.sh` for a check that runs on a laptop over the LAN.
