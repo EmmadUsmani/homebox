@@ -53,7 +53,10 @@ for area in "$@"; do
         SMOKE_VM=$name BOX=$box sh "$here/$area/prepare.sh" </dev/null >"$log" 2>&1 || status=$?
         cat "$log"
         if [ "$status" -ne 0 ]; then
-            [ "$status" -eq 77 ] || failed="$failed $area-prepare"
+            if [ "$status" -ne 77 ]; then
+                printf '%s prepare exited with status %s\n' "$area" "$status" >&2
+                failed="$failed $area-prepare"
+            fi
             continue
         fi
     fi
@@ -65,6 +68,7 @@ for area in "$@"; do
         "$box" ssh "$name" -- "cd ~/homebox-smoke/$area && SMOKE_LEVEL=$SMOKE_LEVEL SMOKE_MATCH='$match_quoted' bash -l ./$phase.sh" </dev/null >"$log" 2>&1 || status=$?
         cat "$log"
         if [ "$status" -ne 0 ]; then
+            printf '%s %s exited with status %s\n' "$area" "$phase" "$status" >&2
             failed="$failed $area-$phase"
             [ "$phase" = setup ] && break
         fi
@@ -75,7 +79,10 @@ for area in "$@"; do
         status=0
         SMOKE_VM=$name BOX=$box SMOKE_ARTIFACTS=$results sh "$here/$area/host.sh" </dev/null >"$log" 2>&1 || status=$?
         cat "$log"
-        [ "$status" -eq 0 ] || failed="$failed $area-host"
+        if [ "$status" -ne 0 ]; then
+            printf '%s host exited with status %s\n' "$area" "$status" >&2
+            failed="$failed $area-host"
+        fi
     fi
 done
 

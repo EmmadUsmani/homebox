@@ -3,6 +3,7 @@ set -euo pipefail
 
 # The guest-profile change slice only uses runtimes installed at first boot.
 if [[ ${SMOKE_LEVEL:-full} == quick && ${SMOKE_MATCH:-} == "$(<profile-match)" ]]; then
+    echo "Using the runtimes provisioned by the guest profile"
     exit 0
 fi
 
