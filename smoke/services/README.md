@@ -8,8 +8,8 @@ smoke/run.sh smoke-services services
 
 Setup installs PostgreSQL, MariaDB, Redis, Valkey, memcached, RabbitMQ,
 nginx, Caddy and mkcert from Ubuntu. It installs Python client libraries
-in a virtual environment and pulls pinned Linux ARM64-capable Garage and
-MongoDB images. The download speed dominates the first run. Allow several
+in a virtual environment. The [smoke runner](../README.md#container-image-cache)
+stages versioned Linux ARM64-capable Garage and MongoDB images. Allow several
 minutes for setup and about two minutes for healthy checks.
 [Garage quick start](https://garagehq.deuxfleurs.fr/documentation/quick-start/)
 
