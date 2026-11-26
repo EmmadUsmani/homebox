@@ -18,7 +18,7 @@ smoke/run.sh NAME            # every area
 smoke/run.sh NAME languages  # one area
 ```
 
-Logs go to `.smoke-results/` (ignored by git).
+Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Setup scripts install tools a user would install themselves; tools nearly every
 VM needs belong in the guest profile (`guest/`) instead, so they're there from
