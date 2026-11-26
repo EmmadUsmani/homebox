@@ -73,9 +73,11 @@ full_only check 'Build the optional cross-compiler' ./cross-compiler.sh
 Use `full_only` for slow or heavier scenarios and for setup used only by those
 scenarios. In `quick`, keep representative checks and the setup they need.
 
-`SMOKE_MATCH` is a case-sensitive extended regular expression applied by
+`SMOKE_MATCH` is a case-insensitive extended regular expression applied by
 `check` and `check_sh` to the label before the command runs. Filtered checks
-produce no result line. Setup and code outside these helpers still run.
+produce no result line. Use the tool, protocol or image family name in
+labels so related checks can be selected together. Setup and code outside
+these helpers still run.
 Keep prerequisites outside filtered assertions, or select dependent checks
 and their prerequisites in the same expression. A multi-check host harness
 can use `smoke_matches 'Group label'` to decide whether to run the group.

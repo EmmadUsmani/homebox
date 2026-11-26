@@ -1,31 +1,31 @@
-# Reference [native|amd64|both]
-alpine:3.22 both
+# Reference [native|amd64|both] [quick]
+alpine:3.22 both quick
 debian:bookworm-slim
 ubuntu:24.04
 fedora:44
 rockylinux:9
 opensuse/tumbleweed:latest
 archlinux:base amd64
-busybox:1.37
+busybox:1.37 native quick
 python:3.13-alpine
 nginx:1.28-alpine
 kindest/node:v1.32.2@sha256:f226345927d7e348497136874b6d207e0b32cc52154ad8323129352923a3142f
 testcontainers/ryuk:0.14.0
-postgres:17-alpine
-redis:7.4-alpine
-node:22-alpine
-node:26-trixie
+postgres:17-alpine native quick
+redis:7.4-alpine native quick
+node:22-alpine native quick
+node:26-trixie native quick
 python:3.13-slim-trixie both
 maven:3.9.11-eclipse-temurin-21
 gcc:14-bookworm both
 golang:1.26-trixie both
 gcr.io/distroless/static-debian12:debug-nonroot
-gcr.io/distroless/static-debian12:nonroot both
+gcr.io/distroless/static-debian12:nonroot both quick
 gcr.io/distroless/cc-debian13:nonroot@sha256:29ee70762214fe8190cea04ef1c0a84a8365879e047ce8f911ae5a5ab2355fa2 both
 gcr.io/distroless/base-debian13:nonroot@sha256:7088bf1cdc94a65af4e0d5ad94518ed489a372dec1ece38ff4411c6c15fb5864 both
 gcr.io/distroless/static-debian13:nonroot@sha256:8ce6dd87e9823c5b48dcfb2c8604714ccb351ce59607327bcc4957448da279b5 both
 gcr.io/distroless/java21-debian13:nonroot@sha256:128bd878463537eef7771b50fecf68faace9089f654a2d233f1c4f344e6817d9 both
-gcr.io/distroless/nodejs26-debian13:nonroot@sha256:a84242e747fbb5aaaa0180c273b6f7130ca34b3300082192ef58eea96089eb3c both
+gcr.io/distroless/nodejs26-debian13:nonroot@sha256:a84242e747fbb5aaaa0180c273b6f7130ca34b3300082192ef58eea96089eb3c both quick
 gcr.io/distroless/python3-debian13:nonroot@sha256:72de1dda9d4c52c370e2ef2d93c28e3e1a8193c92058b7dfa42bace38a83d114 both
 cgr.dev/chainguard/node:latest-slim@sha256:536120901f773f50dd86982aab864d4e498dcc0ae20dde215ce9a020f26b6b8b both
 cgr.dev/chainguard/python:latest@sha256:4ba1897d53045d3661b549ca66aa1888816d67c27632aca7913cd521d10589cc both

@@ -35,21 +35,21 @@ build_hello() {
 }
 
 check 'GCC glibc locale, iconv, dlopen, pthreads and getaddrinfo' glibc gcc
-check 'Clang glibc locale, iconv, dlopen, pthreads and getaddrinfo' glibc clang
+full_only check 'Clang glibc locale, iconv, dlopen, pthreads and getaddrinfo' glibc clang
 check 'GCC static glibc binary' build_hello gcc -static
-check 'GCC static musl binary' build_hello musl-gcc -static
+full_only check 'GCC static musl binary' build_hello musl-gcc -static
 check_sh 'Make builds and runs a dynamic C program' '
     timeout 60 make && readelf -l hello > hello.headers &&
     grep -q INTERP hello.headers && [[ $(./hello) == native-smoke ]]'
-check_sh 'CMake with Ninja builds and runs a C program' '
+full_only check_sh 'CMake with Ninja builds and runs a C program' '
     timeout 60 cmake -G Ninja -S . -B cmake-out &&
     timeout 60 cmake --build cmake-out &&
     [[ $(./cmake-out/hello) == native-smoke ]]'
-check_sh 'Meson with Ninja builds and runs a C program' '
+full_only check_sh 'Meson with Ninja builds and runs a C program' '
     timeout 60 meson setup meson-out &&
     timeout 60 meson compile -C meson-out &&
     [[ $(./meson-out/hello) == native-smoke ]]'
-check_sh 'Autotools regenerates, configures and builds a C program' '
+full_only check_sh 'Autotools regenerates, configures and builds a C program' '
     mkdir autotools && cp configure.ac Makefile.am hello.c autotools/ &&
     cd autotools && timeout 60 autoreconf -fi && timeout 60 ./configure &&
     timeout 60 make -B && [[ $(./hello) == native-smoke ]]'
@@ -60,8 +60,8 @@ modern_cpp() {
 }
 
 check 'GCC C++20 format, filesystem, jthread and ranges' modern_cpp g++ c++20
-check 'GCC C++23 format, filesystem, jthread and ranges' modern_cpp g++ c++23
-check 'Clang C++23 with libstdc++' modern_cpp clang++ c++23
+full_only check 'GCC C++23 format, filesystem, jthread and ranges' modern_cpp g++ c++23
+full_only check 'Clang C++23 with libstdc++' modern_cpp clang++ c++23
 
 build_libraries() {
     local flags
@@ -71,28 +71,38 @@ build_libraries() {
 }
 
 check 'pkg-config resolves and links C library dependencies' build_libraries
-check 'zlib compresses and restores a payload' timeout 30 ./libraries zlib
-check 'OpenSSL libcrypto computes SHA-256' timeout 30 ./libraries crypto
-check 'libcurl makes a certificate-verified HTTPS request' timeout 30 ./libraries https
-check 'SQLite C API creates, inserts and queries' timeout 30 ./libraries sqlite
-check 'libuv schedules and closes a timer' timeout 30 ./libraries uv
-check 'ncurses initializes an xterm screen and reads a drawn cell' timeout 30 ./libraries curses
+probe_library() {
+    [[ -x ./libraries ]] || build_libraries || return
+    timeout 30 ./libraries "$1"
+}
+check 'zlib compresses and restores a payload' probe_library zlib
+check 'OpenSSL libcrypto computes SHA-256' probe_library crypto
+check 'libcurl makes a certificate-verified HTTPS request' probe_library https
+check 'SQLite C API creates, inserts and queries' probe_library sqlite
+check 'libuv schedules and closes a timer' probe_library uv
+check 'ncurses initializes an xterm screen and reads a drawn cell' probe_library curses
 
-check 'GDB captures SIGABRT and the fixture backtrace' bash -o pipefail -c '
+full_only check 'GDB captures SIGABRT and the fixture backtrace' bash -o pipefail -c '
     timeout 60 gcc -g -O0 crash.c -o crash &&
     timeout 45 gdb -nx -batch -ex run -ex bt ./crash > gdb.log 2>&1 &&
     cat gdb.log && grep -q SIGABRT gdb.log && grep -q crash_fixture gdb.log'
-check 'GDB writes and reopens a core dump' bash -c '
+full_only check 'GDB writes and reopens a core dump' bash -c '
+    { test -x ./crash || timeout 60 gcc -g -O0 crash.c -o crash; } &&
     timeout 45 gdb -nx -batch -ex run -ex "generate-core-file crash.core" ./crash &&
     test -s crash.core &&
     timeout 45 gdb -nx -batch -ex bt ./crash crash.core > core.log 2>&1 &&
     cat core.log && grep -q crash_fixture core.log'
-check 'Valgrind Memcheck runs a dynamic C binary' run_hello \
-    valgrind --error-exitcode=1 --leak-check=full ./hello
+memcheck() {
+    [[ -x ./hello ]] || timeout 60 make || return
+    run_hello valgrind --error-exitcode=1 --leak-check=full ./hello
+}
+full_only check 'Valgrind Memcheck runs a dynamic C binary' memcheck
 check 'strace observes a write syscall' bash -c '
+    { test -x ./hello || timeout 60 make; } &&
     timeout 30 strace -o syscalls.log -e trace=write ./hello &&
     grep -q "write(1, .*native-smoke" syscalls.log'
-check 'ltrace observes a libc call' bash -c '
+full_only check 'ltrace observes a libc call' bash -c '
+    { test -x ./hello || timeout 60 make; } &&
     timeout 30 ltrace -o libc.log -e puts ./hello &&
     cat libc.log && grep -q "puts(.*native-smoke" libc.log'
 
@@ -100,21 +110,24 @@ check 'AddressSanitizer and UBSan run a threaded C fixture' bash -c '
     timeout 60 gcc -g -O1 -fsanitize=address,undefined -fno-sanitize-recover=all \
         -pthread posix.c -ldl -o sanitized &&
     timeout 30 ./sanitized'
-check 'ThreadSanitizer runs a joined pthread' bash -c '
+full_only check 'ThreadSanitizer runs a joined pthread' bash -c '
     timeout 60 gcc -g -O1 -fsanitize=thread -pthread posix.c -ldl -o thread-sanitized &&
     TSAN_OPTIONS=halt_on_error=1 timeout 30 ./thread-sanitized'
 
-for event in task-clock cycles; do
-    if timeout 20 sudo -n perf stat -x ';' -e "$event" -- true > perf.log 2>&1 &&
-        grep -Eq "^[0-9.]+;[^;]*;$event;" perf.log; then
-        pass "perf counts $event"
-    elif grep -Eqi 'not supported|permission|not permitted' perf.log; then
-        skip "perf $event unavailable: $(tail -n 8 perf.log | xargs)"
-    else
-        fail "perf $event did not return a count"
-        cat perf.log
-    fi
-done
+if [[ ${SMOKE_LEVEL:-full} == full ]]; then
+    for event in task-clock cycles; do
+        smoke_matches "perf counts $event" || continue
+        if timeout 20 sudo -n perf stat -x ';' -e "$event" -- true > perf.log 2>&1 &&
+            grep -Eq "^[0-9.]+;[^;]*;$event;" perf.log; then
+            pass "perf counts $event"
+        elif grep -Eqi 'not supported|permission|not permitted' perf.log; then
+            skip "perf $event unavailable: $(tail -n 8 perf.log | xargs)"
+        else
+            fail "perf $event did not return a count"
+            cat perf.log
+        fi
+    done
+fi
 
 go_check() {
     (cd go && timeout 300 mise exec go@1.25.14 -- go "$@")
@@ -131,20 +144,26 @@ go_cross() {
         file "$binary" | grep -Eq "$format"
 }
 
-check 'Go fetches a pinned module through the module proxy' go_download
+full_only check 'Go fetches a pinned module through the module proxy' go_download
 check 'Go tests call C through cgo' go_check test -count=1 ./...
-check 'Go race runtime with cgo' go_check test -race -count=1 ./...
-check 'Go cross-compiles a Linux amd64 ELF' go_cross linux amd64 'ELF.*x86-64'
-check 'Go cross-compiles a Darwin arm64 Mach-O' go_cross darwin arm64 'Mach-O.*arm64'
+full_only check 'Go race runtime with cgo' go_check test -race -count=1 ./...
+full_only check 'Go cross-compiles a Linux amd64 ELF' go_cross linux amd64 'ELF.*x86-64'
+full_only check 'Go cross-compiles a Darwin arm64 Mach-O' go_cross darwin arm64 'Mach-O.*arm64'
 
-check 'QEMU interprets the Linux amd64 executable' bash -c '
-    [[ $(timeout 30 qemu-x86_64 ./go-linux-amd64) == 00000000-0000-0000-0000-000000000000 ]]'
-if [[ $(uname -m) == aarch64 ]]; then
-    check 'binfmt transparently dispatches Linux amd64 to QEMU' bash -c '
-        grep -qx enabled /proc/sys/fs/binfmt_misc/qemu-x86_64 &&
-        [[ $(timeout 30 ./go-linux-amd64) == 00000000-0000-0000-0000-000000000000 ]]'
-else
-    skip 'binfmt dispatch requires a non-amd64 guest'
+run_amd64() {
+    [[ -x ./go-linux-amd64 ]] || go_cross linux amd64 'ELF.*x86-64' || return
+    [[ $(timeout 30 "$@" ./go-linux-amd64) == 00000000-0000-0000-0000-000000000000 ]]
+}
+binfmt_check() {
+    grep -qx enabled /proc/sys/fs/binfmt_misc/qemu-x86_64 && run_amd64 env
+}
+full_only check 'QEMU interprets the Linux amd64 executable' run_amd64 qemu-x86_64
+if [[ ${SMOKE_LEVEL:-full} == full ]]; then
+    if [[ $(uname -m) == aarch64 ]]; then
+        check 'binfmt transparently dispatches Linux amd64 to QEMU' binfmt_check
+    elif smoke_matches 'binfmt transparently dispatches Linux amd64 to QEMU'; then
+        skip 'binfmt dispatch requires a non-amd64 guest'
+    fi
 fi
 
 cargo_check() {
@@ -171,13 +190,13 @@ rust_server() (
 )
 
 check 'Cargo fetches crates and runs a Tokio test' cargo_check test --locked
-check 'rustfmt checks the Axum project' cargo_check fmt -- --check
-check 'Clippy lints the Axum project' cargo_check clippy --locked --all-targets -- -D warnings
-check 'Tokio and Axum serve a real HTTP request on guest loopback' rust_server
-check 'Zig compiles and runs a libc-linked executable' bash -c '
+full_only check 'rustfmt checks the Axum project' cargo_check fmt -- --check
+full_only check 'Clippy lints the Axum project' cargo_check clippy --locked --all-targets -- -D warnings
+full_only check 'Tokio and Axum serve a real HTTP request on guest loopback' rust_server
+full_only check 'Zig compiles and runs a libc-linked executable' bash -c '
     timeout 120 mise exec zig@0.15.2 -- zig build-exe -lc hello.zig &&
     [[ $(timeout 30 ./hello) == native-smoke ]]'
-check 'Zig runs unit tests' timeout 120 mise exec zig@0.15.2 -- zig test hello.zig
+full_only check 'Zig runs unit tests' timeout 120 mise exec zig@0.15.2 -- zig test hello.zig
 
 wasi() {
     local release=36.0.0 architecture
@@ -194,7 +213,7 @@ wasi() {
         run_hello "./$archive/wasmtime" run hello.wasm
 }
 
-check 'Rust WASI module prints through Wasmtime' wasi
+full_only check 'Rust WASI module prints through Wasmtime' wasi
 
 brew_install() {
     local brew=/home/linuxbrew/.linuxbrew/bin/brew
@@ -242,13 +261,15 @@ apt_source() (
     compgen -G 'hello-*/debian/control' > /dev/null
 )
 
-check 'Homebrew installs a formula and runs it' brew_install
-check 'Nix resolves a flake and runs an executable' nix_run
+full_only check 'Homebrew installs a formula and runs it' brew_install
+full_only check 'Nix resolves a flake and runs an executable' nix_run
 if dpkg-query -W -f='${db:Status-Status}' hello 2>/dev/null | grep -qx installed; then
-    skip 'apt lifecycle would alter the existing hello package'
+    if smoke_matches 'apt installs, holds, unholds and purges a package'; then
+        skip 'apt lifecycle would alter the existing hello package'
+    fi
 else
     check 'apt installs, holds, unholds and purges a package' apt_lifecycle
 fi
-check 'apt fetches and unpacks a source package using isolated indexes' apt_source
+full_only check 'apt fetches and unpacks a source package using isolated indexes' apt_source
 
 finish

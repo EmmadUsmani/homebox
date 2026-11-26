@@ -22,7 +22,12 @@ full_only() {
 }
 
 smoke_matches() {
-    [ -z "${SMOKE_MATCH:-}" ] || printf '%s\n' "$1" | grep -Eq -- "$SMOKE_MATCH"
+    [ -z "${SMOKE_MATCH:-}" ] || printf '%s\n' "$1" | grep -Eiq -- "$SMOKE_MATCH"
+}
+
+# Image manifest rows default to full. A quick row stages only its native image.
+smoke_image_enabled() {
+    [ "${SMOKE_LEVEL:-full}" = full ] || [ "$1" = quick ]
 }
 
 # check LABEL COMMAND [ARG...]

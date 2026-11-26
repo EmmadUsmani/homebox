@@ -1,5 +1,13 @@
 # Runtime smoke tests
 
+Quick uses the guest profile’s Node and Python to exercise the Node test
+runner, npm/pnpm/Yarn installs, Python wheels and a compiled extension,
+and starts the two coding-agent CLIs.
+
+Full installs the extra runtimes and adds Bun, Deno, Node add-ons and web
+frameworks, uv/pipx, Python services and notebooks, Rails, Java with Maven
+and Gradle, PHP, Elixir and .NET.
+
 Run `smoke/run.sh NAME runtimes` from the host against a disposable Ubuntu VM.
 Setup installs Ruby, Bun, Deno, a Java 21 JDK, Maven, Gradle and the .NET SDK in
 the guest user's global mise config. It uses apt for PHP, Composer, Elixir,

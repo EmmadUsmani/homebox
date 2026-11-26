@@ -155,15 +155,15 @@ store() {
     check "$1" timeout 120 bash -euo pipefail -c '"$@"' smoke "${@:2}"
 }
 
-store 'SQLite WAL, FTS5 and JSON survive reopening the database' sqlite_test
+full_only store 'SQLite WAL, FTS5 and JSON survive reopening the database' sqlite_test
 store 'PostgreSQL extensions and rows survive service restart' postgres_test
-store 'MariaDB rows survive service restart' mariadb_test
+full_only store 'MariaDB rows survive service restart' mariadb_test
 store 'Redis pub/sub, streams and snapshot reload' redis_test redis 16379
-store 'Valkey pub/sub, streams and snapshot reload' redis_test valkey 16380
-store 'Memcached round trip and expected cache loss on restart' unit_store memcached memcached
+full_only store 'Valkey pub/sub, streams and snapshot reload' redis_test valkey 16380
+full_only store 'Memcached round trip and expected cache loss on restart' unit_store memcached memcached
 store 'RabbitMQ durable queue delivers a confirmed message after restart' unit_store rabbitmq rabbitmq-server
 store 'Garage S3 object survives container restart' garage_test
-store 'MongoDB ARM64 document survives container restart' container_store mongo homebox-smoke-mongo \
+full_only store 'MongoDB ARM64 document survives container restart' container_store mongo homebox-smoke-mongo \
     -p 127.0.0.1:19001:27017 mongo:8.0.10
 
 "$python" web.py http >"$SMOKE_TMP/http.log" 2>&1 &
@@ -244,11 +244,11 @@ check 'Caddy proxies HTTP/2 with a verified local CA' tls_test
 check 'Caddy proxies WebSocket messages on an open connection' timeout 25 "$python" web.py ws-client ws://127.0.0.1:18104/
 check 'nginx proxies two server-sent events on one connection' sse
 export -f transfer
-check 'nginx proxies 16 MiB uploads and downloads intact' bash -euo pipefail -c transfer
+full_only check 'nginx proxies 16 MiB uploads and downloads intact' bash -euo pipefail -c transfer
 check 'GraphQL resolves a query over HTTP' graphql
 check 'gRPC echoes a payload over HTTP/2' timeout 15 "$python" web.py grpc
 check 'Chromium WebRTC peers exchange data and receive a video frame' timeout 40 node rtc.cjs local
-check 'Chromium gathers a public STUN server-reflexive candidate' timeout 30 node rtc.cjs stun
+full_only check 'Chromium gathers a public STUN server-reflexive candidate' timeout 30 node rtc.cjs stun
 
 git_clone() {
     local attempt
@@ -262,8 +262,10 @@ git_clone() {
 }
 
 check 'Git shallow clone over HTTPS' git_clone
-for url in https://registry.npmjs.org/ https://pypi.org/simple/pytest/ https://crates.io/api/v1/crates/serde https://github.com/; do
-    check "HTTPS $url" curl -4fsS --connect-timeout 6 --max-time 15 \
+check 'HTTPS https://registry.npmjs.org/' curl -4fsS --connect-timeout 6 --max-time 15 \
+    --retry 2 --retry-all-errors --retry-max-time 35 -A homebox-smoke -o /dev/null https://registry.npmjs.org/
+for url in https://pypi.org/simple/pytest/ https://crates.io/api/v1/crates/serde https://github.com/; do
+    full_only check "HTTPS $url" curl -4fsS --connect-timeout 6 --max-time 15 \
         --retry 2 --retry-all-errors --retry-max-time 35 -A homebox-smoke -o /dev/null "$url"
 done
 
@@ -271,9 +273,10 @@ dns() {
     dig +time=3 +tries=2 +short "$2" "$1" | grep -E "."
 }
 
-for pair in 'A example.com' 'AAAA example.com' 'TXT example.com' 'MX gmail.com'; do
+check 'DNS A example.com' dns A example.com
+for pair in 'AAAA example.com' 'TXT example.com' 'MX gmail.com'; do
     read -r type domain <<< "$pair"
-    check "DNS $type $domain" dns "$type" "$domain"
+    full_only check "DNS $type $domain" dns "$type" "$domain"
 done
 check_sh 'IPv4 HTTPS works while IPv6 has no public route' \
     'curl -4fsS --max-time 8 -o /dev/null https://www.cloudflare.com/ &&

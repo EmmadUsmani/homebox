@@ -1,2 +1,3 @@
-dxflrs/garage:v2.6.0
+# Reference [native|amd64|both] [quick]
+dxflrs/garage:v2.6.0 native quick
 mongo:8.0.10

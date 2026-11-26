@@ -43,30 +43,30 @@ distro() {
 }
 architecture=$(dpkg --print-architecture) || exit 1
 export native="linux/$architecture"
-check 'Debian apt installs and runs jq' distro "$native" debian:bookworm-slim \
+full_only check 'Debian apt installs and runs jq' distro "$native" debian:bookworm-slim \
     'apt-get update && apt-get install -y --no-install-recommends jq && test "$(jq -n 42)" = 42'
-check 'Ubuntu apt installs and runs jq' distro "$native" ubuntu:24.04 \
+full_only check 'Ubuntu apt installs and runs jq' distro "$native" ubuntu:24.04 \
     'apt-get update && apt-get install -y --no-install-recommends jq && test "$(jq -n 42)" = 42'
 check 'Alpine apk installs and runs jq' distro "$native" "$alpine" \
     'apk add --no-cache jq && test "$(jq -n 42)" = 42'
-check 'Fedora dnf installs and runs jq' distro "$native" fedora:44 \
+full_only check 'Fedora dnf installs and runs jq' distro "$native" fedora:44 \
     'dnf -y install jq && test "$(jq -n 42)" = 42'
-check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 \
+full_only check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 \
     'dnf -y install jq && test "$(jq -n 42)" = 42'
-check 'openSUSE zypper installs and runs jq' distro "$native" opensuse/tumbleweed:latest \
+full_only check 'openSUSE zypper installs and runs jq' distro "$native" opensuse/tumbleweed:latest \
     'zypper --non-interactive install jq && test "$(jq -n 42)" = 42'
 pacman_flags=
 if [[ "$native" != linux/amd64 ]]; then
     pacman_flags=--disable-sandbox-syscalls
 fi
-check 'Arch Linux pacman installs and runs jq on amd64' distro linux/amd64 archlinux:base \
+full_only check 'Arch Linux pacman installs and runs jq on amd64' distro linux/amd64 archlinux:base \
     "pacman -Sy --noconfirm $pacman_flags jq"' && test "$(jq -n 42)" = 42'
-check 'BusyBox executes its awk applet' distro "$native" busybox:1.37 \
+full_only check 'BusyBox executes its awk applet' distro "$native" busybox:1.37 \
     'test "$(awk "BEGIN {print 6*7}")" = 42'
-check 'Distroless debug image runs as nonroot' timeout 90 docker run --rm \
+full_only check 'Distroless debug image runs as nonroot' timeout 90 docker run --rm \
     --entrypoint /busybox/sh gcr.io/distroless/static-debian12:debug-nonroot \
     -ec 'test "$(/busybox/id -u)" = 65532 && test ! -e /bin/sh'
-check 'Docker runs an amd64 executable' distro linux/amd64 "$alpine" 'test "$(uname -m)" = x86_64'
+full_only check 'Docker runs an amd64 executable' distro linux/amd64 "$alpine" 'test "$(uname -m)" = x86_64'
 
 build_cache() (
     set -e
@@ -90,7 +90,7 @@ build_amd64() (
     timeout 20 docker cp "$prefix-build-result:/result" "$scratch/amd64-result"
     grep -Fx 'amd64:x86_64' "$scratch/amd64-result"
 )
-check_case 'Buildx executes an amd64 build stage and loads the resulting image' build_amd64
+full_only check_case 'Buildx executes an amd64 build stage and loads the resulting image' build_amd64
 
 build_multi_platform() (
     set -e
@@ -99,12 +99,12 @@ build_multi_platform() (
     grep -Fx 'arm64:aarch64' "$scratch/platforms/linux_arm64/result"
     grep -Fx 'amd64:x86_64' "$scratch/platforms/linux_amd64/result"
 )
-check_case 'Buildx exports both arm64 and amd64 results from one multi-platform build' build_multi_platform
+full_only check_case 'Buildx exports both arm64 and amd64 results from one multi-platform build' build_multi_platform
 
 compose() {
     timeout 240 docker compose -p "$prefix" -f "$fixtures/compose/compose.yaml" "$@"
 }
-export -f compose
+export -f compose smoke_matches
 
 compose_stack() (
     set -e
@@ -113,6 +113,9 @@ compose_stack() (
 )
 compose_persistence() (
     set -e
+    if ! smoke_matches "Compose web connects to healthy Postgres and Redis by service DNS"; then
+        compose up --build --wait --wait-timeout 120
+    fi
     compose exec -T postgres psql -U postgres -d smoke -v ON_ERROR_STOP=1 \
         -c 'CREATE TABLE smoke_values (value int); INSERT INTO smoke_values VALUES (42);'
     test "$(compose exec -T redis redis-cli --raw SET smoke 42)" = OK
@@ -123,7 +126,7 @@ compose_persistence() (
     test "$(compose exec -T redis redis-cli --raw GET smoke)" = 42
 )
 check_case 'Compose web connects to healthy Postgres and Redis by service DNS' compose_stack
-check_case 'Compose named volumes persist database values across down and up' compose_persistence
+full_only check_case 'Compose named volumes persist database values across down and up' compose_persistence
 
 mount_ownership() (
     set -e
@@ -153,7 +156,7 @@ observe() (
 )
 check_case 'Docker logs, inspect, exec and stats report a live CPU- and memory-limited container' observe
 # Docker can report the exit before its OOMKilled flag is updated.
-check 'Docker kills a process that exceeds its enforced memory limit' \
+full_only check 'Docker kills a process that exceeds its enforced memory limit' \
     timeout 120 docker run --rm --name "$prefix-memory" --memory 32m --memory-swap 32m \
     python:3.13-alpine sh -ec '
         exit_code=0
@@ -189,7 +192,7 @@ podman_rootless() (
     timeout 120 podman build --pull=never -t "$prefix:podman" "$scratch/podman"
     test "$(timeout 30 podman run --rm "$prefix:podman" cat /result)" = podman
 )
-check_case 'Rootless Podman runs a container and builds and runs its own image' podman_rootless
+full_only check_case 'Rootless Podman runs a container and builds and runs its own image' podman_rootless
 
 kubernetes() (
     set -e
@@ -214,7 +217,7 @@ kubernetes() (
     cat "$scratch/port-forward.log"
     return 1
 )
-check_case 'kind deploys an nginx workload reachable through kubectl port-forward' kubernetes
+full_only check_case 'kind deploys an nginx workload reachable through kubectl port-forward' kubernetes
 
 devcontainer() (
     set -e
@@ -225,11 +228,14 @@ devcontainer() (
     timeout 30 "$cli" exec --workspace-folder "$workspace" sh -ec \
         'test "$(id -un)" = vscode && test "$(cat /tmp/homebox-devcontainer)" = ready'
 )
-check_case 'Dev Containers builds, starts, runs postCreateCommand and executes as remoteUser' devcontainer
+full_only check_case 'Dev Containers builds, starts, runs postCreateCommand and executes as remoteUser' devcontainer
 
-cp "$fixtures/testcontainers/smoke.test.cjs" "$tools/" || exit 1
-check 'Node Testcontainers starts a service, waits for HTTP and exercises its mapped port' \
-    timeout 180 node --test "$tools/smoke.test.cjs"
+testcontainers() {
+    cp "$fixtures/testcontainers/smoke.test.cjs" "$tools/" &&
+        timeout 180 node --test "$tools/smoke.test.cjs"
+}
+full_only check 'Node Testcontainers starts a service, waits for HTTP and exercises its mapped port' \
+    testcontainers
 
 # shellcheck source=smoke/containers/minimal.sh
 . ./minimal.sh

@@ -18,6 +18,14 @@ if printf '%s\n' "$paths" | grep -Eq '(^|/)(\.env[^/]*|node_modules)(/|$)'; then
     finish
 fi
 git -C "$repo" archive --format=tar.gz "$revision" >"$archive"
-check "Transfer News Digest source at $revision over pinned SSH" "$BOX" ssh "$SMOKE_VM" -- \
-    'cd ~/homebox-smoke/newsdigest && mkdir source && tar -xzf - -C source' <"$archive"
+transfer() {
+    "$BOX" ssh "$SMOKE_VM" -- \
+        'cd ~/homebox-smoke/newsdigest && mkdir source && tar -xzf - -C source' <"$archive"
+}
+label="Transfer News Digest source at $revision over pinned SSH"
+if smoke_matches "$label"; then
+    check "$label" transfer
+else
+    transfer || fail "$label"
+fi
 finish
