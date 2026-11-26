@@ -3,12 +3,11 @@
 Run on a fresh Ubuntu VM on the Mac. The host checks require Node.js and npm.
 
 ```sh
-box desktop NAME --install
 smoke/run.sh NAME gui
 box doctor NAME
 ```
 
-The guest setup installs GUI development libraries, Noto fonts, Mesa graphics
+Preparation installs the optional desktop layer over pinned SSH. Guest setup installs GUI development libraries, Noto fonts, Mesa graphics
 tools, PulseAudio and Electron, plus the browser dependencies. It adds
 Playwright's Firefox and WebKit to the profile's existing Chromium install;
 Firefox comes from Playwright's own distribution and runs without Snap. The

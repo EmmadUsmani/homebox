@@ -7,7 +7,6 @@ const usage = `Usage:
   scripts/test.sh change|batch|full [--area AREA ...] [--match ERE] [--base REF] [--keep-vm]
   scripts/test.sh last
   scripts/test.sh bisect GOOD BAD change|batch|full [--area AREA ...] [--match ERE]`;
-const vmSize = ["--cpus", "2", "--memory", "4"];
 const tiers = ["change", "batch", "full"];
 const root = process.env.HOMEBOX_TEST_CHECKOUT || path.resolve(__dirname, "..");
 const history = path.join(root, "docs/test-runs.md");
@@ -88,7 +87,8 @@ function selection(options) {
 async function runSuite(options) {
     const selected = selection(options);
     const { tier, match, keep } = options;
-    const disk = tier !== "change" && !selected.scoped ? "80" : "30";
+    const disk = tier !== "change" && options.areas.length === 0 ? "80" : "30";
+    const vmSize = ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
     const freshVM = [...vmSize, "--disk", disk];
     const level = tier === "full" ? "full" : "quick";
     const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])];
@@ -302,7 +302,8 @@ async function runSuite(options) {
         await run("desktop-files", "swift", [path.join(scripts, "verify-files.swift"), bundle,
             env.HOMEBOX_HOME, artifacts, "normal", `local=${vm}`]);
         if (tier === "full") {
-            if (await box("desktop-deps", "ssh", vm, "--", "sudo -n apt-get update && sudo -n apt-get install -y xdotool")) {
+            if (await box("desktop-install", "desktop", vm, "--install") &&
+                await box("desktop-deps", "ssh", vm, "--", "sudo -n apt-get update && sudo -n apt-get install -y xdotool")) {
                 await run("desktop-ui", "swift", [path.join(scripts, "verify-desktop.swift"), bundle,
                     env.HOMEBOX_HOME, vm, artifacts]);
             }
