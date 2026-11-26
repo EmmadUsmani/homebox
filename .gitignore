@@ -7,3 +7,4 @@ coverage.out
 /desktop/bin/
 /desktop/frontend/dist/
 /desktop/frontend/node_modules/
+/.smoke-results/
