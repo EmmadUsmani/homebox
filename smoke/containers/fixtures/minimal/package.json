@@ -1,0 +1,8 @@
+{
+  "name": "homebox-smoke-minimal",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "escape-html": "1.0.3"
+  }
+}

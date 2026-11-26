@@ -1,0 +1,21 @@
+FROM --platform=$BUILDPLATFORM python:3.13-slim-trixie AS pure
+WORKDIR /app
+RUN pip install --no-cache-dir --no-deps --only-binary=:all: --target=/app/deps packaging==25.0
+COPY pure.py ./
+
+FROM python:3.13-slim-trixie AS native
+RUN pip install --no-cache-dir --no-deps --only-binary=:all: --target=/native MarkupSafe==3.0.2
+
+FROM gcr.io/distroless/python3-debian13:nonroot@sha256:72de1dda9d4c52c370e2ef2d93c28e3e1a8193c92058b7dfa42bace38a83d114 AS distroless
+WORKDIR /app
+ENV PYTHONPATH=/app/deps
+COPY --from=pure /app ./
+COPY --from=native /native /app/deps
+COPY native.py ./
+CMD ["native.py"]
+
+FROM cgr.dev/chainguard/python:latest@sha256:4ba1897d53045d3661b549ca66aa1888816d67c27632aca7913cd521d10589cc AS wolfi
+WORKDIR /app
+ENV PYTHONPATH=/app/deps
+COPY --from=pure /app ./
+CMD ["pure.py"]

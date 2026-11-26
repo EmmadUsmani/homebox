@@ -35,7 +35,7 @@ trap 'exit 143' TERM
 
 check_case() {
     export -f "${2:?missing case function}"
-    check "$1" bash -eo pipefail -c "$2"
+    check "$1" bash -eo pipefail -c '"$@"' bash "${@:2}"
 }
 
 distro() {
@@ -231,5 +231,8 @@ check_case 'Dev Containers builds, starts, runs postCreateCommand and executes a
 cp "$fixtures/testcontainers/smoke.test.cjs" "$tools/" || exit 1
 check 'Node Testcontainers starts a service, waits for HTTP and exercises its mapped port' \
     timeout 180 node --test "$tools/smoke.test.cjs"
+
+# shellcheck source=smoke/containers/minimal.sh
+. ./minimal.sh
 
 finish
