@@ -21,7 +21,8 @@ fi
 results=${SMOKE_RESULTS:-$here/../.smoke-results}/$name-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$results"
 
-tar -C "$here" -czf - . | "$box" ssh "$name" -- \
+# Keep macOS resource forks and extended attributes out of guest build contexts.
+COPYFILE_DISABLE=1 tar --no-xattrs -C "$here" -czf - . | "$box" ssh "$name" -- \
     'rm -rf ~/homebox-smoke && mkdir -p ~/homebox-smoke && tar -xzf - -C ~/homebox-smoke'
 
 failed=
