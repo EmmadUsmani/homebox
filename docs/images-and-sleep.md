@@ -27,19 +27,20 @@ the other is everything else.
 
 - **Saving:** stop a VM and run `box image save NAME IMAGE`. Box
   archives the standalone disk and the VZ EFI variables used to boot it.
-  APFS shares blocks through `clonefile`. Other
-  filesystems fall back to a sparse copy. Computing the disk digest takes a
+  APFS shares blocks through `clonefile`. Other filesystems fall back to a
+  sparse copy. Computing the disk digest takes a
   full read of the logical disk even when APFS clones the data.
 - **Using:** `box new NAME --image IMAGE` builds a fresh Lima instance with the
   usual user, index, ports and isolation settings. The driver stages the disk
   and EFI variables before the first start to skip Lima's disk preparation. It
-  boots the saved disk without running the full profile scripts. Its disk is at least as large
-  as the source allocation. The copied files keep their original ownership and
+  boots the saved disk without running the full profile scripts. Its disk is
+  at least as large as the source allocation. The copied files keep their original ownership and
   paths, including any older accounts and home directories.
 - **Identity:** Lima supplies a fresh hostname and cloud-init instance ID. A
   first-boot command replaces the disk's machine ID and SSH host keys. Box
   restarts the clone once so early services such as journald load the new
-  machine ID, then pins the new SSH keys. Later starts keep that identity. Lima itself uses a per-boot cloud-init instance ID.
+  machine ID, then pins the new SSH keys. Later starts keep that identity.
+  Lima uses a per-boot cloud-init instance ID.
 - **Export and import:** an archive contains a versioned JSON record and the
   raw disk, compressed as a single gzip file. The record includes the profile,
   sizes, time, box version, host architecture, EFI variables, and separate

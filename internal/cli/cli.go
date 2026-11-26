@@ -124,7 +124,7 @@ func newBoxCommand(service Application) *cobra.Command {
 	cmd.Flags().StringVar(&options.Profile, "profile", "", "Guest profile (default ubuntu)")
 	cmd.Flags().IntVar(&options.CPUs, "cpus", 0, "Number of CPUs (defaults to the host CPU count, capped at 4)")
 	cmd.Flags().IntVar(&options.MemoryGiB, "memory", 0, "Memory in GiB (defaults to half of host RAM, rounded down and limited to 2–8 GiB)")
-	cmd.Flags().IntVar(&options.DiskGiB, "disk", 0, "Disk size in GiB (default 50)")
+	cmd.Flags().IntVar(&options.DiskGiB, "disk", 0, "Disk size in GiB (default 50, or the saved image's size)")
 	return cmd
 }
 
