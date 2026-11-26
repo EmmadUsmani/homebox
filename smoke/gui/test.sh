@@ -50,7 +50,7 @@ check_sh 'Noto fallback and Pango render CJK, emoji and shaped Arabic' '
 check_sh 'FFmpeg encodes and decodes 24 VP8 frames' '
     ffmpeg -v error -f lavfi -i testsrc2=size=160x120:rate=24 -frames:v 24 -c:v libvpx "$scratch/video.webm" &&
     test "$(ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "$scratch/video.webm")" = 24'
-check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 ./audio.sh
+check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 dbus-run-session -- ./audio.sh
 
 for engine in chromium firefox webkit; do
     for mode in headless headed; do

@@ -25,7 +25,8 @@ for the checks to run.
   lavapipe Vulkan compute shader with exact buffer readback.
 - Media checks cover Cairo PNG output, ImageMagick resizing, Noto font
   fallback and Pango rendering of Japanese, emoji and Arabic, VP8 encoding
-  and decoding, and PulseAudio tone loopback through a null sink.
+  and decoding, and PulseAudio tone loopback through a null sink on a
+  private D-Bus session.
 - Each Playwright engine responds to input and draws an expected pixel in a
   screenshot both headless and on the KasmVNC display. Chromium also reads back a WebGL
   pixel and plays the generated video.
