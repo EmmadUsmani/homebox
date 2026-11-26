@@ -29,7 +29,7 @@ minutes for setup and about two minutes for healthy checks.
   gateway policy, even though AAAA lookups work.
 - On the Mac, the runner uses Node.js 22 or later for the WebSocket client.
   It connects to both published fixtures, checks actual listener bindings
-  in default loopback mode, and delegates the host and private-network
+  in loopback or LAN mode, and delegates the host and private-network
   negative checks to `box doctor`. Run it with the default guest mappings
   for ports 8000 and 8001.
 
