@@ -235,4 +235,6 @@ the current saved and detected fingerprints inside the shared re-pin lock.
   automation runs in a signed-in macOS session with Accessibility and Screen
   Recording permissions. See the [spike](spikes/wails-desktop.md).
 - `HOMEBOX_E2E=1 go test ./e2e/...` boots real VMs on this machine.
-- `shellcheck` covers every script under `guest/`.
+- CI runs ShellCheck on guest scripts. The [local test runner](../README.md#testing)
+  checks shell scripts across the checkout, selects smoke areas by changed
+  path, and keeps VM state and test logs separate from the regular box store.

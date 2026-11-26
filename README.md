@@ -276,6 +276,68 @@ laptop SSH config.
 
 See the [spike report](docs/spikes/wails-desktop.md) for the build background.
 
+## Testing
+
+Run the same command on either macOS host from a checkout with Lima, Go,
+Node.js and ShellCheck installed. Desktop checks also need the Xcode command
+line tools and a signed-in macOS session with Accessibility and Screen
+Recording permissions. To run on the Mac mini, open the checkout there and
+run the command locally.
+
+- **Change**, before merging, targets ten minutes. Runs gofmt, Go vet and
+  unit tests, and ShellCheck. It selects smoke areas from changes since the
+  merge base with `origin/main`, including staged, unstaged and untracked
+  files. Guest changes select OS checks and two checks for provisioned
+  runtimes. CLI and core changes select `box doctor`. Desktop changes build
+  the app and exercise native verifiers when Accessibility is available.
+- **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
+  smoke area at quick level on a freshly provisioned guest.
+- **Full**, run occasionally, includes every smoke area at full level, the
+  remote desktop host checks, and native verification of Files, Settings,
+  the Desktop tab and viewer isolation. News Digest
+  runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
+
+```sh
+scripts/test.sh change
+scripts/test.sh change --base HEAD~1
+scripts/test.sh batch --area os
+scripts/test.sh full --area gui --match 'GTK|Qt'
+scripts/test.sh full --keep-vm
+scripts/test.sh last
+scripts/test.sh bisect GOOD BAD batch --area os
+```
+
+`--area` is repeatable and overrides automatic selection. Use a smoke area
+name, `doctor`, `e2e` or `desktop`. Static checks run at every tier.
+`--match` applies to smoke labels. `--keep-vm` prints the scratch state
+location and removal command. Pick an unused index with `HOMEBOX_TEST_INDEX`
+(default 70) when running alongside other VMs or test runners.
+
+The change tier looks for a local image named `homebox-smoke` when the checkout
+supports image commands. Set `HOMEBOX_SMOKE_IMAGE` to pick a different
+dedicated test image, or `HOMEBOX_HOME` to point at the source image store.
+The runner imports a copy into isolated state and provisions from scratch
+when the image is unavailable or guest profile files changed. Use a test
+image without signed-in accounts.
+Batch and full use isolated state and fresh VMs. GitHub CI remains informative.
+
+Logs live in `.smoke-results/` by default. Set `SMOKE_RESULTS` to choose a
+different directory. The runner prints and appends a row
+to the [run history](docs/test-runs.md). Commit the rows you want to share.
+`last` shows the latest default and partial passes per tier. `bisect` checks candidates in
+a temporary worktree using the selected tier and prints Git's first bad
+commit. Use the same scope throughout the bisect.
+
+Measured on the laptop with fresh 2-CPU, 4-GiB VMs. Times include static
+checks, provisioning, the selected smoke checks and VM cleanup. The change
+run used a guest script edit and an OS smoke area edit to verify selection.
+
+| Run | Smoke checks passed | Elapsed |
+| --- | ---: | ---: |
+| `scripts/test.sh change --base HEAD` | 18 | 5m 26s |
+| `scripts/test.sh batch --area os` | 16 | 5m 50s |
+| `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 51s |
+
 ## Development
 
 ```sh
@@ -289,6 +351,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
 - [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
+- [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
