@@ -224,9 +224,9 @@ view and its isolation verification.
 
 On November 26, 2026, the laptop app discovered a Mini-hosted VM under
 **Other hosts** using one verified ED25519 pin. The Terminal opened two
-sessions over one SSH connection, Files listed the guest home and read a
-fixture, and Desktop rendered Xfce and reconnected over its pinned SSH
-tunnel. See [the LAN smoke runner](../smoke/README.md#from-another-machine-on-the-lan)
+sessions over one SSH connection, Files saved an edit verified over SSH,
+and Desktop rendered Xfce, delivered keyboard input, and reconnected over
+its pinned SSH tunnel. See [the LAN smoke runner](../smoke/README.md#from-another-machine-on-the-lan)
 for the checks outside the app.
 
 ## Build order

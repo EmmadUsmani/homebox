@@ -84,6 +84,12 @@ hardware `perf` cycle counter. The Mini reached the guest over pinned
 SSH and exercised its published HTTP and WebSocket ports. The run also
 verified that the guest and SSH service recovered after a stop and start.
 
+A laptop then ran [the LAN suite](#from-another-machine-on-the-lan) against
+the same VM over pinned SSH. The run reported 184 passes, zero failures and
+six skips for host-only phases, News Digest preparation, and the unavailable
+`perf` counter. The laptop reached the published guest web fixtures and
+exercised the native app's [remote views](../docs/observability.md#remote-desktop-phase-2).
+
 ## Areas
 
 - [native](native/README.md): C and C++ toolchains, build systems, C libraries, debuggers and sanitizers, Go, Rust, Zig, WebAssembly, amd64 emulation, Homebrew, Nix and apt.
