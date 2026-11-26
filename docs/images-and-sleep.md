@@ -1,15 +1,12 @@
 # Images, sleep and resume: how they work underneath
 
-Background for building images (phase 2) and sleep and resume (later) in
-[plan.md](plan.md). **Nothing here has been tested with homebox yet**; it's
-how the pieces work in general, plus what we know about Lima. A spike replaces
-the guesses with findings.
+Saved images are available on the macOS host with Lima's VZ driver. Sleep and
+resume are future work in [plan.md](plan.md).
 
 ## What a running VM is made of
 
-1. **Disk:** a file on the host. With Lima's `vz` driver, a sparse raw file
-   (`diffdisk`) on top of the downloaded distro image (`basedisk`). Files,
-   packages, logins.
+1. **Disk:** a file on the host. With Lima's `vz` driver, a standalone sparse raw disk file (`disk`, or
+   `diffdisk` in older instances). It contains files, packages and logins.
 2. **RAM:** the guest's memory, held by the VM's host process. Every running
    process, the kernel, the file cache, open sockets.
 3. **CPU registers:** what each virtual CPU was doing at that instant.
@@ -28,21 +25,31 @@ the other is everything else.
 
 ## Images
 
-- **Saving:** stop the VM so the disk is consistent, then copy its disk file. On
-  APFS a copy can be a clone: instant, sharing blocks until either file changes.
-  `limactl clone` copies a stopped instance; whether box uses it or copies the
-  disk itself is open.
-- **Using:** a new VM gets its own clone and boots it from scratch.
-- **Fresh identity on first boot:** the new VM regenerates its machine ID,
-  hostname, SSH host keys and cloud-init instance ID, and box pins the new keys.
-  Without this, every VM from one image would share an identity.
-- **Reusable and portable:** one image can start any number of VMs, at any time.
-  A disk file also works on another host, and under QEMU after a format
-  conversion (raw to qcow2).
-- **From a running VM:** pausing, cloning the disk and resuming gives a disk
-  that boots like a machine that lost power (localbox appears to do this). It
-  usually works but can lose writes still in memory. homebox starts with images
-  from stopped VMs.
+- **Saving:** stop a VM and run `box image save NAME IMAGE`. Box
+  archives the standalone disk and the VZ EFI variables used to boot it.
+  APFS shares blocks through `clonefile`. Other filesystems fall back to a
+  sparse copy. Computing the disk digest takes a
+  full read of the logical disk even when APFS clones the data.
+- **Using:** `box new NAME --image IMAGE` builds a fresh Lima instance with the
+  usual user, index, ports and isolation settings. The driver stages the disk
+  and EFI variables before the first start to skip Lima's disk preparation. It
+  boots the saved disk without running the full profile scripts. Its disk is
+  at least as large as the source allocation. The copied files keep their original ownership and
+  paths, including any older accounts and home directories.
+- **Identity:** Lima supplies a fresh hostname and cloud-init instance ID. A
+  first-boot command replaces the disk's machine ID and SSH host keys. Box
+  restarts the clone once so early services such as journald load the new
+  machine ID, then pins the new SSH keys. Later starts keep that identity.
+  Lima uses a per-boot cloud-init instance ID.
+- **Export and import:** an archive contains a versioned JSON record and the
+  raw disk, compressed as a single gzip file. The record includes the profile,
+  sizes, time, box version, host architecture, EFI variables, and separate
+  SHA-256 digests for the raw disk and EFI variables. Import verifies the
+  disk length and both digests before publishing the image locally.
+  Use a Mac with the same CPU architecture. Only import images you trust.
+- **Storage:** images contain disk data including logins, tokens, installed
+  packages and settings. Save and export print a warning. Removing an image
+  leaves its existing VMs and any exported files in place.
 
 ## Sleep and resume
 

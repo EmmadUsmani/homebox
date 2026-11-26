@@ -24,16 +24,20 @@ mapping() {
 }
 http_url=$("$BOX" open "$SMOKE_VM" 8000 --print)
 ws_url=$("$BOX" open "$SMOKE_VM" 8001 --print)
-http_port=$(printf '%s\n' "$(mapping 8000)" | cut -d ' ' -f 1)
-ws_port=$(printf '%s\n' "$(mapping 8001)" | cut -d ' ' -f 1)
 
+listener() {
+    host_port=$(printf '%s\n' "$1" | cut -d ' ' -f 1)
+    bind=$(printf '%s\n' "$1" | cut -d ' ' -f 2)
+    case "$bind" in
+        127.0.0.1) address=$bind ;;
+        0.0.0.0) address='*' ;;
+        *) return 1 ;;
+    esac
+    [ "$2" = "http://127.0.0.1:$host_port/" ] &&
+        [ "$(lsof -nP -a -iTCP:"$host_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')" = "$address:$host_port" ]
+}
 listeners() {
-    [ "$(mapping 8000)" = "$http_port 127.0.0.1" ] &&
-        [ "$(mapping 8001)" = "$ws_port 127.0.0.1" ] &&
-        [ "$http_url" = "http://127.0.0.1:$http_port/" ] &&
-        [ "$ws_url" = "http://127.0.0.1:$ws_port/" ] &&
-        [ "$(lsof -nP -a -iTCP:"$http_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')" = "127.0.0.1:$http_port" ] &&
-        [ "$(lsof -nP -a -iTCP:"$ws_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')" = "127.0.0.1:$ws_port" ]
+    listener "$(mapping 8000)" "$http_url" && listener "$(mapping 8001)" "$ws_url"
 }
 http() {
     content=$(curl --noproxy '*' --retry 5 --retry-all-errors --retry-max-time 12 --max-time 3 -fsS "$http_url") &&
@@ -54,6 +58,6 @@ JS
 
 check 'Mac reaches guest HTTP through a published port' http
 check 'Mac reaches guest WebSocket echo through a published port' websocket
-check 'box ports and box open agree with actual Mac loopback listeners' listeners
+check 'box ports and box open agree with actual Mac listeners' listeners
 check 'box doctor verifies host and private-network isolation' "$BOX" doctor "$SMOKE_VM"
 finish

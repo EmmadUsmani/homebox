@@ -244,6 +244,13 @@ logins.
 - Images, when they exist (phase 2), will carry whatever was on the disk,
   logins included. Base images are built before anything is logged in.
 
+Saved images and exported archives include the whole guest disk. They can
+contain SSH credentials, API tokens, agent logins, local data and deleted data
+still present in filesystem blocks. Save and export warn about this. Treat the
+archives as sensitive files and only import archives you trust. SHA-256 verifies
+disk integrity. A VM created from an image still uses the normal host isolation
+and gets fresh SSH host keys and pins.
+
 ## Tailscale inside the VM
 
 Tailscale is installed in the VM but off. If you turn it on, the VM joins your
@@ -268,3 +275,11 @@ connections but not open them) before turning it on.
   and tracked in the [to-do list](docs/todo.md).
 - **What the agents do on the internet** with your accounts. The VM can reach
   any public address by design.
+
+## Smoke-test image cache
+
+The smoke runner loads container image archives from the Mac into the guest
+over pinned SSH and saves misses over the same Mac-initiated connection. The
+guest still cannot reach the Mac. The cache lives in a private host directory
+and has no listener or shared mount. Its archives contain image data from the
+scratch guest, so use it with trusted smoke VMs and images.

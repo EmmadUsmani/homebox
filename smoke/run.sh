@@ -60,6 +60,17 @@ for area in "$@"; do
             continue
         fi
     fi
+    if [ -f "$here/$area/images.txt" ] || [ "$area" = newsdigest ]; then
+        log="$results/$area-images.log"
+        printf '== %s images\n' "$area"
+        status=0
+        BOX=$box "$here/cache.sh" "$name" "$area" </dev/null >"$log" 2>&1 || status=$?
+        cat "$log"
+        if [ "$status" -ne 0 ]; then
+            failed="$failed $area-images"
+            continue
+        fi
+    fi
     for phase in setup test; do
         [ -f "$here/$area/$phase.sh" ] || continue
         log="$results/$area-$phase.log"

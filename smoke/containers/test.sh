@@ -17,7 +17,6 @@ cleanup() {
     timeout 45 docker compose -p "$prefix" -f "$fixtures/compose/compose.yaml" down -v --remove-orphans --rmi local >/dev/null 2>&1
     timeout 20 docker rm -f "$prefix-observe" "$prefix-memory" "$prefix-build-result" >/dev/null 2>&1
     timeout 20 docker volume rm "$prefix" >/dev/null 2>&1
-    timeout 45 docker buildx rm "$prefix" >/dev/null 2>&1
     timeout 25 docker image rm "$prefix:amd64" "$prefix:cache-write" "$prefix:cache-read" >/dev/null 2>&1
     timeout 20 podman rmi "$prefix:podman" >/dev/null 2>&1
     timeout 45 env KUBECONFIG="$scratch/kubeconfig" kind delete cluster --name "$prefix" >/dev/null 2>&1
@@ -71,10 +70,9 @@ check 'Docker runs an amd64 executable' distro linux/amd64 "$alpine" 'test "$(un
 
 build_cache() (
     set -e
-    timeout 60 docker buildx create --name "$prefix" --driver docker-container
     for phase in write read; do
-        timeout 240 docker buildx build --builder "$prefix" --platform "$native" --load \
-            --build-arg "CACHE_PHASE=$phase" -t "$prefix:cache-$phase" "$fixtures/build"
+        timeout 240 docker buildx build --builder default --platform "$native" --load \
+            --build-arg "CACHE_ID=${scratch##*/}" --build-arg "CACHE_PHASE=$phase" -t "$prefix:cache-$phase" "$fixtures/build"
     done
     timeout 20 docker create --name "$prefix-build-result" "$prefix:cache-read" /unused
     timeout 20 docker cp "$prefix-build-result:/result" "$scratch/native-result"
@@ -84,7 +82,7 @@ check_case 'Buildx builds multiple stages and reuses a BuildKit cache mount' bui
 
 build_amd64() (
     set -e
-    timeout 240 docker buildx build --builder "$prefix" --platform linux/amd64 \
+    timeout 240 docker buildx build --builder default --platform linux/amd64 \
         --load -t "$prefix:amd64" "$fixtures/build"
     test "$(timeout 15 docker image inspect --format '{{.Architecture}}' "$prefix:amd64")" = amd64
     timeout 20 docker rm -f "$prefix-build-result" >/dev/null 2>&1 || true
@@ -96,7 +94,7 @@ check_case 'Buildx executes an amd64 build stage and loads the resulting image' 
 
 build_multi_platform() (
     set -e
-    timeout 240 docker buildx build --builder "$prefix" --platform linux/arm64,linux/amd64 \
+    timeout 240 docker buildx build --builder default --platform linux/arm64,linux/amd64 \
         --output "type=local,dest=$scratch/platforms" "$fixtures/build"
     grep -Fx 'arm64:aarch64' "$scratch/platforms/linux_arm64/result"
     grep -Fx 'amd64:x86_64' "$scratch/platforms/linux_amd64/result"
@@ -182,11 +180,13 @@ check 'Docker bridge container cannot connect to private destinations' private_e
 podman_rootless() (
     set -e
     test "$(timeout 30 podman info --format '{{.Host.Security.Rootless}}')" = true
-    timeout 120 podman run --rm --user 65532 "docker.io/library/$alpine" \
+    timeout 90 docker save --platform "$native" "$alpine" | timeout 90 podman load
+    timeout 30 podman tag "localhost/$alpine" "docker.io/library/$alpine"
+    timeout 120 podman run --pull=never --rm --user 65532 "docker.io/library/$alpine" \
         sh -ec 'test "$(id -u)" = 65532'
     mkdir "$scratch/podman"
     printf 'FROM docker.io/library/%s\nRUN printf podman > /result\n' "$alpine" > "$scratch/podman/Containerfile"
-    timeout 120 podman build -t "$prefix:podman" "$scratch/podman"
+    timeout 120 podman build --pull=never -t "$prefix:podman" "$scratch/podman"
     test "$(timeout 30 podman run --rm "$prefix:podman" cat /result)" = podman
 )
 check_case 'Rootless Podman runs a container and builds and runs its own image' podman_rootless
@@ -194,7 +194,6 @@ check_case 'Rootless Podman runs a container and builds and runs its own image' 
 kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
-    timeout 120 docker pull "$nginx"
     timeout 360 kind create cluster --name "$prefix" --wait 120s
     timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
     timeout 120 kind load image-archive "$scratch/nginx.tar" --name "$prefix"

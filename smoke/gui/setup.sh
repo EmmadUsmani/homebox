@@ -11,7 +11,7 @@ sudo -n apt-get -o DPkg::Lock::Timeout=120 install -y --no-install-recommends \
 # shellcheck source=smoke/lib.sh
 . ../lib.sh
 mise="$HOME/.local/bin/mise"
-playwright="$HOME/.local/share/homebox/playwright/node_modules/playwright"
+playwright="$HOME/.local/share/homebox/playwright/node_modules/.bin/playwright"
 engines=
 for engine in chromium firefox webkit; do
     if smoke_matches "Playwright $engine headless renders and responds to clicks" ||
@@ -23,7 +23,7 @@ if [ -n "$engines" ]; then
     # shellcheck disable=SC2086 # Split the fixed browser engine names into arguments.
     "$mise" exec -- "$playwright" install-deps $engines
     # shellcheck disable=SC2086
-    "$mise" exec -- "$playwright" install $engines
+    PLAYWRIGHT_SKIP_BROWSER_GC=1 "$mise" exec -- "$playwright" install $engines
 fi
 if smoke_matches 'Sandboxed Electron window paints pixels'; then
     electron="$HOME/.cache/homebox-smoke-gui"

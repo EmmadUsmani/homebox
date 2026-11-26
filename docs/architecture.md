@@ -15,6 +15,7 @@ internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init, status, top, logs, desktop); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
+internal/diskcopy clones or sparsely copies raw disks
 internal/guest     loads guest profiles (images + provisioning steps)
 guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
@@ -105,6 +106,7 @@ original if it exists.
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
+  images/IMAGE/         saved raw disk and image.json metadata with VZ EFI variables
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```
@@ -116,6 +118,9 @@ The desktop app reads the same local records as the CLI. Its
 [lifecycle service](../desktop/lifecycle.go) checks for saved host settings
 and calls the shared app operations. It keeps a bounded tail of the active
 operation's output in memory and reads step names from the provision record.
+
+The [smoke runner's image archives](../smoke/README.md#container-image-cache)
+live in the host's user cache, separate from box state and VM lifecycles.
 
 ## Ports
 

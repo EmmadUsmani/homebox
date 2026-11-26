@@ -3,17 +3,18 @@
 Run `smoke/run.sh NAME containers` from the Mac with Node.js available for the
 host canary checks. Use a disposable Ubuntu VM with 2 CPUs, 6 GiB of memory,
 room for images and a box port mapping for guest TCP 8073. The runner uses the
-Docker Engine and Compose and Buildx plugins provided by the Ubuntu profile.
+Ubuntu profile's Docker Engine with its containerd image store, plus the
+Compose and Buildx plugins.
 Setup adds Podman and its rootless helpers, QEMU user-mode emulation and binfmt
 registration in the guest, checksum-verified kind and kubectl binaries, and
 locked npm dependencies under the guest user's cache. Setup allocates
 subordinate UID and GID ranges for rootless containers when the guest account
 lacks them. The full cold run took about 10 minutes on a 2-CPU, 6-GiB
 arm64 VM, excluding provisioning. The minimal-image builds add SDK downloads
-and emulated compilation. Docker's build cache and installed tools remain
-available for repeat runs.
-A cold run can hit Docker Hub's anonymous pull quota. Docker, the standalone
-BuildKit builder and Podman each have their own registry settings.
+and emulated compilation. The [Mac-side image archive cache](../README.md#container-image-cache)
+seeds Docker, and the Podman check imports Alpine into its rootless store.
+Docker's build cache and installed tools remain available for repeat runs.
+A cold run can hit Docker Hub's anonymous pull quota.
 
 - Install and run jq with apt, apk, dnf, zypper and pacman across Debian,
   Ubuntu, Alpine, Fedora, Rocky Linux, openSUSE and Arch Linux. Arch uses the
@@ -32,8 +33,7 @@ BuildKit builder and Podman each have their own registry settings.
   inspect, exec and stats, cgroup quotas, and an actual memory-limit kill.
 - Build and run with rootless Podman, deploy and reach a kind workload,
   build and exec into a devcontainer, and run an HTTP integration test
-  with Testcontainers. Both use one nginx download from the guest's Docker
-  Engine. Kind loads a [single-platform archive](https://kind.sigs.k8s.io/docs/user/known-issues/#unable-to-kind-load-docker-images)
+  with Testcontainers. Kind and Testcontainers share the cached nginx image. Kind loads a [single-platform archive](https://kind.sigs.k8s.io/docs/user/known-issues/#unable-to-kind-load-docker-images)
   for the guest architecture.
 - Reach a public HTTPS endpoint from a Docker bridge. Check representative
   private ranges and confirm a bridge container cannot reach temporary,

@@ -74,6 +74,12 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
   also deny the host's public address if it learned it without an outside
   service.
 
+## Base images (phase 2)
+
+Saved-image commands are available. Automatically building and refreshing a
+profile's base image, including `box image rebuild [--profile P]`, remains open.
+See [Images](plan.md#images).
+
 ## Start VMs again when the host boots
 
 The owner wants VMs back after a restart or power cut without logging in to the
@@ -92,7 +98,7 @@ installs [uv through mise](../guest/common/mise.sh).
 
 ## Docker Hub pull limits in smoke runs
 
-Two workers hit Docker Hub's anonymous pull limit (HTTP 429) on 2026-11-26
-while running the containers area, and finished with a registry mirror set
-only in their scratch VM. Options: a pull-through cache on the host, signing
-in to Docker Hub inside the VM, or fewer distinct images per run. Not decided.
+Done on 2026-11-26. The [smoke runner](../smoke/README.md#container-image-cache)
+caches image archives on the Mac to avoid the Docker Hub anonymous pull limit
+(HTTP 429) on repeat runs. Cold fills still depend on registry availability
+and pull quotas.

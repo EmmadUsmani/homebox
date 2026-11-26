@@ -98,6 +98,16 @@ image would mean hosting multi-gigabyte files, a build per distro and CPU type,
 trust in a binary blob, and frequent rebuilds as the agents update. It's a
 possible later step, after checking whether Claude Code may be redistributed.
 
+**Copy the disk from a stopped Lima instance** (implementation, 2026-11-26).
+A VZ Linux disk is standalone. Box can save it using APFS copy-on-write or a
+sparse copy, then create a normal Lima config for each new VM. `limactl clone`
+also copies instance-level configuration. Building a normal instance keeps the
+allocated ports, confinement and identity setup on the existing creation path.
+Preserve the VZ EFI variables so the guest retains its configured boot
+entries. Lima still generates a new VZ machine identifier, and box pins
+the guest's new SSH host keys.
+See [Lima 2.3 disk handling](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driverutil/disk.go).
+
 ## Access and networking
 
 **SSH straight into the VM** (owner). The host takes no SSH logins for box
@@ -249,3 +259,10 @@ for the user and doesn't block the host network. See
 
 - The repository's license (owner: on hold).
 - Proxmox or Lima for the Linux GPU box.
+
+## 2026-11-26 · Smoke-test container image cache
+
+The owner approved a Mac-side cache after the containers smoke runs hit Docker
+Hub's anonymous pull quota. The [smoke runner](../smoke/README.md#container-image-cache)
+stores archives on the Mac and transfers them over pinned SSH initiated by the
+Mac, keeping the cache outside guest reach.
