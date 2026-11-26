@@ -292,7 +292,7 @@ run the command locally.
   the app and exercise native verifiers when Accessibility is available.
 - **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
   smoke area at quick level on a freshly provisioned guest. Targets 30–60
-  minutes. News Digest runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
+  minutes.
 - **Full**, run occasionally, includes every smoke area at full level, the
   remote desktop host checks, and native verification of Files, Settings,
   the Desktop tab and viewer isolation. News Digest
@@ -311,9 +311,11 @@ scripts/test.sh bisect GOOD BAD batch --area os
 
 `--area` is repeatable and overrides automatic selection. Use a smoke area
 name, `doctor`, `e2e` or `desktop`. Static checks run at every tier.
-`--match` applies a case-insensitive regular expression to smoke labels. `--keep-vm` prints the scratch state
-location and removal command. Pick an unused index with `HOMEBOX_TEST_INDEX`
-(default 70) when running alongside other VMs or test runners.
+`--match` applies a case-insensitive regular expression to smoke labels.
+`--keep-vm` prints the scratch state location and removal command. Pick an
+unused index with `HOMEBOX_TEST_INDEX` (default 70) when running alongside
+other VMs or test runners. The News Digest area runs when selected and
+`SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
 The change tier looks for a local image named `homebox-smoke` when the checkout
 supports image commands. Set `HOMEBOX_SMOKE_IMAGE` to pick a different
@@ -330,15 +332,24 @@ to the [run history](docs/test-runs.md). Commit the rows you want to share.
 a temporary worktree using the selected tier and prints Git's first bad
 commit. Use the same scope throughout the bisect.
 
-Measured on the laptop with fresh 2-CPU, 4-GiB VMs. Times include static
-checks, provisioning, the selected smoke checks and VM cleanup. The change
-run used a guest script edit and an OS smoke area edit to verify selection.
+Measured on the laptop with fresh 2-CPU guests. Runs including containers
+used 6 GiB of RAM and the others used 4 GiB. Times include static checks,
+provisioning, selected tests and VM cleanup. The first two rows predate the
+per-area quick split. The `change --base HEAD` run used guest and OS smoke
+edits to verify area selection.
 
 | Run | Smoke checks passed | Elapsed |
 | --- | ---: | ---: |
 | `scripts/test.sh change --base HEAD` | 18 | 5m 26s |
 | `scripts/test.sh batch --area os` | 16 | 5m 50s |
-| `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 51s |
+| `scripts/test.sh change` | 79 | 8m 35s |
+| `scripts/test.sh batch` with News Digest | 86 | 21m 39s |
+| `scripts/test.sh full --area containers --match distroless` | 14 | 8m 44s |
+| `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 44s |
+
+With warm container archives, the batch finished below its 30–60 minute
+target. The real-VM Go tests and fresh provisioning took 16m 36s combined.
+The seven quick smoke areas took 4m 47s, including News Digest.
 
 ## Development
 
