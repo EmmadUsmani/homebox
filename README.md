@@ -268,7 +268,8 @@ run the command locally.
 - **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
   smoke area at quick level on a freshly provisioned guest.
 - **Full**, run occasionally, includes every smoke area at full level, the
-  remote desktop host checks, and native desktop verification. News Digest
+  remote desktop host checks, and native verification of Files, Settings,
+  the Desktop tab and viewer isolation. News Digest
   runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
 ```sh
@@ -287,14 +288,16 @@ name, `doctor`, `e2e` or `desktop`. Static checks run at every tier.
 location and removal command. Pick an unused index with `HOMEBOX_TEST_INDEX`
 (default 70) when running alongside other VMs or test runners.
 
-The change tier looks for a local image named `smoke` when the installed
-checkout supports image commands. Set `HOMEBOX_SMOKE_IMAGE` to pick a different
+The change tier looks for a local image named `homebox-smoke` when the checkout
+supports image commands. Set `HOMEBOX_SMOKE_IMAGE` to pick a different
 dedicated test image, or `HOMEBOX_HOME` to point at the source image store.
 The runner imports a copy into isolated state and provisions from scratch
-when the image is unavailable. Use a test image without signed-in accounts.
+when the image is unavailable or guest profile files changed. Use a test
+image without signed-in accounts.
 Batch and full use isolated state and fresh VMs. GitHub CI remains informative.
 
-Logs live in `.smoke-results/` by default. The runner prints and appends a row
+Logs live in `.smoke-results/` by default. Set `SMOKE_RESULTS` to choose a
+different directory. The runner prints and appends a row
 to the [run history](docs/test-runs.md). Commit the rows you want to share.
 `last` shows the latest default and partial passes per tier. `bisect` checks candidates in
 a temporary worktree using the selected tier and prints Git's first bad

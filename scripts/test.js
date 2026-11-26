@@ -7,7 +7,7 @@ const usage = `Usage:
   scripts/test.sh change|batch|full [--area AREA ...] [--match ERE] [--base REF] [--keep-vm]
   scripts/test.sh last
   scripts/test.sh bisect GOOD BAD change|batch|full [--area AREA ...] [--match ERE]`;
-const freshVM = ["--cpus", "2", "--memory", "4", "--disk", "30"];
+const vmSize = ["--cpus", "2", "--memory", "4"];
 const tiers = ["change", "batch", "full"];
 const root = process.env.HOMEBOX_TEST_CHECKOUT || path.resolve(__dirname, "..");
 const history = path.join(root, "docs/test-runs.md");
@@ -63,7 +63,7 @@ function selection(options) {
     for (const area of areas) {
         if (!allowed.includes(area)) throw new Error(`Unknown area "${area}". Choose from ${allowed.join(", ")}.`);
     }
-    const changed = tier === "change" && !areas.length
+    const changed = tier === "change"
         ? git("diff", "--name-only", "--no-renames", "-z", git("merge-base", base, "HEAD").trim(), "--") +
             git("ls-files", "--others", "--exclude-standard", "-z")
         : "";
@@ -74,10 +74,10 @@ function selection(options) {
     const smoke = available.filter(area => areas.length ? areas.includes(area)
         : tier !== "change" || sharedSmoke || touched(`smoke/${area}/`) || (guest && ["os", "runtimes"].includes(area)));
     const profileMatch = path.join(root, "smoke/runtimes/profile-match");
-    const runtimeMatch = tier === "change" && guest && !sharedSmoke && !touched("smoke/runtimes/") &&
+    const runtimeMatch = tier === "change" && !areas.length && guest && !sharedSmoke && !touched("smoke/runtimes/") &&
         fs.existsSync(profileMatch) ? fs.readFileSync(profileMatch, "utf8").trim() : "";
     return {
-        smoke, runtimeMatch,
+        smoke, runtimeMatch, guest,
         doctor: areas.length ? areas.includes("doctor") : tier !== "change" || ["cmd/", "internal/"].some(touched),
         e2e: areas.length ? areas.includes("e2e") : tier !== "change" || touched("e2e/"),
         desktop: areas.length ? areas.includes("desktop") : tier === "full" || touched("desktop/"),
@@ -88,7 +88,10 @@ function selection(options) {
 async function runSuite(options) {
     const selected = selection(options);
     const { tier, match, keep } = options;
+    const disk = tier !== "change" && !selected.scoped ? "80" : "30";
+    const freshVM = [...vmSize, "--disk", disk];
     const level = tier === "full" ? "full" : "quick";
+    const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])];
     const revision = git("rev-parse", "--short=12", "HEAD").trim();
     const dirty = git("status", "--porcelain", "--", ".", ":(exclude)docs/test-runs.md").length > 0;
     const started = Date.now();
@@ -104,6 +107,7 @@ async function runSuite(options) {
     const index = Number(process.env.HOMEBOX_TEST_INDEX || 70);
     const sourceHome = process.env.HOMEBOX_HOME || path.join(os.homedir(), ".homebox");
     const env = { ...process.env };
+    delete env.HOMEBOX_HOME;
     delete env.HOMEBOX_FIRST_INDEX;
     delete env.HOMEBOX_E2E_INDEX;
 
@@ -162,9 +166,7 @@ async function runSuite(options) {
         step(name, log => command(executable, args, commandEnv, log));
     const box = (name, ...args) => run(name, env.BOX, args);
 
-    console.log(`Selected ${tier} (${level} smoke): ${[
-        ...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area]),
-    ].join(", ") || "static checks only"}`);
+    console.log(`Selected ${tier} (${level} smoke): ${areas.join(", ") || "static checks only"}`);
 
     try {
         if ((selected.e2e || selected.doctor || selected.smoke.length || selected.desktop) &&
@@ -182,7 +184,7 @@ async function runSuite(options) {
                 fs.writeFileSync(log, "");
                 return true;
             }
-            return command("shellcheck", ["-x", "-P", "SCRIPTDIR", ...files], env, log);
+            return command("shellcheck", ["-x", "-P", "SCRIPTDIR", "--", ...files], env, log);
         });
 
         if (selected.e2e) {
@@ -214,7 +216,8 @@ async function runSuite(options) {
                 await box("host-init", "host", "init");
             let booted = false;
             if (ready && !interrupted) {
-                const imageArgs = tier === "change" ? await smokeImage() : freshVM;
+                if (selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
+                const imageArgs = tier === "change" && !selected.guest ? await smokeImage() : freshVM;
                 if (!interrupted) {
                     vmAttempted = true;
                     booted = await box("vm", "new", vm, ...imageArgs);
@@ -229,7 +232,7 @@ async function runSuite(options) {
                 if (selected.doctor) await box("doctor", "doctor", vm);
                 for (const area of selected.smoke) {
                     await step(area, log => command("smoke/run.sh", [vm, area], {
-                        ...env, SMOKE_RESULTS: results, SMOKE_LEVEL: level,
+                        ...env, SMOKE_RESULTS: path.join(results, "areas", area), SMOKE_LEVEL: level,
                         SMOKE_MATCH: match || (area === "runtimes" ? selected.runtimeMatch : ""),
                     }, log), output => /^PASS [^\d\n]/m.test(output) ? "PASS" : "SKIP");
                 }
@@ -257,8 +260,7 @@ async function runSuite(options) {
         const outcome = totals.FAIL || interrupted ? "FAIL" : "PASS";
         const model = capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch();
         const version = capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a";
-        const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])].join(", ") || "static";
-        const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} |\n`;
+        const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas.join(", ") || "static"} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} |\n`;
         console.log(`\n${row.trimEnd()}\nLogs: ${results}`);
         if (!process.env.HOMEBOX_TEST_CHECKOUT) fs.appendFileSync(history, row);
         process.exitCode = outcome === "FAIL" ? 1 : 0;
@@ -271,13 +273,13 @@ async function runSuite(options) {
     }
 
     async function smokeImage() {
-        const image = process.env.HOMEBOX_SMOKE_IMAGE || "smoke";
+        const image = process.env.HOMEBOX_SMOKE_IMAGE || "homebox-smoke";
         const imageEnv = { ...env, HOMEBOX_HOME: sourceHome };
         const list = capture(env.BOX, ["image", "ls"], { env: imageEnv });
         const flags = capture(env.BOX, ["new", "--help"], { env });
         if (list.status !== 0 || !flags.stdout?.includes("--image")) {
             console.warn("Warning: box image commands unavailable. Provisioning a fresh VM.");
-        } else if (!list.stdout.split(/\s+/).includes(image)) {
+        } else if (!list.stdout.split("\n").some(line => line.trim().split(/\s+/)[0] === image)) {
             console.warn(`Warning: saved smoke image "${image}" unavailable. Provisioning a fresh VM.`);
         } else {
             const archive = path.join(scratch, "smoke-image");
@@ -285,7 +287,7 @@ async function runSuite(options) {
             if (await command(env.BOX, ["image", "export", image, archive], imageEnv, log) &&
                 await command(env.BOX, ["image", "import", archive], env, log)) {
                 fs.rmSync(archive);
-                return ["--image", image];
+                return ["--image", image, ...vmSize];
             }
             console.warn(`Warning: could not copy the saved smoke image into isolated state. See ${log}. Provisioning a fresh VM.`);
         }
@@ -313,7 +315,8 @@ async function runSuite(options) {
 
 function last() {
     const rows = fs.readFileSync(history, "utf8").trimEnd().split("\n")
-        .map(row => row.split("|").map(field => field.trim()));
+        .map(row => row.split("|").map(field => field.trim()))
+        .sort((a, b) => (a[1] || "").localeCompare(b[1] || ""));
     for (const tier of tiers) {
         const passes = rows.filter(row => row[6] === tier && row[9] === "PASS");
         for (const scope of ["default", "partial"]) {
