@@ -4,8 +4,8 @@
 #   smoke/run.sh NAME [AREA...]
 #
 # Copies smoke/ into the guest (~/homebox-smoke), then for each area runs
-# setup.sh and test.sh inside the guest as the VM user (bash login shell), and
-# host.sh on this Mac if present (with SMOKE_VM and BOX set). With no AREA it
+# prepare.sh on this Mac, setup.sh and test.sh inside the guest as the VM user
+# (bash login shell), and host.sh on this Mac, where present. With no AREA it
 # runs every area. Logs go to .smoke-results/NAME-TIMESTAMP/. Set BOX to use a
 # box binary other than the one on PATH, and HOMEBOX_HOME for another state dir.
 set -eu
@@ -27,6 +27,17 @@ tar -C "$here" -czf - . | "$box" ssh "$name" -- \
 failed=
 for area in "$@"; do
     [ -d "$here/$area" ] || { echo "No smoke area $area" >&2; failed="$failed $area"; continue; }
+    if [ -f "$here/$area/prepare.sh" ]; then
+        log="$results/$area-prepare.log"
+        printf '== %s prepare\n' "$area"
+        status=0
+        SMOKE_VM=$name BOX=$box sh "$here/$area/prepare.sh" </dev/null >"$log" 2>&1 || status=$?
+        cat "$log"
+        if [ "$status" -ne 0 ]; then
+            [ "$status" -eq 77 ] || failed="$failed $area-prepare"
+            continue
+        fi
+    fi
     for phase in setup test; do
         [ -f "$here/$area/$phase.sh" ] || continue
         log="$results/$area-$phase.log"
@@ -43,7 +54,7 @@ for area in "$@"; do
         log="$results/$area-host.log"
         printf '== %s host\n' "$area"
         status=0
-        SMOKE_VM=$name BOX=$box sh "$here/$area/host.sh" </dev/null >"$log" 2>&1 || status=$?
+        SMOKE_VM=$name BOX=$box SMOKE_ARTIFACTS=$results sh "$here/$area/host.sh" </dev/null >"$log" 2>&1 || status=$?
         cat "$log"
         [ "$status" -eq 0 ] || failed="$failed $area-host"
     fi
