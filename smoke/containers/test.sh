@@ -34,7 +34,7 @@ trap 'exit 143' TERM
 
 check_case() {
     export -f "${2:?missing case function}"
-    check "$1" bash -eo pipefail -c "$2"
+    check "$1" bash -eo pipefail -c '"$@"' bash "${@:2}"
 }
 
 distro() {
@@ -194,7 +194,13 @@ kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    timeout 30 kubectl create deployment smoke --image=nginx:1.28-alpine
+    # Route image pulls through the guest's Docker registry configuration.
+    local image=nginx:1.28-alpine
+    timeout 120 docker pull --platform "$native" "$image"
+    # Kind imports all archive platforms. Include only the platform Docker pulled.
+    timeout 90 docker image save --platform "$native" -o "$scratch/nginx.tar" "$image"
+    timeout 120 kind load image-archive --name "$prefix" "$scratch/nginx.tar"
+    timeout 30 kubectl create deployment smoke --image="$image"
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s
     timeout 45 kubectl port-forward deployment/smoke :80 > "$scratch/port-forward.log" 2>&1 &
     local forward=$!
@@ -227,5 +233,8 @@ check_case 'Dev Containers builds, starts, runs postCreateCommand and executes a
 cp "$fixtures/testcontainers/smoke.test.cjs" "$tools/" || exit 1
 check 'Node Testcontainers starts a service, waits for HTTP and exercises its mapped port' \
     timeout 180 node --test "$tools/smoke.test.cjs"
+
+# shellcheck source=smoke/containers/minimal.sh
+. ./minimal.sh
 
 finish

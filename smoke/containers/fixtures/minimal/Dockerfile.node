@@ -1,0 +1,15 @@
+FROM --platform=$BUILDPLATFORM node:26-trixie AS build
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund
+COPY server.cjs ./
+
+FROM gcr.io/distroless/nodejs26-debian13:nonroot@sha256:a84242e747fbb5aaaa0180c273b6f7130ca34b3300082192ef58eea96089eb3c AS distroless
+WORKDIR /app
+COPY --from=build /app ./
+CMD ["/app/server.cjs"]
+
+FROM cgr.dev/chainguard/node:latest-slim@sha256:536120901f773f50dd86982aab864d4e498dcc0ae20dde215ce9a020f26b6b8b AS wolfi
+WORKDIR /app
+COPY --from=build /app ./
+CMD ["/app/server.cjs"]

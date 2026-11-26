@@ -1,0 +1,22 @@
+FROM golang:1.26-trixie AS cgo
+COPY testdata/cgo.go /src/cgo.go
+RUN CGO_ENABLED=1 go build -trimpath -o /smoke /src/cgo.go && ldd /smoke | grep -F libc.so.6
+
+FROM --platform=$BUILDPLATFORM golang:1.26-trixie AS static-build
+ARG TARGETARCH
+COPY testdata/https.go /src/https.go
+RUN CGO_ENABLED=0 GOARCH=$TARGETARCH go build -trimpath -o /smoke /src/https.go
+
+FROM gcr.io/distroless/base-debian13:nonroot@sha256:7088bf1cdc94a65af4e0d5ad94518ed489a372dec1ece38ff4411c6c15fb5864 AS base
+COPY --from=cgo /smoke /smoke
+ENTRYPOINT ["/smoke"]
+
+FROM gcr.io/distroless/static-debian13:nonroot@sha256:8ce6dd87e9823c5b48dcfb2c8604714ccb351ce59607327bcc4957448da279b5 AS static
+COPY --from=static-build /smoke /smoke
+ENTRYPOINT ["/smoke"]
+
+FROM scratch AS bare
+COPY --from=static-build /smoke /smoke
+COPY --from=static-build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
+USER 65532:65532
+ENTRYPOINT ["/smoke"]
