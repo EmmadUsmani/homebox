@@ -26,6 +26,7 @@ while :; do
     # The fixtures paint the same solid green so a mapped but unpainted window fails.
     pixel=$(convert "$gui_artifacts/$title.png" -format '%[fx:p{100,100}.g] %[fx:p{100,100}.r]' info:)
     if awk -v pixel="$pixel" 'BEGIN { split(pixel, channels); exit !(channels[1] > 0.7 && channels[2] < 0.2) }'; then
+        import -frame -window "$window" "$gui_artifacts/$title.png"
         exit 0
     fi
     sleep 0.2
