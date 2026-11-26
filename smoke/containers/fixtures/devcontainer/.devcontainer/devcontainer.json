@@ -1,0 +1,6 @@
+{
+  "name": "Homebox smoke fixture",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "vscode",
+  "postCreateCommand": "printf '%s\\n' ready > /tmp/homebox-devcontainer"
+}
