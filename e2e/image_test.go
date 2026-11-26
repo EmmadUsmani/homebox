@@ -1,8 +1,6 @@
 package e2e
 
 import (
-	"errors"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -12,7 +10,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/state"
 )
 
-func checkImage(t *testing.T, name, binary string, store *state.Store, box func(time.Duration, ...string) string, run func(time.Duration, string, ...string) (string, error)) {
+func checkImage(t *testing.T, name, binary string, store *state.Store, box func(time.Duration, ...string) string, run func(time.Duration, string, ...string) (string, error), cleanupVM func(string)) {
 	t.Helper()
 	const clone = "e2e-image"
 	const image = "e2e-saved"
@@ -45,13 +43,7 @@ func checkImage(t *testing.T, name, binary string, store *state.Store, box func(
 	if out, err := run(time.Minute, binary, "new", clone, "--image", image, "--disk", "23"); err == nil || !strings.Contains(out, "at least 24 GiB") {
 		t.Fatalf("expected undersized disk to be refused: %v\n%s", err, out)
 	}
-	t.Cleanup(func() {
-		if _, err := store.Load(clone); !errors.Is(err, os.ErrNotExist) {
-			if output, err := run(2*time.Minute, binary, "rm", "-f", clone); err != nil {
-				t.Errorf("cleanup image VM: %v\n%s", err, output)
-			}
-		}
-	})
+	cleanupVM(clone)
 	box(5*time.Minute, "new", clone, "--image", image, "--cpus", "2", "--memory", "4")
 	changed := identity(clone)
 	for index := range changed {
