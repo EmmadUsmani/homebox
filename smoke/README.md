@@ -16,10 +16,11 @@ Run against a VM on this Mac:
 
 ```sh
 smoke/run.sh NAME            # every area
-smoke/run.sh NAME languages  # one area
+smoke/run.sh NAME runtimes   # one area
 ```
 
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
+To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
 Setup scripts install tools a user would install themselves; tools nearly every
 VM needs belong in the guest profile (`guest/`) instead, so they're there from
@@ -52,6 +53,16 @@ as the runner. The Mac transfers archives over pinned SSH. Podman imports its
 Alpine base from the guest's Docker store, and Buildx uses Docker's built-in
 builder so it can consume the same local platform variants. The containers
 suite still needs public network access for package repositories.
+
+## Where it has run
+
+On November 26, 2026, all seven areas ran on an 8 GiB M2 Mac mini with
+macOS 27.2.1 and Lima 2.3.0. A fresh Ubuntu ARM64 guest had 2 CPUs, 4 GiB
+of RAM, LAN publishing and the optional desktop installed. The suite
+reported 185 passes, zero failures and one skip for the unavailable
+hardware `perf` cycle counter. The Mini reached the guest over pinned
+SSH and exercised its published HTTP and WebSocket ports. The run also
+verified that the guest and SSH service recovered after a stop and start.
 
 ## Areas
 

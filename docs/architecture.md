@@ -15,6 +15,7 @@ internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init, status, top, logs, desktop); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
+internal/diskcopy clones or sparsely copies raw disks
 internal/guest     loads guest profiles (images + provisioning steps)
 guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
@@ -105,6 +106,7 @@ original if it exists.
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
+  images/IMAGE/         saved raw disk and image.json metadata with VZ EFI variables
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```

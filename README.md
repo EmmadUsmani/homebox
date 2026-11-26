@@ -85,6 +85,10 @@ running `box repin` so the driver can authenticate the guest.
 |---|---|
 | `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
 | `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50]` | Creates, starts and provisions a VM |
+| `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
+| `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |
+| `box image ls` / `box image rm IMAGE` | Lists or removes local images |
+| `box image export IMAGE FILE` / `box image import FILE` | Writes or verifies and loads a compressed image archive |
 | `box ls [--json]` | Lists VMs, published ports, last doctor health and host-side resource use |
 | `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
 | `box top [NAME] [--json]` | Refreshes resource use for running VMs every two seconds. Redirected output and `--json` use JSON Lines |
@@ -110,6 +114,27 @@ On macOS, host CPU and physical memory footprint come from the Virtualization pr
 `box status` also shows Lima's hostagent separately. If box cannot identify
 the VM process, it labels the hostagent-only measurements. Guest resource
 readings come from SSH.
+
+## Saved VM images
+
+On a Mac with Lima's VZ driver, stop an Ubuntu VM and save its disk:
+
+```sh
+box stop main
+box image save main dev-tools
+box new work --image dev-tools
+box doctor work
+```
+
+The new VM runs with its own SSH pins and port allocation. It defaults to the
+image's disk size and accepts a larger `--disk`. CPU and memory follow the normal
+`box new` defaults. Save and export warn because images carry everything on
+the guest disk, including any agent logins and tokens.
+
+To move an image to a compatible Mac, run `box image export dev-tools dev-tools.hbimg.gz`,
+copy the archive by hand, then run `box image import dev-tools.hbimg.gz` there.
+Import verifies the disk's SHA-256 and preserves the original image name.
+See [image storage and compatibility](docs/images-and-sleep.md#images).
 
 ## Remote desktop
 

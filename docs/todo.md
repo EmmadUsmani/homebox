@@ -74,6 +74,12 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
   also deny the host's public address if it learned it without an outside
   service.
 
+## Base images (phase 2)
+
+Saved-image commands are available. Automatically building and refreshing a
+profile's base image, including `box image rebuild [--profile P]`, remains open.
+See [Images](plan.md#images).
+
 ## Start VMs again when the host boots
 
 The owner wants VMs back after a restart or power cut without logging in to the

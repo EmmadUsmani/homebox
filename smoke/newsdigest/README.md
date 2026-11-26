@@ -8,7 +8,8 @@ historical detail on desktop light and mobile dark in both the VM and
 macOS. The Mac also probes the published HTTP port with curl.
 
 Run on a dedicated scratch VM with the default forward for guest port
-8000 and no services occupying guest ports 5432, 6379 or 9464:
+8000 and an available guest port 9464. Compose assigns loopback database
+ports so it can share a VM with the packaged databases in the services area:
 
 ```sh
 SMOKE_NEWSDIGEST_REPO=/path/to/news-digest smoke/run.sh NAME newsdigest

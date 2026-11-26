@@ -11,4 +11,4 @@ pnpm_spec=$(node -p 'require("./package.json").packageManager')
 timeout 2m npm install --prefix "$tools" --no-audit --no-fund "$pnpm_spec"
 timeout 10m pnpm install --frozen-lockfile
 timeout 10m pnpm build
-timeout 5m pnpm exec playwright install chromium
+PLAYWRIGHT_SKIP_BROWSER_GC=1 timeout 5m pnpm exec playwright install chromium
