@@ -1,0 +1,10 @@
+{
+  "name": "homebox-smoke-electron",
+  "private": true,
+  "dependencies": {
+    "electron": "38.8.0"
+  },
+  "allowScripts": {
+    "electron@38.8.0": true
+  }
+}
