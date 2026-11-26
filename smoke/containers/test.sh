@@ -196,7 +196,8 @@ kubernetes() (
     export KUBECONFIG="$scratch/kubeconfig"
     timeout 120 docker pull "$nginx"
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    timeout 120 kind load docker-image "$nginx" --name "$prefix"
+    timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
+    timeout 120 kind load image-archive "$scratch/nginx.tar" --name "$prefix"
     timeout 30 kubectl create deployment smoke --image="$nginx"
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s
     timeout 45 kubectl port-forward deployment/smoke :80 > "$scratch/port-forward.log" 2>&1 &
