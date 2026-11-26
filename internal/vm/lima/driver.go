@@ -50,6 +50,9 @@ func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {
 		return err
 	}
+	if spec.SavedDisk != nil && runtime.GOOS != "darwin" {
+		return errors.New("creating a VM from a saved image requires Lima with VZ on macOS")
+	}
 	data, err := renderConfig(spec, runtime.GOOS)
 	if err != nil {
 		return fmt.Errorf("render Lima config for %q: %w", spec.Name, err)
@@ -63,8 +66,19 @@ func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write Lima config for %q: %w", spec.Name, err)
 	}
-	_, err = d.run(ctx, nil, "create", "--tty=false", "--name", spec.Name, path)
-	return err
+	if _, err := d.run(ctx, nil, "create", "--tty=false", "--name", spec.Name, path); err != nil {
+		return err
+	}
+	if spec.SavedDisk != nil {
+		instance, err := d.Get(ctx, spec.Name)
+		if err == nil {
+			err = installImage(ctx, instance, spec.SavedDisk.URL)
+		}
+		if err != nil {
+			return errors.Join(err, d.Delete(context.WithoutCancel(ctx), spec.Name))
+		}
+	}
+	return nil
 }
 
 // Start starts an existing VM under the optional command prefix.

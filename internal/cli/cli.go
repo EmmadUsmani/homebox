@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
+	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -22,6 +23,11 @@ type Application interface {
 	DesktopInstall(context.Context, string) error
 	Desktop(context.Context, string, bool, func(string) error) error
 	New(context.Context, app.NewOptions) error
+	SaveImage(context.Context, string, string, string) error
+	ListImages() ([]state.Image, error)
+	RemoveImage(string) error
+	ExportImage(context.Context, string, string) error
+	ImportImage(context.Context, string) (string, error)
 	Provision(context.Context, string) error
 	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
 	Start(context.Context, string) error
@@ -68,6 +74,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(
 		newBoxCommand(service),
+		imageCommand(service, version),
 		resizeCommand(service),
 		hostCommand(service),
 		portsCommand(service),
@@ -113,6 +120,7 @@ func newBoxCommand(service Application) *cobra.Command {
 		options.Name = name
 		return service.New(ctx, options)
 	})
+	cmd.Flags().StringVar(&options.Image, "image", "", "Create from a saved image")
 	cmd.Flags().StringVar(&options.Profile, "profile", "", "Guest profile (default ubuntu)")
 	cmd.Flags().IntVar(&options.CPUs, "cpus", 0, "Number of CPUs (defaults to the host CPU count, capped at 4)")
 	cmd.Flags().IntVar(&options.MemoryGiB, "memory", 0, "Memory in GiB (defaults to half of host RAM, rounded down and limited to 2–8 GiB)")

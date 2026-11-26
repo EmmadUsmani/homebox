@@ -1,21 +1,25 @@
 package lima
 
 import (
+	"crypto/rand"
 	"fmt"
+	"runtime"
 
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"go.yaml.in/yaml/v3"
 )
 
 type config struct {
-	VMType     string    `yaml:"vmType"`
-	Images     []image   `yaml:"images"`
-	CPUs       int       `yaml:"cpus"`
-	Memory     string    `yaml:"memory"`
-	Disk       string    `yaml:"disk"`
-	Plain      bool      `yaml:"plain"`
-	Mounts     []string  `yaml:"mounts"`
-	SSH        sshConfig `yaml:"ssh"`
+	Probes     []probeConfig     `yaml:"probes,omitempty"`
+	Provision  []provisionConfig `yaml:"provision,omitempty"`
+	VMType     string            `yaml:"vmType"`
+	Images     []image           `yaml:"images"`
+	CPUs       int               `yaml:"cpus"`
+	Memory     string            `yaml:"memory"`
+	Disk       string            `yaml:"disk"`
+	Plain      bool              `yaml:"plain"`
+	Mounts     []string          `yaml:"mounts"`
+	SSH        sshConfig         `yaml:"ssh"`
 	Containerd struct {
 		System bool `yaml:"system"`
 		User   bool `yaml:"user"`
@@ -29,6 +33,17 @@ type config struct {
 	HostResolver *resolverConfig `yaml:"hostResolver,omitempty"`
 	Networks     []networkConfig `yaml:"networks,omitempty"`
 	DNS          []string        `yaml:"dns,omitempty"`
+}
+
+type probeConfig struct {
+	Mode        string `yaml:"mode"`
+	Description string `yaml:"description"`
+	Script      string `yaml:"script"`
+}
+
+type provisionConfig struct {
+	Mode   string `yaml:"mode"`
+	Script string `yaml:"script"`
 }
 
 type networkConfig struct {
@@ -96,8 +111,20 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 		User:         userConfig{Name: spec.User, Home: "/home/" + spec.User, Comment: spec.User},
 		PortForwards: portRules(spec.Forwards),
 	}
+	images := spec.Images
+	if spec.SavedDisk != nil {
+		arch := map[string]string{"arm64": "aarch64", "amd64": "x86_64"}[runtime.GOARCH]
+		images = []vm.Image{{URL: spec.SavedDisk.URL, Arch: arch, Digest: spec.SavedDisk.Digest}}
+
+		identity := rand.Text()
+		settings.Provision = []provisionConfig{{Mode: "boot", Script: imageBootScript(identity, spec.User)}}
+		settings.Probes = []probeConfig{{
+			Mode: "readiness", Description: "the saved disk has a fresh guest identity",
+			Script: fmt.Sprintf("#!/bin/sh\n[ \"$(cat /etc/homebox-image-id)\" = %s ]\n", identity),
+		}}
+	}
 	settings.NetworkOpts.HostLoopback = spec.HostGateway
-	for _, source := range spec.Images {
+	for _, source := range images {
 		settings.Images = append(settings.Images, image{Location: source.URL, Arch: source.Arch, Digest: source.Digest})
 	}
 	if len(spec.DNS) > 0 {

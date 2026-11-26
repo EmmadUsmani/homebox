@@ -51,6 +51,7 @@ type SocketAttachment struct {
 // Spec is everything a driver needs to create a VM.
 type Spec struct {
 	Name      string
+	SavedDisk *Image  // a local, driver-native disk to copy into the new VM
 	Images    []Image // the driver picks the one matching the host's arch
 	CPUs      int
 	MemoryGiB int
