@@ -303,6 +303,16 @@ to the [run history](docs/test-runs.md). Commit the rows you want to share.
 a temporary worktree using the selected tier and prints Git's first bad
 commit. Use the same scope throughout the bisect.
 
+Measured on the laptop with fresh 2-CPU, 4-GiB VMs. Times include static
+checks, provisioning, the selected smoke checks and VM cleanup. The change
+run used a guest script edit and an OS smoke area edit to verify selection.
+
+| Run | Smoke checks passed | Elapsed |
+| --- | ---: | ---: |
+| `scripts/test.sh change --base HEAD` | 18 | 5m 26s |
+| `scripts/test.sh batch --area os` | 16 | 5m 50s |
+| `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 51s |
+
 ## Development
 
 ```sh
