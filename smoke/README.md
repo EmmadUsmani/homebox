@@ -27,4 +27,10 @@ the first boot.
 
 ## Areas
 
-<!-- One line per area: [name](name/README.md): what it covers. -->
+- [native](native/README.md): C and C++ toolchains, build systems, C libraries, debuggers and sanitizers, Go, Rust, Zig, WebAssembly, amd64 emulation, Homebrew, Nix and apt.
+- [runtimes](runtimes/README.md): Node, Bun, Deno, Python with pip and uv, Rails, Java with Maven and Gradle, Kotlin, PHP, Elixir, .NET and the coding-agent CLIs.
+- [services](services/README.md): databases, caches, queues and object storage; web servers, TLS, WebSocket, SSE, gRPC, GraphQL and WebRTC; outbound access and blocked private ranges; published ports from the Mac.
+- [os](os/README.md): systemd services and timers, file watching, limits, disk, memory pressure, swap, locales, users and sudo, tmux, and state surviving a stop and start.
+- [containers](containers/README.md): Docker across distros, BuildKit and amd64 emulation, Compose, volumes, limits, Podman, kind, Dev Containers, Testcontainers, and container isolation from the Mac.
+- [gui](gui/README.md): GUI toolkits, OpenGL, Vulkan, media, fonts and audio, Playwright browsers, and apps driven through the remote desktop from the Mac.
+- [newsdigest](newsdigest/README.md): a full-stack app (News Digest) built, tested, seeded and rendered in the VM and from the Mac; skipped unless `SMOKE_NEWSDIGEST_REPO` points at a checkout.
