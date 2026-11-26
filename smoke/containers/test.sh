@@ -194,7 +194,7 @@ kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    timeout 30 kubectl create deployment smoke --image=nginx:1.28-alpine
+    timeout 30 kubectl create deployment smoke --image=public.ecr.aws/docker/library/nginx:1.28-alpine
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s
     timeout 45 kubectl port-forward deployment/smoke :80 > "$scratch/port-forward.log" 2>&1 &
     local forward=$!

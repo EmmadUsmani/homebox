@@ -9,7 +9,9 @@ registration in the guest, checksum-verified kind and kubectl binaries, and
 locked npm dependencies under the guest user's cache. Setup allocates
 subordinate UID and GID ranges for rootless containers when the guest account
 lacks them. Allow several minutes for cold pulls and package installs. Cached images and installed tools remain
-available for repeat runs.
+available for repeat runs. Buildx, the Compose build and kind use Docker
+Official Images from Amazon ECR Public for base images a fresh builder
+or cluster resolves even when Docker already has local images.
 
 - Install and run jq with apt, apk, dnf, zypper and pacman across Debian,
   Ubuntu, Alpine, Fedora, Rocky Linux, openSUSE and Arch Linux. Arch uses the
