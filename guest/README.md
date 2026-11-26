@@ -28,6 +28,12 @@ without signing in. To select full permissions after signing in, use
 `claude --dangerously-skip-permissions` or `codex --dangerously-bypass-approvals-and-sandbox`.
 Tailscale is installed with the service stopped and disabled.
 
+[`ubuntu/base.sh`](ubuntu/base.sh) sets `kernel.apparmor_restrict_unprivileged_userns = 0`
+in `/etc/sysctl.d/99-homebox-userns.conf`, so Chromium and Electron can sandbox
+their renderers and rootless containers work. Why, and the alternatives turned
+down: [the decision](../docs/decisions.md#browser-sandboxes-inside-the-ubuntu-guest).
+Existing VMs get it by re-running provisioning.
+
 `box desktop NAME --install` runs [Ubuntu's optional desktop layer](ubuntu/desktop.sh)
 over pinned SSH. It adds KasmVNC and Xfce to an existing guest. Its separate
 systemd service starts on demand when a viewer connects.

@@ -46,4 +46,6 @@ EOF_UNIT
 
 check 'tmux session survives disconnect and reconnect over SSH' tmux_test
 check 'guest file and enabled service survive box stop and start' boot_test
+check 'Unprivileged user namespaces are still allowed after restart' remote \
+    'test "$(sysctl -n kernel.apparmor_restrict_unprivileged_userns)" = 0'
 finish

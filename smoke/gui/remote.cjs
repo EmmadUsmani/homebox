@@ -1,9 +1,10 @@
 const assert = require("node:assert/strict");
 const { execFileSync, spawn } = require("node:child_process");
+const path = require("node:path");
 const { once } = require("node:events");
 const { createInterface } = require("node:readline");
 const { setTimeout: delay } = require("node:timers/promises");
-const [modules, box, vm] = process.argv.slice(2);
+const [modules, box, vm, artifacts] = process.argv.slice(2);
 const { chromium } = require(modules + "/playwright");
 const jpeg = require(modules + "/jpeg-js");
 const directory = "homebox-smoke/gui";
@@ -80,6 +81,7 @@ async function run() {
                 Math.floor((x + 25) * image.width / width)) * 4;
             return image.data[pixel] < 40 && image.data[pixel + 1] > 170;
         });
+        await canvas.screenshot({ path: path.join(artifacts, "remote-before-input.png") });
         console.log("PASS Mac Playwright sees GUI pixels through the one-time desktop URL");
 
         stage = "checking remote keyboard and mouse input";
@@ -89,6 +91,7 @@ async function run() {
         const saved = (value) => until("GUI save marker", () =>
             guest(`cat ~/${directory}/remote-result 2>/dev/null || true`) === value);
         await saved("remote-typed");
+        await canvas.screenshot({ path: path.join(artifacts, "remote-after-input.png") });
         console.log("PASS desktop browser keyboard and click reach the GUI");
 
         stage = "checking the Desktop tab's guest clipboard helper";
@@ -101,6 +104,7 @@ async function run() {
         guest(clipboard + " paste", "replacement");
         await click(x + 270, y + 100);
         await until("GUI clipboard", () => guest(clipboard + " copy") === clipboardText);
+        await canvas.screenshot({ path: path.join(artifacts, "remote-clipboard.png") });
         console.log("PASS guest clipboard helper exchanges UTF-8 with a GUI app");
     } catch (error) {
         // Playwright navigation errors can contain the one-time URL.

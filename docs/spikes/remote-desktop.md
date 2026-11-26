@@ -59,7 +59,7 @@ node <repo>/spikes/remote-desktop/harness/measure.js \
 
 The harness writes `<backend>-desktop.png`, `<backend>-scroll.png` and
 `<backend>-video.png` beside the JSON. This run kept them locally in
-`~/Downloads/homebox-remote-desktop-spike/` under the prefixes `novnc`,
+the owner's sandbox (`tickets/homebox/evidence/remote-desktop-spike/`) under the prefixes `novnc`,
 `kasm`, `kasm-tuned` and `selkies`. Screenshots and raw run data are local evidence.
 
 ## Method

@@ -11,6 +11,7 @@ scratch=$(mktemp -d) || exit 1
 export scratch
 export prefix="homebox-smoke-$$"
 export alpine=alpine:3.22
+export nginx=nginx:1.28-alpine
 
 cleanup() {
     timeout 45 docker compose -p "$prefix" -f "$fixtures/compose/compose.yaml" down -v --remove-orphans --rmi local >/dev/null 2>&1
@@ -34,7 +35,7 @@ trap 'exit 143' TERM
 
 check_case() {
     export -f "${2:?missing case function}"
-    check "$1" bash -eo pipefail -c "$2"
+    check "$1" bash -eo pipefail -c '"$@"' bash "${@:2}"
 }
 
 distro() {
@@ -193,8 +194,13 @@ check_case 'Rootless Podman runs a container and builds and runs its own image' 
 kubernetes() (
     set -e
     export KUBECONFIG="$scratch/kubeconfig"
+    if ! timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"; then
+        timeout 120 docker pull --platform "$native" "$nginx"
+        timeout 120 docker image save --platform "$native" --output "$scratch/nginx.tar" "$nginx"
+    fi
     timeout 360 kind create cluster --name "$prefix" --wait 120s
-    timeout 30 kubectl create deployment smoke --image=public.ecr.aws/docker/library/nginx:1.28-alpine
+    timeout 120 kind load image-archive "$scratch/nginx.tar" --name "$prefix"
+    timeout 30 kubectl create deployment smoke --image="$nginx"
     timeout 130 kubectl rollout status deployment/smoke --timeout=120s
     timeout 45 kubectl port-forward deployment/smoke :80 > "$scratch/port-forward.log" 2>&1 &
     local forward=$!
@@ -227,5 +233,8 @@ check_case 'Dev Containers builds, starts, runs postCreateCommand and executes a
 cp "$fixtures/testcontainers/smoke.test.cjs" "$tools/" || exit 1
 check 'Node Testcontainers starts a service, waits for HTTP and exercises its mapped port' \
     timeout 180 node --test "$tools/smoke.test.cjs"
+
+# shellcheck source=smoke/containers/minimal.sh
+. ./minimal.sh
 
 finish
