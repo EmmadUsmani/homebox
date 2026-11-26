@@ -12,12 +12,18 @@ one area:
 | `AREA/host.sh` | on the Mac, optional | Checks from outside the VM (published ports, the desktop proxy). Gets `SMOKE_VM`, `BOX`, and the run output directory in `SMOKE_ARTIFACTS`. |
 | `AREA/README.md` | | What the area covers, what it installs, and known limits. |
 
-Run against a VM on this Mac:
+Use [the tiered runner](../README.md#testing) to provision and clean up a
+scratch VM automatically. To use a VM already running on this Mac:
 
 ```sh
 smoke/run.sh NAME            # every area
-smoke/run.sh NAME languages  # one area
+smoke/run.sh NAME runtimes   # one area
+SMOKE_LEVEL=quick SMOKE_MATCH='GTK|Qt' smoke/run.sh NAME gui
 ```
+
+Direct runs default to the full level. The GUI host harness runs as a group
+labeled `Remote desktop host checks`; select it with its guest prerequisites
+or run GUI without a filter to collect the full gallery.
 
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
 

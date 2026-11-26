@@ -11,6 +11,19 @@
 set -eu
 [ $# -ge 1 ] || { echo 'usage: smoke/run.sh NAME [AREA...]' >&2; exit 2; }
 box=${BOX:-box}
+SMOKE_LEVEL=${SMOKE_LEVEL:-full}
+SMOKE_MATCH=${SMOKE_MATCH:-}
+export SMOKE_LEVEL SMOKE_MATCH
+case $SMOKE_LEVEL in
+    quick|full) ;;
+    *) echo "Invalid SMOKE_LEVEL: $SMOKE_LEVEL" >&2; exit 2 ;;
+esac
+if [ -n "$SMOKE_MATCH" ]; then
+    grep -E -- "$SMOKE_MATCH" /dev/null || [ "$?" -eq 1 ] || exit 2
+fi
+# SSH accepts a shell command, so escape embedded apostrophes in the regex.
+match_quoted=$(printf '%s.' "$SMOKE_MATCH" | sed "s/'/'\\\\''/g")
+match_quoted=${match_quoted%.}
 name=$1
 shift
 here=$(cd "$(dirname "$0")" && pwd)
@@ -18,6 +31,12 @@ if [ $# -eq 0 ]; then
     # shellcheck disable=SC2046 # area names are directory names without spaces
     set -- $(cd "$here" && for d in */; do [ -f "$d/test.sh" ] && printf '%s ' "${d%/}"; done)
 fi
+for area in "$@"; do
+    case $area in
+        ''|*[!a-z0-9-]*) echo "Invalid smoke area: $area" >&2; exit 2 ;;
+    esac
+    [ -f "$here/$area/test.sh" ] || { echo "No smoke area $area" >&2; exit 2; }
+done
 results=${SMOKE_RESULTS:-$here/../.smoke-results}/$name-$(date +%Y%m%d-%H%M%S)
 mkdir -p "$results"
 
@@ -27,7 +46,6 @@ COPYFILE_DISABLE=1 tar --no-xattrs -C "$here" -czf - . | "$box" ssh "$name" -- \
 
 failed=
 for area in "$@"; do
-    [ -d "$here/$area" ] || { echo "No smoke area $area" >&2; failed="$failed $area"; continue; }
     if [ -f "$here/$area/prepare.sh" ]; then
         log="$results/$area-prepare.log"
         printf '== %s prepare\n' "$area"
@@ -44,7 +62,7 @@ for area in "$@"; do
         log="$results/$area-$phase.log"
         printf '== %s %s\n' "$area" "$phase"
         status=0
-        "$box" ssh "$name" -- "cd ~/homebox-smoke/$area && bash -l ./$phase.sh" </dev/null >"$log" 2>&1 || status=$?
+        "$box" ssh "$name" -- "cd ~/homebox-smoke/$area && SMOKE_LEVEL=$SMOKE_LEVEL SMOKE_MATCH='$match_quoted' bash -l ./$phase.sh" </dev/null >"$log" 2>&1 || status=$?
         cat "$log"
         if [ "$status" -ne 0 ]; then
             failed="$failed $area-$phase"

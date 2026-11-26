@@ -44,3 +44,24 @@ dir when done.
 
 Before committing: `go build ./...`, `go vet ./...`, `go test ./...`, and
 ShellCheck on every shell script you add or change.
+
+## Levels and label filters
+
+`smoke/run.sh` exports `SMOKE_LEVEL` and `SMOKE_MATCH` to all phases, including
+guest setup and tests. The default level is `full`. Checks belong to both
+levels unless wrapped in `full_only`, for example:
+
+```sh
+check 'Build and run hello' ./hello.sh
+full_only check 'Build the optional cross-compiler' ./cross-compiler.sh
+```
+
+Use `full_only` for slow or heavier scenarios and for setup used only by those
+scenarios. In `quick`, keep representative checks and the setup they need.
+
+`SMOKE_MATCH` is a case-sensitive extended regular expression applied by
+`check` and `check_sh` to the label before the command runs. Filtered checks
+produce no result line. Setup and code outside these helpers still run.
+Keep prerequisites outside filtered assertions, or select dependent checks
+and their prerequisites in the same expression. A multi-check host harness
+can use `smoke_matches 'Group label'` to decide whether to run the group.

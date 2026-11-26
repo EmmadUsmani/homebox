@@ -221,6 +221,14 @@ seconds with backoff up to 2 minutes after failure, so a sleeping Mac uses
 fewer connection attempts while reachable guests keep reporting.
 See [desktop implementation decisions](observability.md#desktop-implementation-decisions).
 
+## Local test tiers
+
+On 2026-11-26 the owner approved on-demand change, batch and full test tiers
+on whichever Mac is available. The change tier targets a short pre-merge
+feedback loop. The larger tiers check fresh provisioning and deeper guest
+behavior less frequently. GitHub CI remains informative. See
+[Testing](../README.md#testing) for the runner and partial runs.
+
 ## Outside projects
 
 **devvm: ideas only** (owner, 2026-11-21). MIT-licensed, and the source of the
