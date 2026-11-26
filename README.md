@@ -156,6 +156,12 @@ for headed apps, and Tailscale (installed, off). Log the agents in yourself;
 for full permissions use `claude --dangerously-skip-permissions` or
 `codex --dangerously-bypass-approvals-and-sandbox`.
 
+Ubuntu provisioning allows unprivileged user namespaces for the Chromium
+and Electron process sandboxes. Playwright callers can enable Chromium's
+sandbox with `chromiumSandbox: true`. To apply the guest setting to an existing
+VM such as `dev`, run `box provision NAME` or select **Re-run provisioning**
+in the app. See [the guest security model](SECURITY.md#browser-processes-inside-the-ubuntu-guest).
+
 ## Stopping and starting
 
 `box stop NAME` shuts the VM down cleanly; `box start NAME` boots it again

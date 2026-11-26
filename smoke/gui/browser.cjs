@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const path = require("node:path");
 const { execFileSync } = require("node:child_process");
+const assertSandboxedRenderer = require("./renderer-sandbox.cjs");
 
 const [playwrightPath, engine, mode, videoFile, artifacts] = process.argv.slice(2);
 const playwright = require(playwrightPath);
@@ -8,7 +9,7 @@ const playwright = require(playwrightPath);
 async function run() {
     const options = { headless: mode === "headless" };
     if (engine === "chromium") {
-        // Use the guest profile's Playwright default for this generated local page.
+        options.chromiumSandbox = true;
         options.args = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader"];
     }
     const browser = await playwright[engine].launch(options);
@@ -30,6 +31,12 @@ async function run() {
         assert.ok(blue > 0.7 && red < 0.2, "Screenshot is missing the blue page background");
 
         if (engine === "chromium") {
+            const session = await browser.newBrowserCDPSession();
+            const { processInfo } = await session.send("SystemInfo.getProcessInfo");
+            const renderers = processInfo.filter(({ type }) => type === "renderer");
+            assert.ok(renderers.length > 0, "Chromium must have a renderer process");
+            for (const { id } of renderers) assertSandboxedRenderer(id);
+
             await page.evaluate(() => {
                 const canvas = document.createElement("canvas");
                 document.body.append(canvas);

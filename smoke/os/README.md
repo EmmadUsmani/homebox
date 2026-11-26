@@ -15,8 +15,10 @@ UTC, UTF-8 filenames, sudo, local accounts and clock synchronization.
 
 The host check reconnects over SSH to verify tmux persistence, then stops
 and starts the VM with `box` and checks a fixture file and enabled service
-after boot. Allow up to a minute for cron and additional time for the VM
-restart. The area removes its temporary swap, units, accounts and fixtures.
+after boot. The guest and host checks verify that Ubuntu allows unprivileged
+user namespaces before and after that restart. Allow up to a minute for cron
+and additional time for the VM restart. The area removes its temporary swap,
+units, accounts and fixtures.
 
 Ubuntu 26.04's uutils `dd iflag=direct` returned an invalid-input error on
 the guest's ext4 disk. The check uses aligned `O_DIRECT` reads and records

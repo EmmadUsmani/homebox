@@ -27,8 +27,8 @@ check_sh 'SDL2 window paints pixels' 'cc sdl.c $(pkg-config --cflags --libs sdl2
     timeout 30 ./window.sh SmokeSDL "$scratch/sdl"'
 check_sh 'Swing window paints pixels' 'javac -d "$scratch" SmokeSwing.java &&
     timeout 30 ./window.sh SmokeSwing java -cp "$scratch" SmokeSwing'
-check 'Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
-    "$HOME/.cache/homebox-smoke-gui/node_modules/.bin/electron" --no-sandbox electron.cjs
+check 'Sandboxed Electron window paints pixels' timeout 45 ./window.sh SmokeElectron \
+    "$HOME/.cache/homebox-smoke-gui/node_modules/.bin/electron" electron.cjs
 
 check_sh 'GLX reports a Mesa software renderer' 'timeout 15 glxinfo -B | grep -Ei "OpenGL renderer string:.*(llvmpipe|softpipe)"'
 check 'Build OpenGL triangle fixture' cc gl.c -lEGL -lGL -o "$scratch/gl"
@@ -55,7 +55,7 @@ check_sh 'FFmpeg encodes and decodes 24 VP8 frames' '
     ffmpeg -v error -f lavfi -i testsrc2=size=160x120:rate=24 -frames:v 24 -c:v libvpx "$scratch/video.webm" &&
     test "$(ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -of csv=p=0 "$scratch/video.webm")" = 24 &&
     ffmpeg -v error -y -i "$scratch/video.webm" -frames:v 1 "$gui_artifacts/ffmpeg-frame.png"'
-check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 ./audio.sh
+check 'PulseAudio null-sink monitor records a non-silent tone' timeout 20 dbus-run-session -- ./audio.sh
 
 for engine in chromium firefox webkit; do
     for mode in headless headed; do
