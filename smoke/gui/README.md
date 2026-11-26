@@ -2,7 +2,9 @@
 
 Quick uses GTK4 as its toolkit and the profile’s Chromium in headed mode.
 It checks KasmVNC, desktop OpenGL, Vulkan compute, image and text
-rendering, video encoding and audio loopback. Full adds Qt, Tkinter, PySide6, SDL2, Swing, Electron, offscreen EGL,
+rendering, video encoding and audio loopback.
+
+Full adds Qt, Tkinter, PySide6, SDL2, Swing, Electron, offscreen EGL,
 Vulkan enumeration, the browser and mode matrix, and the Mac remote
 desktop interaction and gallery.
 

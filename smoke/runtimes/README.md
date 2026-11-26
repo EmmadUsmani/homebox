@@ -2,7 +2,9 @@
 
 Quick uses the guest profile’s Node and Python to exercise the Node test
 runner, npm/pnpm/Yarn installs, Python wheels and a compiled extension,
-and starts the two coding-agent CLIs. Full installs the extra runtimes and adds Bun, Deno, Node add-ons and web
+and starts the two coding-agent CLIs.
+
+Full installs the extra runtimes and adds Bun, Deno, Node add-ons and web
 frameworks, uv/pipx, Python services and notebooks, Rails, Java with Maven
 and Gradle, PHP, Elixir and .NET.
 

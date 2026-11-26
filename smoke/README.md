@@ -66,7 +66,8 @@ the first boot.
 `run.sh` loads the image archives for the containers and services areas into
 Docker before guest setup. The [containers](containers/images.txt) and
 [services](services/images.txt) manifests list the references and platforms.
-Quick runs stage only the native variants of rows marked `quick`.
+Quick runs stage only the native variants of rows marked `quick` and can
+load those variants from an existing multi-platform archive.
 For an optional News Digest checkout, the runner reads that checkout's
 `docker compose config --images` after staging its source.
 

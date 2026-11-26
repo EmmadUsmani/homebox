@@ -2,7 +2,9 @@
 
 Quick covers GCC C and C++20, Make, system C libraries, strace, GCC address
 and undefined-behavior sanitizers, Go cgo, Rust with Cargo and Tokio, and
-the apt install lifecycle. Full adds Clang, musl, C++23, other build systems, GDB and Valgrind,
+the apt install lifecycle.
+
+Full adds Clang, musl, C++23, other build systems, GDB and Valgrind,
 additional tracing and sanitizers, Go race and cross-builds, QEMU and
 binfmt, Rust lint, HTTP and WASI, Zig, Homebrew, Nix and apt source fetches.
 

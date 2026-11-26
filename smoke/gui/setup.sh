@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 export DEBIAN_FRONTEND=noninteractive
-set -- libgtk-4-dev xdotool x11-apps mesa-utils libgl-dev libegl-dev mesa-vulkan-drivers \
+set -- libgtk-4-dev xdotool mesa-utils libgl-dev libegl-dev mesa-vulkan-drivers \
     libvulkan-dev glslang-tools libcairo2-dev pango1.0-tools \
     fonts-noto-cjk fonts-noto-color-emoji fonts-noto-core pulseaudio pulseaudio-utils
 if [ "${SMOKE_LEVEL:-full}" = full ]; then
