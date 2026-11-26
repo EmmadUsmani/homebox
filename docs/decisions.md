@@ -36,8 +36,19 @@ PC instead (phase 5).
 ## Browser sandboxes inside the Ubuntu guest
 
 **Allow unprivileged user namespaces** (owner, 2026-11-26).
+
+Chromium's Linux sandbox, which Electron inherits, runs each web page's
+renderer in its own user namespace (no view of the user's files, processes or
+network) and under a seccomp filter (a short list of allowed system calls), so
+a compromised page stays contained. Since 23.10, Ubuntu lets only programs
+with an AppArmor profile create user namespaces
+(`kernel.apparmor_restrict_unprivileged_userns = 1`), and npm- or
+Playwright-installed browsers have none, so they ran with `--no-sandbox`.
 [Ubuntu's AppArmor restriction](https://documentation.ubuntu.com/security/security-features/privilege-restriction/apparmor/)
-reduces the kernel attack surface available for local privilege escalation.
+reduces the kernel attack surface available for local privilege escalation:
+user namespaces give unprivileged code root inside the namespace, which has
+exposed kernel bugs (for example in netfilter and overlayfs) that let an
+ordinary user become real root.
 That restriction adds little protection for the VM's development user, who
 already has passwordless sudo and root-equivalent Docker group membership.
 Allowing user namespaces lets Chromium and Electron isolate renderers when
@@ -53,6 +64,11 @@ kernels allow unprivileged user namespaces by default.
   binary for each installation, which fits poorly with user-local npm installs.
 - **`--no-sandbox`** would require a per-app workaround and leave renderers
   without Chromium's process sandbox.
+
+New VMs get the setting from [`guest/ubuntu/base.sh`](../guest/ubuntu/base.sh);
+existing VMs get it by re-running provisioning (`box provision NAME`, or
+**Re-run provisioning** in the app). The GUI smoke tests check that the
+renderer sandbox is active.
 
 ## The box command
 
