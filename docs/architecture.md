@@ -18,6 +18,7 @@ internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
 internal/guest     loads guest profiles (images + provisioning steps)
 guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
+                   Node, Python and uv via mise
   ubuntu/          Ubuntu LTS: image, apt packages, services
 internal/state     box's own records (one file per VM) and port allocation
 internal/egress    public-address policy, host interface checks and bounded daemon log

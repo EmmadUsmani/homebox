@@ -8,7 +8,7 @@ if [ ! -x "$mise" ]; then
     curl -fsSL https://mise.run -o "$installer"
     MISE_INSTALL_PATH="$mise" sh "$installer"
 fi
-"$mise" use --global node@24 python@3.14
+"$mise" use --global node@24 python@3.14 uv
 
 # Keep the expressions literal until shell startup.
 # shellcheck disable=SC2016
