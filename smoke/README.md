@@ -22,6 +22,26 @@ smoke/run.sh NAME runtimes   # one area
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
 To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
+## From another machine on the LAN
+
+Configure a pinned SSH alias for a running VM with LAN publishing, then run
+the suite from the laptop. Use a dedicated smoke VM. The runner replaces the
+guest's `~/homebox-smoke` directory on each run.
+
+```sh
+smoke/remote.sh -F ~/.ssh/smoke_config VM_ALIAS
+smoke/remote.sh VM_ALIAS services
+```
+
+The runner uses ordinary SSH and accepts `SMOKE_SSH_CONFIG` as an alternative
+to `-F`. It runs guest setup and tests, reports host-only phases as skips, and
+skips areas that require host preparation, including News Digest. The services
+area checks published HTTP and WebSocket traffic, Chromium rendering, guest
+isolation from a laptop listener, and SSH and SCP timings. Install Node.js 22
+or later and npm on the laptop for those checks. Set `SMOKE_LAN_PORT_BASE` to the
+published host port for guest port 8000 if it differs from 12000. Guest port
+8001 must map to the next host port.
+
 Setup scripts install tools a user would install themselves; tools nearly every
 VM needs belong in the guest profile (`guest/`) instead, so they're there from
 the first boot.
@@ -63,6 +83,12 @@ reported 185 passes, zero failures and one skip for the unavailable
 hardware `perf` cycle counter. The Mini reached the guest over pinned
 SSH and exercised its published HTTP and WebSocket ports. The run also
 verified that the guest and SSH service recovered after a stop and start.
+
+A laptop then ran [the LAN suite](#from-another-machine-on-the-lan) against
+the same VM over pinned SSH. The run reported 184 passes, zero failures and
+six skips for host-only phases, News Digest preparation, and the unavailable
+`perf` counter. The laptop reached the published guest web fixtures and
+exercised the native app's [remote views](../docs/observability.md#remote-desktop-phase-2).
 
 ## Areas
 

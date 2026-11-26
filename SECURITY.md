@@ -132,11 +132,13 @@ disables agent forwarding, X11 forwarding, port forwarding and SSH
 connection sharing.
 
 The terminal uses box's stored pins for loopback SSH to local VMs and the
-installed homebox pins for remote aliases. Host key changes block the
-connection. Remote authentication tries the local SSH agent and unencrypted
-default identity files without copying private keys or forwarding the agent
-or X11. Terminal output is parsed by xterm.js with bounded buffering and
-scrollback. Guest escape sequences cannot set the clipboard or open links.
+installed homebox pins for remote aliases. The SSH transport prefers pinned
+key types during negotiation and still requires an exact pin match. Host key
+changes block the connection. Remote authentication tries the local SSH agent
+and unencrypted default identity files without copying private keys or
+forwarding the agent or X11. Terminal output is parsed by xterm.js with
+bounded buffering and scrollback. Guest escape sequences cannot set the
+clipboard or open links.
 
 The Files tab uses SFTP over the same pinned SSH pool. Guest names and file
 contents are untrusted text. The browser reads at most 5,001 directory

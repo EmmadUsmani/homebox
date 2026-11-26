@@ -20,6 +20,15 @@ Read [README.md](README.md), [run.sh](run.sh) and [lib.sh](lib.sh) first.
   digest in the reference if the fixture pins it. Keep the manifest and build,
   Compose and test fixtures in sync.
 
+## Checks from another machine
+
+Add `AREA/remote.sh` for a check that runs on a laptop over the LAN.
+[`remote.sh`](remote.sh) runs it after the guest phases with `SMOKE_VM`
+(SSH alias), `SMOKE_SSH_CONFIG` (optional config file), `SMOKE_LAN_HOST`
+(effective SSH hostname), and `SMOKE_ARTIFACTS` (output directory). Keep
+checks that need the VM host in `host.sh`. An area with `prepare.sh`
+is skipped because its guest tests depend on the prepared inputs.
+
 ## Where fixes go
 
 - Something nearly every development VM needs (a common package, an inotify

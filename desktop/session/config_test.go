@@ -73,19 +73,22 @@ func TestPinnedHostKey(t *testing.T) {
 	key, _ := keyForTest(t)
 	other, _ := keyForTest(t)
 	line := strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key.PublicKey())))
-	verify, err := pinnedKeys(remotePins([]byte("unrelated "+line+"\nhomebox-main "+line), "homebox-main"))
+	config, err := pinnedClientConfig(remotePins([]byte("unrelated "+line+"\nhomebox-main "+line), "homebox-main"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := verify("", nil, key.PublicKey()); err != nil {
+	if config.HostKeyAlgorithms[0] != key.PublicKey().Type() {
+		t.Fatalf("first offered algorithm is %q, want the pinned type %q", config.HostKeyAlgorithms[0], key.PublicKey().Type())
+	}
+	if err := config.HostKeyCallback("", nil, key.PublicKey()); err != nil {
 		t.Fatal(err)
 	}
 	var changed *HostKeyChangedError
-	if err := verify("", nil, other.PublicKey()); !errors.As(err, &changed) {
+	if err := config.HostKeyCallback("", nil, other.PublicKey()); !errors.As(err, &changed) {
 		t.Fatalf("want typed mismatch; got %v", err)
 	}
 	for _, pins := range [][]string{nil, {""}, {"ssh-ed25519 garbage"}, {"# " + line}} {
-		if _, err := pinnedKeys(pins); err == nil {
+		if _, err := pinnedClientConfig(pins); err == nil {
 			t.Fatalf("accepted invalid pins: %q", pins)
 		}
 	}

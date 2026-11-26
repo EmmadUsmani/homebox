@@ -53,10 +53,11 @@ func serveTestShell(channel ssh.Channel, requests <-chan *ssh.Request) {
 
 func TestTerminalLifecycle(t *testing.T) {
 	key, _ := keyForTest(t)
-	verify, err := pinnedKeys([]string{strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key.PublicKey())))})
+	clientConfig, err := pinnedClientConfig([]string{strings.TrimSpace(string(ssh.MarshalAuthorizedKey(key.PublicKey())))})
 	if err != nil {
 		t.Fatal(err)
 	}
+	clientConfig.User = "test"
 	var connections atomic.Int32
 	disconnected := make(chan struct{}, 1)
 	config := &ssh.ServerConfig{NoClientAuth: true}
@@ -88,7 +89,7 @@ func TestTerminalLifecycle(t *testing.T) {
 				}
 			}
 		}()
-		return dialSSH(ctx, listener.Addr().String(), &ssh.ClientConfig{User: "test", HostKeyCallback: verify})
+		return dialSSH(ctx, listener.Addr().String(), clientConfig)
 	})
 	term := NewTerminal(pool)
 	defer term.ServiceShutdown()
