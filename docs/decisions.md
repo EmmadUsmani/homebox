@@ -251,3 +251,10 @@ for the user and doesn't block the host network. See
 
 - The repository's license (owner: on hold).
 - Proxmox or Lima for the Linux GPU box.
+
+## 2026-11-26 · Smoke-test container image cache
+
+The owner approved a Mac-side cache after the containers smoke runs hit Docker
+Hub's anonymous pull quota. The [smoke runner](../smoke/README.md#container-image-cache)
+stores archives on the Mac and transfers them over pinned SSH initiated by the
+Mac, keeping the cache outside guest reach.

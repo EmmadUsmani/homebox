@@ -119,6 +119,9 @@ The desktop app reads the same local records as the CLI. Its
 and calls the shared app operations. It keeps a bounded tail of the active
 operation's output in memory and reads step names from the provision record.
 
+The [smoke runner's image archives](../smoke/README.md#container-image-cache)
+live in the host's user cache, separate from box state and VM lifecycles.
+
 ## Ports
 
 Each VM gets a small index `n` (1–99) when created. All its host ports derive

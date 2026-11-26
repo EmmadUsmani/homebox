@@ -288,7 +288,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Code architecture](docs/architecture.md): packages and dependency rules.
 - [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
-- [Guest smoke tests](smoke/README.md): deeper checks that a VM works as a development machine.
+- [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
