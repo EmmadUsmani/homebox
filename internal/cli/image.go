@@ -35,14 +35,23 @@ func imageCommand(service Application, version string) *cobra.Command {
 			fmt.Fprintln(cmd.ErrOrStderr(), warning)
 			return service.ExportImage(cmd.Context(), args[0], args[1])
 		}},
-		&cobra.Command{Use: "import FILE", Short: "Verify and import an exported image", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
-			name, err := service.ImportImage(cmd.Context(), args[0])
+	)
+	var importName string
+	importCommand := &cobra.Command{
+		Use: "import FILE", Short: "Verify and import an exported image", Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if cmd.Flags().Changed("name") && importName == "" {
+				return fmt.Errorf("--name requires a non-empty image name")
+			}
+			name, err := service.ImportImage(cmd.Context(), args[0], importName)
 			if err != nil {
 				return err
 			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), name)
 			return err
-		}},
-	)
+		},
+	}
+	importCommand.Flags().StringVar(&importName, "name", "", "save the imported disk under this image name")
+	command.AddCommand(importCommand)
 	return command
 }

@@ -13,7 +13,9 @@ one area:
 | `AREA/README.md` | | What the area covers, what it installs, and known limits. |
 
 Use [the tiered runner](../README.md#testing) to provision and clean up a
-scratch VM automatically. To use a VM already running on this Mac:
+scratch VM automatically. The change tier can use a
+[saved smoke image](../README.md#testing). To use a VM already running
+on this Mac:
 
 ```sh
 smoke/run.sh NAME            # every area
@@ -30,7 +32,9 @@ scripts/test.sh full --area containers --match 'Debian|Alpine|Fedora'
 scripts/test.sh full --area containers --match 'distroless'
 scripts/test.sh full --area gui --match 'GTK|Qt'
 scripts/test.sh batch --area services --match 'Postgres'
-``` The GUI host harness runs as a group
+```
+
+The GUI host harness runs as a group
 labeled `Remote desktop host checks`; select it with its guest prerequisites
 or run GUI without a filter to collect the full gallery.
 

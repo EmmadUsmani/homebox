@@ -208,7 +208,7 @@ func (s *Store) ExportImage(ctx context.Context, name, destination string) error
 	return os.Link(file.Name(), destination)
 }
 
-func (s *Store) ImportImage(ctx context.Context, path string) (string, error) {
+func (s *Store) ImportImage(ctx context.Context, path, name string) (string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return "", err
@@ -230,6 +230,9 @@ func (s *Store) ImportImage(ctx context.Context, path string) (string, error) {
 	}
 	if err := image.validate(); err != nil {
 		return "", err
+	}
+	if name != "" {
+		image.Name = name
 	}
 	err = s.stageImage(&image, func(path string) error {
 		disk, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)

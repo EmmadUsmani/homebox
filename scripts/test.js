@@ -3,10 +3,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
+const imageFlags = "[--image NAME] [--image-home DIR] [--image-file FILE]";
 const usage = `Usage:
-  scripts/test.sh change|batch|full [--area AREA ...] [--match ERE] [--base REF] [--keep-vm]
+  scripts/test.sh change|batch|full [--area AREA ...] [--match ERE] [--base REF] [--keep-vm] ${imageFlags}
   scripts/test.sh last
-  scripts/test.sh bisect GOOD BAD change|batch|full [--area AREA ...] [--match ERE]`;
+  scripts/test.sh bisect GOOD BAD change|batch|full [--area AREA ...] [--match ERE] ${imageFlags}`;
 const tiers = ["change", "batch", "full"];
 const root = process.env.HOMEBOX_TEST_CHECKOUT || path.resolve(__dirname, "..");
 const history = path.join(root, "docs/test-runs.md");
@@ -39,6 +40,9 @@ function parse(args) {
         case "--area": options.areas.push(value); break;
         case "--match": options.match = value; break;
         case "--base": options.base = value; break;
+        case "--image": options.image = value; break;
+        case "--image-home": options.imageHome = value; break;
+        case "--image-file": options.imageFile = value; break;
         default: throw new Error(usage);
         }
     }
@@ -105,7 +109,7 @@ async function runSuite(options) {
     let vmAttempted = false;
     const vm = "settingsvm";
     const index = Number(process.env.HOMEBOX_TEST_INDEX || 70);
-    const sourceHome = process.env.HOMEBOX_HOME || path.join(os.homedir(), ".homebox");
+    let imageSource = "—";
     const env = { ...process.env };
     delete env.HOMEBOX_HOME;
     delete env.HOMEBOX_FIRST_INDEX;
@@ -216,7 +220,8 @@ async function runSuite(options) {
                 await box("host-init", "host", "init");
             let booted = false;
             if (ready && !interrupted) {
-                if (selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
+                imageSource = "fresh";
+                if (tier === "change" && selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
                 const imageArgs = tier === "change" && !selected.guest ? await smokeImage() : freshVM;
                 if (!interrupted) {
                     vmAttempted = true;
@@ -260,7 +265,7 @@ async function runSuite(options) {
         const outcome = totals.FAIL || interrupted ? "FAIL" : "PASS";
         const model = capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch();
         const version = capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a";
-        const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas.join(", ") || "static"} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} |\n`;
+        const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas.join(", ") || "static"} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} | ${imageSource.replaceAll("|", "\\|").replace(/[\r\n]/g, " ")} |\n`;
         console.log(`\n${row.trimEnd()}\nLogs: ${results}`);
         if (!process.env.HOMEBOX_TEST_CHECKOUT) fs.appendFileSync(history, row);
         process.exitCode = outcome === "FAIL" ? 1 : 0;
@@ -273,25 +278,44 @@ async function runSuite(options) {
     }
 
     async function smokeImage() {
-        const image = process.env.HOMEBOX_SMOKE_IMAGE || "homebox-smoke";
-        const imageEnv = { ...env, HOMEBOX_HOME: sourceHome };
-        const list = capture(env.BOX, ["image", "ls"], { env: imageEnv });
+        const image = options.image || process.env.HOMEBOX_SMOKE_IMAGE || "homebox-smoke";
+        const sourceHome = path.resolve(options.imageHome || process.env.HOMEBOX_SMOKE_IMAGE_HOME ||
+            path.join(os.homedir(), ".homebox"));
+        const imageFile = options.imageFile || process.env.HOMEBOX_SMOKE_IMAGE_FILE;
+        const archive = imageFile ? path.resolve(imageFile) : path.join(scratch, "smoke-image");
+        const source = imageFile ? archive : sourceHome;
+        const displaySource = source.startsWith(os.homedir() + path.sep) ? "~" + source.slice(os.homedir().length) : source;
+        const log = path.join(results, "smoke-image.log");
         const flags = capture(env.BOX, ["new", "--help"], { env });
-        if (list.status !== 0 || !flags.stdout?.includes("--image")) {
-            console.warn("Warning: box image commands unavailable. Provisioning a fresh VM.");
-        } else if (!list.stdout.split("\n").some(line => line.trim().split(/\s+/)[0] === image)) {
-            console.warn(`Warning: saved smoke image "${image}" unavailable. Provisioning a fresh VM.`);
-        } else {
-            const archive = path.join(scratch, "smoke-image");
-            const log = path.join(results, "smoke-image.log");
-            if (await command(env.BOX, ["image", "export", image, archive], imageEnv, log) &&
-                await command(env.BOX, ["image", "import", archive], env, log)) {
-                fs.rmSync(archive);
-                return ["--image", image, ...vmSize];
-            }
-            console.warn(`Warning: could not copy the saved smoke image into isolated state. See ${log}. Provisioning a fresh VM.`);
+        const fallback = reason => {
+            console.warn(`Warning: ${reason}. Provisioning a fresh VM.`);
+            return freshVM;
+        };
+
+        if (!flags.stdout?.includes("--image")) return fallback("box image commands unavailable");
+        console.log(`Preparing smoke image "${image}" from ${displaySource} (log: ${log})`);
+        if (!imageFile && !await command(env.BOX, ["image", "export", image, archive],
+            { ...env, HOMEBOX_HOME: sourceHome }, log)) {
+            return fallback(`could not export smoke image "${image}" from ${displaySource}; see ${log}`);
         }
-        return freshVM;
+        const importArgs = ["image", "import", archive];
+        if (imageFile) importArgs.push("--name", image);
+        if (interrupted) return freshVM;
+        const imported = await command(env.BOX, importArgs, env, log);
+        if (!imageFile) fs.rmSync(archive, { force: true });
+        if (!imported) return fallback(`could not import smoke image from ${displaySource}; see ${log}`);
+
+        const list = capture(env.BOX, ["image", "ls"], { env });
+        const fields = list.stdout?.split("\n").map(line => line.trim().split(/\s+/))
+            .find(([name]) => name === image);
+        const digest = fields?.at(-1);
+        if (list.status !== 0 || !/^[0-9a-f]{64}$/.test(digest)) {
+            fs.appendFileSync(log, list.stderr || "Imported image digest unavailable\n");
+            return fallback(`could not read the imported smoke image digest; see ${log}`);
+        }
+        imageSource = `${image} from ${displaySource} (disk SHA-256 ${digest})`;
+        console.log(`Booting from ${imageSource}`);
+        return ["--image", image, ...vmSize];
     }
 
     async function desktopChecks() {

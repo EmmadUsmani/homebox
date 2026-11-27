@@ -52,14 +52,14 @@ func (s *Service) ExportImage(ctx context.Context, name, path string) error {
 	return s.Store.ExportImage(ctx, name, path)
 }
 
-func (s *Service) ImportImage(ctx context.Context, path string) (string, error) {
-	var name string
+func (s *Service) ImportImage(ctx context.Context, path, name string) (string, error) {
+	var imported string
 	err := s.Store.WithLock(func() error {
 		var err error
-		name, err = s.Store.ImportImage(ctx, path)
+		imported, err = s.Store.ImportImage(ctx, path, name)
 		return err
 	})
-	return name, err
+	return imported, err
 }
 
 func (s *Service) resolveImageOptions(options *NewOptions) error {

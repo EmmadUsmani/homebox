@@ -14,7 +14,6 @@ area uses a Git archive of a local checkout and generated fixture data.
 - Raw disk size 80 GiB (85,899,345,920 bytes)
 - Raw disk SHA-256 `4fe3bcf06e12ba04950d7e04e8a1efc807c5828c54edc2d3817888662a7ce7af`
 
-The local image is also available under `~/.hb-smoke-all/images/homebox-smoke/`.
 Before saving, the build checked Claude Code and Codex sign-in status, searched
 the guest filesystem for `.env*` files and common credential file names, and
 scanned home directories, system configuration, temporary files, container
@@ -66,6 +65,17 @@ image in its isolated state directory and removes the build VM by default.
 Use `--keep-vm` to retain the VM for inspection. The builder stops it before
 retaining it. Each run uses new state, and an existing export file causes an
 error. Smoke logs go to `.smoke-results/` unless `SMOKE_RESULTS` is set.
+
+To install a rebuild in the change tier’s default store, build with
+`--export FILE` and run:
+
+```sh
+HOMEBOX_HOME="$HOME/.homebox" box image import FILE --name homebox-smoke
+```
+
+Import refuses to overwrite an existing image. To try a rebuild alongside
+the default, use `scripts/test.sh change --image-file FILE --area os`.
+You can also select a build’s isolated store with `--image-home DIR`.
 
 ## Load it and repeat the checks
 

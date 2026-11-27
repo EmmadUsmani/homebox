@@ -88,7 +88,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
 | `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |
 | `box image ls` / `box image rm IMAGE` | Lists or removes local images |
-| `box image export IMAGE FILE` / `box image import FILE` | Writes or verifies and loads a compressed image archive |
+| `box image export IMAGE FILE` / `box image import FILE [--name NAME]` | Writes or verifies and loads a compressed image archive |
 | `box ls [--json]` | Lists VMs, published ports, last doctor health and host-side resource use |
 | `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
 | `box top [NAME] [--json]` | Refreshes resource use for running VMs every two seconds. Redirected output and `--json` use JSON Lines |
@@ -317,17 +317,27 @@ unused index with `HOMEBOX_TEST_INDEX` (default 70) when running alongside
 other VMs or test runners. The News Digest area runs when selected and
 `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
-The change tier looks for a local image named `homebox-smoke` when the checkout
-supports image commands. Set `HOMEBOX_SMOKE_IMAGE` to pick a different
-dedicated test image, or `HOMEBOX_HOME` to point at the source image store.
-The runner imports a copy into isolated state and provisions from scratch
-when the image is unavailable or guest profile files changed. Use a test
-image without signed-in accounts.
-Batch and full use isolated state and fresh VMs. GitHub CI remains informative.
+The change tier uses `homebox-smoke` from `~/.homebox` when VM checks are
+selected and guest profile files are unchanged. The runner verifies and
+imports a copy into isolated state. Use a dedicated test image without
+signed-in accounts. See [the build and import instructions](images/homebox-smoke/README.md).
+
+| Set with | CLI equivalent | Purpose |
+| --- | --- | --- |
+| `HOMEBOX_SMOKE_IMAGE` | `--image NAME` | Choose the saved or imported image name. Default: `homebox-smoke`. |
+| `HOMEBOX_SMOKE_IMAGE_HOME` | `--image-home DIR` | Choose a saved-image state directory. Default: `~/.homebox`. |
+| `HOMEBOX_SMOKE_IMAGE_FILE` | `--image-file FILE` | Import an archive directly into isolated state under the chosen image name. Takes precedence over the store. |
+
+Flags take precedence over their corresponding variables. Set
+`HOMEBOX_SMOKE_IMAGE_HOME` if you previously used `HOMEBOX_HOME` to select
+the source store. If the selected image is unavailable, the runner warns
+and provisions a fresh VM. Guest-profile changes, batch and full also
+provision fresh VMs. GitHub CI remains informative.
 
 Logs live in `.smoke-results/` by default. Set `SMOKE_RESULTS` to choose a
 different directory. The runner prints and appends a row
-to the [run history](docs/test-runs.md). Commit the rows you want to share.
+to the [run history](docs/test-runs.md), including the image name, source
+and disk SHA-256 for image boots. Commit the rows you want to share.
 `last` shows the latest default and partial passes per tier. `bisect` checks candidates in
 a temporary worktree using the selected tier and prints Git's first bad
 commit. Use the same scope throughout the bisect.

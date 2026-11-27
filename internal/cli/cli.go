@@ -27,7 +27,7 @@ type Application interface {
 	ListImages() ([]state.Image, error)
 	RemoveImage(string) error
 	ExportImage(context.Context, string, string) error
-	ImportImage(context.Context, string) (string, error)
+	ImportImage(context.Context, string, string) (string, error)
 	Provision(context.Context, string) error
 	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
 	Start(context.Context, string) error
