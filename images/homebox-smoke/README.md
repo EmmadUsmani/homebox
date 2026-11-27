@@ -8,26 +8,22 @@ area uses a Git archive of a local checkout and generated fixture data.
 
 ## Recorded export (2026-11-26)
 
-- Archive `~/homebox-images/homebox-smoke-20261126.hbimg.gz`
-- Compressed size 11,953,853,371 bytes
-- Archive SHA-256 `63ab781aebc936e23f21ce24358f034aba4dbf69d24deb187ba5963ebd4d99fb`
+- Archive `~/homebox-images/homebox-smoke-check-20261126.hbimg.gz`
+- Compressed size 18,594,706,851 bytes
+- Archive SHA-256 `896e0921cba021c70057efb777d589cd7c47805829b021e16ef8bf769489a4ce`
 - Raw disk size 80 GiB (85,899,345,920 bytes)
-- Raw disk SHA-256 `4fe3bcf06e12ba04950d7e04e8a1efc807c5828c54edc2d3817888662a7ce7af`
+- Raw disk SHA-256 `8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0`
 
-Before saving, the build checked Claude Code and Codex sign-in status, searched
-the guest filesystem for `.env*` files and common credential file names, and
-scanned home directories, system configuration, temporary files, container
-storage, Nix and Tailscale state for OpenSSH private keys and common provider
-token formats. Both agents were signed out. After removing public dependency
-test keys, the scan found only the guest's generated SSH host keys.
+The verified archive was imported as `homebox-smoke` in the default
+`~/.homebox` store. The build verified that both coding agents were signed
+out and removed generated TLS keys and public test fixtures before scanning
+for credentials. The guest's SSH host keys are regenerated on restore.
 
 ## Verification
 
-The original guest and a fresh restore each completed the seven-area suite
-with 180 passes, zero failures, and one skip for unavailable hardware
-performance counters. The restore passed `box doctor`, used new SSH pins, and
-wrote journal entries under its new machine ID. The exact export was also
-imported into a separate state directory with matching disk and EFI digests.
+The build ran all seven areas with 206 passes, zero failures, and one skip
+for unavailable hardware performance counters. A fresh restore passed
+`box doctor` and the runtimes checks.
 
 ## Build it
 
@@ -90,7 +86,6 @@ box host init
 box image import /path/to/homebox-smoke-YYYYMMDD.hbimg.gz
 box new smoke-clone --image homebox-smoke
 box doctor smoke-clone
-box provision smoke-clone
 SMOKE_NEWSDIGEST_REPO="$HOME/projects/news-digest" smoke/run.sh smoke-clone
 ```
 
@@ -103,7 +98,5 @@ the News Digest source from the checkout given for that run. If loading on anoth
 keep their guest home directory and ownership. Run `box image ls` to see the
 logical disk size and the SHA-256 of the raw disk.
 
-The recorded November 26 export predates the browser sandbox profile update. The provisioning call
-above brings it up to the current guest profile before running the current
-suite. The verification totals above record the suite used to build and
-verify this archive.
+To apply newer guest-profile scripts to an older restored VM, run
+`box provision smoke-clone` before running the smoke suite.

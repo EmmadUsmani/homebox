@@ -342,9 +342,9 @@ and disk SHA-256 for image boots. Commit the rows you want to share.
 a temporary worktree using the selected tier and prints Git's first bad
 commit. Use the same scope throughout the bisect.
 
-Measured on the laptop with fresh 2-CPU guests. Runs including containers
+Measured on the laptop with 2-CPU guests. Runs including containers
 used 6 GiB of RAM and the others used 4 GiB. Times include static checks,
-provisioning, selected tests and VM cleanup. The first two rows predate the
+VM setup, selected tests and VM cleanup. The first two rows predate the
 per-area quick split. The `change --base HEAD` run used guest and OS smoke
 edits to verify area selection.
 
@@ -356,6 +356,7 @@ edits to verify area selection.
 | `scripts/test.sh batch` with News Digest | 86 | 21m 39s |
 | `scripts/test.sh full --area containers --match distroless` | 14 | 8m 44s |
 | `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 44s |
+| `scripts/test.sh change --area os` with an archive override | 15 | 6m 30s |
 
 With warm container archives, the batch finished below its 30–60 minute
 target. The real-VM Go tests and fresh provisioning took 16m 36s combined.

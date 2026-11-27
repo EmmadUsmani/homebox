@@ -19,3 +19,6 @@ partial passes separately. The VM source is recorded for new runs.
 | 2026-11-26T23:31:03.686Z | f9db8e3bbd8c | no | Mac14,10 | 27.2.1 | batch | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e | PASS | 17/0/0 | 1299.3s | — |
 | 2026-11-26T23:39:38.273Z | f9db8e3bbd8c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services | PASS | 14/0/1 | 514.5s | — |
 | 2026-11-26T23:45:41.330Z | c518f9c8735a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 4/0/0 | 3.1s | — |
+| 2026-11-27T00:33:23.661Z | 3f7001a8059f | no | Mac14,10 | 27.2.1 | change | partial | os | FAIL | 7/1/1 | 210.8s | smoke-archive-check from ~/homebox-images/homebox-smoke-check-20261126.hbimg.gz (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-27T00:41:21.693Z | d703e35e795d | no | Mac14,10 | 27.2.1 | change | partial | os | PASS | 9/0/0 | 390.3s | smoke-archive-check from ~/homebox-images/homebox-smoke-check-20261126.hbimg.gz (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-27T01:30:52.125Z | 8659f1cbbb32 | no | Mac14,10 | 27.2.1 | change | partial | os, runtimes, doctor | PASS | 11/0/0 | 3338.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

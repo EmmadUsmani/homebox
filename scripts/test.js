@@ -220,10 +220,10 @@ async function runSuite(options) {
                 await box("host-init", "host", "init");
             let booted = false;
             if (ready && !interrupted) {
-                imageSource = "fresh";
                 if (tier === "change" && selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
                 const imageArgs = tier === "change" && !selected.guest ? await smokeImage() : freshVM;
                 if (!interrupted) {
+                    if (imageArgs === freshVM) imageSource = "fresh";
                     vmAttempted = true;
                     booted = await box("vm", "new", vm, ...imageArgs);
                 }
@@ -314,7 +314,7 @@ async function runSuite(options) {
             return fallback(`could not read the imported smoke image digest; see ${log}`);
         }
         imageSource = `${image} from ${displaySource} (disk SHA-256 ${digest})`;
-        console.log(`Booting from ${imageSource}`);
+        console.log(`Booting saved image ${imageSource}`);
         return ["--image", image, ...vmSize];
     }
 
