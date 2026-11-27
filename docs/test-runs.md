@@ -2,7 +2,8 @@
 
 The [test runner](../scripts/test.sh) appends one row per run. Totals count
 runner steps as pass/fail/skip. `scripts/test.sh last` reports default and
-partial passes separately. The VM source is recorded for new runs.
+partial passes separately. The VM source is recorded for new runs. The
+2026-11-27 01:30 UTC duration includes laptop sleep during VM boot.
 
 | UTC time | Commit | Dirty | Mac model | macOS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -22,3 +23,4 @@ partial passes separately. The VM source is recorded for new runs.
 | 2026-11-27T00:33:23.661Z | 3f7001a8059f | no | Mac14,10 | 27.2.1 | change | partial | os | FAIL | 7/1/1 | 210.8s | smoke-archive-check from ~/homebox-images/homebox-smoke-check-20261126.hbimg.gz (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-27T00:41:21.693Z | d703e35e795d | no | Mac14,10 | 27.2.1 | change | partial | os | PASS | 9/0/0 | 390.3s | smoke-archive-check from ~/homebox-images/homebox-smoke-check-20261126.hbimg.gz (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-27T01:30:52.125Z | 8659f1cbbb32 | no | Mac14,10 | 27.2.1 | change | partial | os, runtimes, doctor | PASS | 11/0/0 | 3338.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-27T01:42:11.355Z | 53105a9b2018 | no | Mac14,10 | 27.2.1 | change | partial | os, runtimes, doctor | PASS | 11/0/0 | 655.0s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

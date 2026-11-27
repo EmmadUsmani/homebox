@@ -356,6 +356,7 @@ edits to verify area selection.
 | `scripts/test.sh batch` with News Digest | 86 | 21m 39s |
 | `scripts/test.sh full --area containers --match distroless` | 14 | 8m 44s |
 | `scripts/test.sh full --area gui --match 'GTK\|Qt'` | 2 | 5m 44s |
+| `scripts/test.sh change --area os --area runtimes --area doctor` from the default store | 20 | 10m 55s |
 | `scripts/test.sh change --area os` with an archive override | 15 | 6m 30s |
 
 With warm container archives, the batch finished below its 30–60 minute
