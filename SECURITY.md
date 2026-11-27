@@ -58,11 +58,11 @@ confinement enforce the VM-to-Mac boundary independently. See the
 - **The host takes no SSH logins for box.** You SSH into the VM, never into
   the Mac.
 
-#When restoring an image into a fresh state directory, `box` generates the
+When restoring an image into a fresh state directory, `box` generates the
 dedicated Lima login key before launching the confined host agent.
-Host-agent file, process and network permissions stay the same for image restores.
+Image restores use the same host-agent file, process and network permissions.
 
-## The VM and the network
+### The VM and the network
 
 The VM reaches the internet through box's own gateway on the host, not through
 Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-macos)).
