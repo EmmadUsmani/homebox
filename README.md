@@ -323,8 +323,16 @@ selected and guest profile files are unchanged. The runner clones the image
 into isolated state on the same APFS volume and uses the store's recorded
 disk digest. If cloning is unavailable, it warns and copies the disk.
 Explicit archives are checked against their recorded digest during import.
-Use a dedicated test image without
-signed-in accounts. See [the build and import instructions](images/homebox-smoke/README.md).
+Use a dedicated test image without signed-in accounts. See
+[the build and import instructions](images/homebox-smoke/README.md).
+
+Measured with `scripts/test.sh change --area os --area runtimes --area doctor`
+from the default store on a Mac14,10. See the [run history](docs/test-runs.md).
+
+| Staging method | Image staging | Total |
+| --- | ---: | ---: |
+| APFS clone | <0.1 s | 198.4 s |
+| Previous gzip export and import | 483.0 s | 685.4 s |
 
 | Set with | CLI equivalent | Purpose |
 | --- | --- | --- |
