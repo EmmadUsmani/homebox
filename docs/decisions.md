@@ -243,6 +243,10 @@ feedback loop. The larger tiers check fresh provisioning and deeper guest
 behavior less frequently. GitHub CI remains informative. See
 [Testing](../README.md#testing) for the runner and partial runs.
 
+On 2026-11-26 the owner chose the normal homebox state directory as the
+default source for the saved smoke image. The runner keeps its VM state
+isolated and accepts overrides for the source store and image name.
+
 ## Outside projects
 
 **devvm: ideas only** (owner, 2026-11-21). MIT-licensed, and the source of the

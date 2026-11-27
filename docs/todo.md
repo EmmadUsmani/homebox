@@ -103,3 +103,9 @@ Done on 2026-11-26. The [smoke runner](../smoke/README.md#container-image-cache)
 caches image archives on the Mac to avoid the Docker Hub anonymous pull limit
 (HTTP 429) on repeat runs. Cold fills still depend on registry availability
 and pull quotas.
+
+## Smoke image selection for the change tier
+
+Done on 2026-11-26. The [change tier](../README.md#testing) takes its saved
+image from the normal homebox store by default and can use another store
+or import an archive directly. The run history records the source and disk digest.

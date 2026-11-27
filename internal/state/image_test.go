@@ -34,7 +34,7 @@ func TestImageArchive(t *testing.T) {
 	if err := source.ExportImage(t.Context(), "test-image", archive); err == nil {
 		t.Fatal("export overwrote an existing archive")
 	}
-	name, err := destination.ImportImage(t.Context(), archive)
+	name, err := destination.ImportImage(t.Context(), archive, "")
 	if err != nil || name != "test-image" {
 		t.Fatalf("import = %q, %v", name, err)
 	}
@@ -53,6 +53,29 @@ func TestImageArchive(t *testing.T) {
 	if err := destination.RemoveImage(name); err != nil {
 		t.Fatal(err)
 	}
+
+	for _, invalid := range []string{"../outside", "UPPERCASE"} {
+		if _, err := destination.ImportImage(t.Context(), archive, invalid); err == nil {
+			t.Fatalf("import accepted invalid name %q", invalid)
+		}
+	}
+	const alias = "renamed-image"
+	name, err = destination.ImportImage(t.Context(), archive, alias)
+	if err != nil || name != alias {
+		t.Fatalf("renamed import = %q, %v", name, err)
+	}
+	renamed, _, err := destination.LoadImage(alias)
+	original.Name = alias
+	if err != nil || !reflect.DeepEqual(renamed, original) {
+		t.Fatalf("renamed metadata changed: %+v, %v", renamed, err)
+	}
+	if _, err := destination.ImportImage(t.Context(), archive, alias); err == nil {
+		t.Fatal("import overwrote an existing image")
+	}
+	if err := destination.RemoveImage(alias); err != nil {
+		t.Fatal(err)
+	}
+	original.Name = "test-image"
 
 	for _, test := range []struct {
 		name        string
@@ -84,7 +107,7 @@ func TestImageArchive(t *testing.T) {
 			if err := os.WriteFile(file, invalid.Bytes(), 0600); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := destination.ImportImage(t.Context(), file); err == nil || !strings.Contains(err.Error(), "image") {
+			if _, err := destination.ImportImage(t.Context(), file, ""); err == nil || !strings.Contains(err.Error(), "image") {
 				t.Fatalf("bad archive import = %v", err)
 			}
 			images, err := destination.ListImages()
