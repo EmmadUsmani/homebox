@@ -2,8 +2,10 @@ package lima
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -53,7 +55,7 @@ func (d *Driver) createFromImage(ctx context.Context, spec vm.Spec, config []byt
 	if !ok || version == "" {
 		return fmt.Errorf("could not determine the Lima version")
 	}
-	if err := os.MkdirAll(d.options.Home, 0700); err != nil {
+	if err := d.prepareImageSSHKey(ctx); err != nil {
 		return err
 	}
 	staged, err := os.MkdirTemp(d.options.Home, ".image-")
@@ -83,6 +85,35 @@ func (d *Driver) createFromImage(ctx context.Context, spec vm.Spec, config []byt
 		return err
 	}
 	return os.Rename(staged, destination)
+}
+
+// Image staging bypasses limactl create, which initializes Lima's login key
+// before the confined host agent starts.
+func (d *Driver) prepareImageSSHKey(ctx context.Context) error {
+	config := filepath.Join(d.options.Home, "_config")
+	key := filepath.Join(config, "user")
+	if _, err := os.Stat(key); err == nil {
+		return nil
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if err := os.MkdirAll(config, 0700); err != nil {
+		return err
+	}
+	staged, err := os.MkdirTemp(config, ".key-")
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(staged)
+	stagedKey := filepath.Join(staged, "user")
+	command := exec.CommandContext(ctx, "/usr/bin/ssh-keygen", "-t", "ed25519", "-q", "-N", "", "-C", "lima", "-f", stagedKey)
+	if output, err := command.CombinedOutput(); err != nil {
+		return fmt.Errorf("initialize Lima SSH identity: %w: %s", err, output)
+	}
+	if err := os.Rename(stagedKey+".pub", key+".pub"); err != nil {
+		return err
+	}
+	return os.Rename(stagedKey, key)
 }
 
 // Lima runs boot commands before sshd accepts connections and supplies a new

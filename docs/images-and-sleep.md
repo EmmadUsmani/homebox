@@ -48,7 +48,8 @@ VM disks locally from source.
   raw disk, compressed as a single gzip file. The record includes the profile,
   sizes, time, box version, host architecture, EFI variables, and separate
   SHA-256 digests for the raw disk and EFI variables. Import verifies the
-  disk length and both digests before publishing the image locally.
+  disk length and both digests before publishing the image locally. Use
+  `--name NAME` on import to choose a different local name.
   Use a Mac with the same CPU architecture. Only import images you trust.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
