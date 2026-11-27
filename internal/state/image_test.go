@@ -117,3 +117,57 @@ func TestImageArchive(t *testing.T) {
 		})
 	}
 }
+
+func TestCopyImage(t *testing.T) {
+	source := &Store{Root: t.TempDir()}
+	destination := &Store{Root: t.TempDir()}
+	const name = "test-image"
+	box := Box{Profile: "ubuntu", Driver: "lima", CPUs: 2, MemoryGiB: 4, DiskGiB: 20}
+	if err := source.SaveImage(t.Context(), box, name, "dev", func(path string) ([]byte, error) {
+		return []byte("EFI fixture"), os.WriteFile(path, []byte("original"), 0600)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	original, sourceDisk, err := source.LoadImage(name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// A same-size change demonstrates that copying trusts the recorded digest.
+	if err := os.WriteFile(sourceDisk, []byte("modified"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if err := destination.CopyImage(t.Context(), source, name, nil); err != nil {
+		t.Fatal(err)
+	}
+	copied, copiedDisk, err := destination.LoadImage(name)
+	if err != nil || !reflect.DeepEqual(copied, original) {
+		t.Fatalf("copied metadata = %+v, %v", copied, err)
+	}
+	data, err := os.ReadFile(copiedDisk)
+	if err != nil || string(data) != "modified" {
+		t.Fatalf("copied disk = %q, %v", data, err)
+	}
+	if err := os.WriteFile(copiedDisk, []byte("VM write"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	data, err = os.ReadFile(sourceDisk)
+	if err != nil || string(data) != "modified" {
+		t.Fatalf("source disk after destination write = %q, %v", data, err)
+	}
+	if err := destination.CopyImage(t.Context(), source, name, nil); err == nil {
+		t.Fatal("copy overwrote an existing image")
+	}
+	if err := destination.RemoveImage(name); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Truncate(sourceDisk, 1); err != nil {
+		t.Fatal(err)
+	}
+	if err := destination.CopyImage(t.Context(), source, name, nil); err == nil {
+		t.Fatal("copy accepted a disk of the wrong size")
+	}
+	entries, err := os.ReadDir(destination.imagesDir())
+	if err != nil || len(entries) != 0 {
+		t.Fatalf("failed copy left entries: %v, %v", entries, err)
+	}
+}

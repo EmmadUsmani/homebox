@@ -52,6 +52,10 @@ func (s *Service) ExportImage(ctx context.Context, name, path string) error {
 	return s.Store.ExportImage(ctx, name, path)
 }
 
+func (s *Service) CopyImage(ctx context.Context, name, sourceHome string, onFallback func()) error {
+	return s.Store.CopyImage(ctx, &state.Store{Root: sourceHome}, name, onFallback)
+}
+
 func (s *Service) ImportImage(ctx context.Context, path, name string) (string, error) {
 	var imported string
 	err := s.Store.WithLock(func() error {

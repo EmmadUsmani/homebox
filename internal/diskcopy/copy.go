@@ -11,6 +11,11 @@ import (
 
 // File clones a disk when possible, falling back to a sparse copy.
 func File(ctx context.Context, source, destination string) error {
+	return FileWithFallback(ctx, source, destination, nil)
+}
+
+// FileWithFallback calls onFallback before starting a sparse copy.
+func FileWithFallback(ctx context.Context, source, destination string, onFallback func()) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -22,6 +27,9 @@ func File(ctx context.Context, source, destination string) error {
 		return err
 	}
 	defer input.Close()
+	if onFallback != nil {
+		onFallback()
+	}
 	output, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 	if err != nil {
 		return err
