@@ -117,7 +117,7 @@ func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, co
 		Format: imageFormat, Name: name, Profile: box.Profile, Driver: box.Driver, Arch: runtime.GOARCH,
 		CPUs: box.CPUs, MemoryGiB: box.MemoryGiB, DiskGiB: box.DiskGiB, CreatedAt: time.Now().UTC(), BoxVersion: version,
 	}
-	return s.stageImage(&image, func(path string) error {
+	return s.stageImage(&image, os.Rename, func(path string) error {
 		firmware, err := copyDisk(path)
 		if err != nil {
 			return err
@@ -139,7 +139,33 @@ func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, co
 	})
 }
 
-func (s *Store) stageImage(image *Image, stageDisk func(string) error) error {
+// CopyImage stages an image from a trusted local store using its recorded disk digest.
+func (s *Store) CopyImage(ctx context.Context, source *Store, name string, onFallback func()) error {
+	image := Image{Name: name}
+	publish := func(staged, destination string) error {
+		return s.WithLock(func() error { return os.Rename(staged, destination) })
+	}
+	return s.stageImage(&image, publish, func(destination string) error {
+		return source.WithLock(func() error {
+			var disk string
+			var err error
+			image, disk, err = source.LoadImage(name)
+			if err != nil {
+				return err
+			}
+			info, err := os.Lstat(disk)
+			if err != nil {
+				return err
+			}
+			if !info.Mode().IsRegular() || info.Size() != image.DiskBytes {
+				return fmt.Errorf("image %q disk is not a regular file of the recorded size", name)
+			}
+			return diskcopy.FileWithFallback(ctx, disk, destination, onFallback)
+		})
+	})
+}
+
+func (s *Store) stageImage(image *Image, publish func(string, string) error, stageDisk func(string) error) error {
 	if err := ValidateName(image.Name); err != nil {
 		return err
 	}
@@ -166,7 +192,7 @@ func (s *Store) stageImage(image *Image, stageDisk func(string) error) error {
 	if err := writeJSON(filepath.Join(staged, "image.json"), image); err != nil {
 		return err
 	}
-	return os.Rename(staged, destination)
+	return publish(staged, destination)
 }
 
 // ExportImage writes gzip-compressed metadata followed by raw disk bytes.
@@ -234,7 +260,7 @@ func (s *Store) ImportImage(ctx context.Context, path, name string) (string, err
 	if name != "" {
 		image.Name = name
 	}
-	err = s.stageImage(&image, func(path string) error {
+	err = s.stageImage(&image, os.Rename, func(path string) error {
 		disk, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err

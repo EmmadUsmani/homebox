@@ -62,16 +62,24 @@ Use `--keep-vm` to retain the VM for inspection. The builder stops it before
 retaining it. Each run uses new state, and an existing export file causes an
 error. Smoke logs go to `.smoke-results/` unless `SMOKE_RESULTS` is set.
 
-To install a rebuild in the change tier’s default store, build with
-`--export FILE` and run:
+To use a rebuild directly, pass the state directory printed by the builder:
 
 ```sh
-HOMEBOX_HOME="$HOME/.homebox" box image import FILE --name homebox-smoke
+scripts/test.sh change --image-home DIR --area os
 ```
 
-Import refuses to overwrite an existing image. To try a rebuild alongside
-the default, use `scripts/test.sh change --image-file FILE --area os`.
-You can also select a build’s isolated store with `--image-home DIR`.
+The runner stages a copy-on-write clone on the same APFS volume, or warns
+and copies if cloning is unavailable. For an owner-controlled local store,
+it uses the recorded disk digest. Pass `--image-file FILE` to use an archive
+and verify its disk digest during staging.
+
+To install a rebuild in the default store, copy from the build's state directory:
+
+```sh
+HOMEBOX_HOME="$HOME/.homebox" box image copy homebox-smoke --from-home DIR
+```
+
+Copy refuses to overwrite an existing image.
 
 ## Load it and repeat the checks
 

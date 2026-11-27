@@ -84,6 +84,13 @@ install on the host but Lima and box; the language of Lima and Tailscale.
   PowerShell copy.
 - *Make:* rejected. A build tool, not a command-line interface.
 
+**Clone smoke images from local stores** (implementation, 2026-11-26).
+The change tier copies the saved image into its scratch store with APFS
+copy-on-write when available. This avoids compressing and rehashing the raw
+disk each time, while preserving the runner's fresh-provisioning fallback
+if staging fails. Archive imports still verify the disk bytes. See
+[Images and sleep](images-and-sleep.md).
+
 ## Guests
 
 **Ubuntu LTS first, any distro possible** (owner). Guest profiles are folders of

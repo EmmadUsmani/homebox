@@ -36,6 +36,21 @@ func imageCommand(service Application, version string) *cobra.Command {
 			return service.ExportImage(cmd.Context(), args[0], args[1])
 		}},
 	)
+	var sourceHome string
+	copyCommand := &cobra.Command{
+		Use: "copy IMAGE --from-home DIR", Short: "Copy an image from a trusted local store", Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if sourceHome == "" {
+				return fmt.Errorf("--from-home requires a source store directory")
+			}
+			return service.CopyImage(cmd.Context(), args[0], sourceHome, func() {
+				fmt.Fprintln(cmd.ErrOrStderr(), "Warning: could not clone the image disk. Copying it instead, which may take several minutes.")
+			})
+		},
+	}
+	copyCommand.Flags().StringVar(&sourceHome, "from-home", "", "homebox state directory containing the source image")
+	command.AddCommand(copyCommand)
+
 	var importName string
 	importCommand := &cobra.Command{
 		Use: "import FILE", Short: "Verify and import an exported image", Args: cobra.ExactArgs(1),

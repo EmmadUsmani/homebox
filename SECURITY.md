@@ -254,7 +254,9 @@ Saved images and exported archives include the whole guest disk. They can
 contain SSH credentials, API tokens, agent logins, local data and deleted data
 still present in filesystem blocks. Save and export warn about this. Treat the
 archives as sensitive files and only import archives you trust. SHA-256 verifies
-disk integrity. A VM created from an image still uses the normal host isolation
+disk integrity during archive import. Local `box image copy` uses the source
+store's recorded disk digest, so only copy from a store you control. A VM
+created from an image still uses the normal host isolation
 and gets fresh SSH host keys and pins.
 
 The [project image recipes](images/README.md) build signed-out guests and

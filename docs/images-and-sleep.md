@@ -51,6 +51,12 @@ VM disks locally from source.
   disk length and both digests before publishing the image locally. Use
   `--name NAME` on import to choose a different local name.
   Use a Mac with the same CPU architecture. Only import images you trust.
+- **Local store copies:** `box image copy IMAGE --from-home DIR` stages an
+  independent disk in the active store and publishes it with the original
+  metadata. On the same APFS volume it uses a copy-on-write clone. If cloning
+  is unavailable, it warns and makes a sparse copy. It checks the disk size
+  and trusts the recorded disk digest, so use a source store you control.
+  The smoke runner uses this path for locally stored images.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
   leaves its existing VMs and any exported files in place.

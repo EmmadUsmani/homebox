@@ -88,6 +88,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
 | `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |
 | `box image ls` / `box image rm IMAGE` | Lists or removes local images |
+| `box image copy IMAGE --from-home DIR` | Copies a saved image from a trusted local state directory |
 | `box image export IMAGE FILE` / `box image import FILE [--name NAME]` | Writes or verifies and loads a compressed image archive |
 | `box ls [--json]` | Lists VMs, published ports, last doctor health and host-side resource use |
 | `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
@@ -318,9 +319,20 @@ other VMs or test runners. The News Digest area runs when selected and
 `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
 The change tier uses `homebox-smoke` from `~/.homebox` when VM checks are
-selected and guest profile files are unchanged. The runner verifies and
-imports a copy into isolated state. Use a dedicated test image without
-signed-in accounts. See [the build and import instructions](images/homebox-smoke/README.md).
+selected and guest profile files are unchanged. The runner clones the image
+into isolated state on the same APFS volume and uses the store's recorded
+disk digest. If cloning is unavailable, it warns and copies the disk.
+Explicit archives are checked against their recorded digest during import.
+Use a dedicated test image without signed-in accounts. See
+[the build and import instructions](images/homebox-smoke/README.md).
+
+Measured with `scripts/test.sh change --area os --area runtimes --area doctor`
+from the default store on a Mac14,10. See the [run history](docs/test-runs.md).
+
+| Staging method | Image staging | Total |
+| --- | ---: | ---: |
+| APFS clone | <0.1 s | 198.4 s |
+| Previous gzip export and import | 483.0 s | 685.4 s |
 
 | Set with | CLI equivalent | Purpose |
 | --- | --- | --- |

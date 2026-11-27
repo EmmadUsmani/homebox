@@ -282,8 +282,7 @@ async function runSuite(options) {
         const sourceHome = path.resolve(options.imageHome || process.env.HOMEBOX_SMOKE_IMAGE_HOME ||
             path.join(os.homedir(), ".homebox"));
         const imageFile = options.imageFile || process.env.HOMEBOX_SMOKE_IMAGE_FILE;
-        const archive = imageFile ? path.resolve(imageFile) : path.join(scratch, "smoke-image");
-        const source = imageFile ? archive : sourceHome;
+        const source = imageFile ? path.resolve(imageFile) : sourceHome;
         const displaySource = source.startsWith(os.homedir() + path.sep) ? "~" + source.slice(os.homedir().length) : source;
         const log = path.join(results, "smoke-image.log");
         const flags = capture(env.BOX, ["new", "--help"], { env });
@@ -294,16 +293,24 @@ async function runSuite(options) {
 
         if (!flags.stdout?.includes("--image")) return fallback("box image commands unavailable");
         console.log(`Preparing smoke image "${image}" from ${displaySource} (log: ${log})`);
-        if (!imageFile && !await command(env.BOX, ["image", "export", image, archive],
-            { ...env, HOMEBOX_HOME: sourceHome }, log)) {
-            return fallback(`could not export smoke image "${image}" from ${displaySource}; see ${log}`);
+        const stagingStarted = Date.now();
+        let staged;
+        if (imageFile) {
+            staged = await command(env.BOX, ["image", "import", source, "--name", image], env, log);
+        } else if (/^  copy\s/m.test(capture(env.BOX, ["image", "--help"], { env }).stdout || "")) {
+            staged = await command(env.BOX, ["image", "copy", image, "--from-home", sourceHome], env, log);
+        } else {
+            // Bisect can run this runner against a box built before image copy.
+            const archive = path.join(scratch, "smoke-image");
+            const exported = await command(env.BOX, ["image", "export", image, archive],
+                { ...env, HOMEBOX_HOME: sourceHome }, log);
+            staged = exported && !interrupted && await command(env.BOX, ["image", "import", archive], env, log);
+            fs.rmSync(archive, { force: true });
         }
-        const importArgs = ["image", "import", archive];
-        if (imageFile) importArgs.push("--name", image);
-        if (interrupted) return freshVM;
-        const imported = await command(env.BOX, importArgs, env, log);
-        if (!imageFile) fs.rmSync(archive, { force: true });
-        if (!imported) return fallback(`could not import smoke image from ${displaySource}; see ${log}`);
+        const warning = fs.readFileSync(log, "utf8").split("\n").find(line => line.startsWith("Warning: could not clone"));
+        if (warning) console.warn(warning);
+        if (!staged) return fallback(`could not stage smoke image from ${displaySource}; see ${log}`);
+        console.log(`Prepared smoke image (${duration(stagingStarted)})`);
 
         const list = capture(env.BOX, ["image", "ls"], { env });
         const fields = list.stdout?.split("\n").map(line => line.trim().split(/\s+/))
