@@ -3,6 +3,7 @@ package confine
 import (
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"slices"
 	"testing"
@@ -40,6 +41,8 @@ func TestQEMULaunchOnlyAcceptsHomeboxNetwork(t *testing.T) {
 		"unapproved forward": {"-netdev", qemuUserNetdev(port + 1), args[2], args[3]},
 		"extra backend":      append(slices.Clone(args), "-netdev", "user,id=outside"),
 		"legacy backend":     append(slices.Clone(args), "-nic", "user"),
+		"inline backend":     append(slices.Clone(args), "-net=user"),
+		"dangling backend":   append(slices.Clone(args), "-netdev"),
 	} {
 		t.Run(name, func(t *testing.T) {
 			if err := restrictQEMU(slices.Clone(invalid), rules); err == nil {
@@ -50,5 +53,47 @@ func TestQEMULaunchOnlyAcceptsHomeboxNetwork(t *testing.T) {
 	rules.GatewaySocket += ".wrong"
 	if err := restrictQEMU(slices.Clone(args), rules); err == nil {
 		t.Fatal("accepted a descriptor connected to the wrong socket")
+	}
+}
+
+func TestRunningQEMUNetwork(t *testing.T) {
+	socket := filepath.Join(t.TempDir(), "gateway")
+	listener, err := net.ListenUnix("unix", &net.UnixAddr{Net: "unix", Name: socket})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listener.Close()
+	conn, err := net.DialUnix("unix", nil, listener.Addr().(*net.UnixAddr))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	fd, err := conn.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer fd.Close()
+	const port = 32284
+	args := []string{"-netdev", RestrictedQEMUSLIRP(port), "-netdev", fmt.Sprintf("socket,id=net1,fd=%d", fd.Fd())}
+	if err := CheckRunningQEMUNetwork(args, port, os.Getpid()); err != nil {
+		t.Fatal(err)
+	}
+	listening, err := listener.File()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer listening.Close()
+	args[3] = fmt.Sprintf("socket,id=net1,fd=%d", listening.Fd())
+	if err := CheckRunningQEMUNetwork(args, port, os.Getpid()); err == nil {
+		t.Fatal("accepted an unconnected Unix stream")
+	}
+	file, err := os.Open("/dev/null")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	args[3] = fmt.Sprintf("socket,id=net1,fd=%d", file.Fd())
+	if err := CheckRunningQEMUNetwork(args, port, os.Getpid()); err == nil {
+		t.Fatal("accepted a non-socket descriptor")
 	}
 }

@@ -22,7 +22,10 @@ func installSocketFilter(daemon, qemu bool) error {
 		{Code: greaterEqual, K: 0x40000000, Jf: 1}, // x32 syscall ABI
 		deny,
 	}
-	forbidden := []uint32{unix.SYS_IO_URING_SETUP, unix.SYS_IO_URING_ENTER, unix.SYS_IO_URING_REGISTER}
+	forbidden := []uint32{
+		unix.SYS_IO_URING_SETUP, unix.SYS_IO_URING_ENTER, unix.SYS_IO_URING_REGISTER,
+		unix.SYS_PTRACE, unix.SYS_PROCESS_VM_READV, unix.SYS_PROCESS_VM_WRITEV,
+	}
 	if !daemon {
 		forbidden = append(forbidden, unix.SYS_SENDMMSG)
 	}
