@@ -140,4 +140,4 @@ The native GTK viewer uses a separate ephemeral WebKitGTK context and
 session. The isolation fixture runs the same C implementation under X11,
 checks a real user gesture, and reopens the origin to check that the first
 view's storage disappears. The fixture and the platform-specific limits
-are documented in [Linux guest viewer](../SECURITY.md#linux-guest-viewer).
+are documented in [Linux guest viewer](../../SECURITY.md#linux-guest-viewer).

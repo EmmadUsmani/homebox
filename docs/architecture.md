@@ -7,7 +7,7 @@ two disagree, plan.md wins.
 ## Packages
 
 ```
-cmd/box            CLI entry point and network daemon dispatch
+cmd/box            CLI entry point and confined process dispatch
 desktop/           independent Go module with Wails and embedded React/Vite output
 internal/wiring    assembles the local app.Service for both entry points
 internal/cli       commands, flags, output; calls app, nothing else
@@ -16,7 +16,7 @@ internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
 images/            local image recipes and embedded credential checks
-internal/diskcopy clones or sparsely copies raw disks
+internal/diskcopy  clones or sparsely copies raw disks and validates qcow2 images
 internal/guest     loads guest profiles (images + provisioning steps)
 guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
@@ -32,7 +32,7 @@ internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
 internal/sshx      runs commands and scripts in a VM over the system ssh client;
                    reads guest public host keys and renders OpenSSH config and pins;
-                   opens a Go SSH transport using saved pins for the desktop CLI
+                   opens a Go SSH transport using saved pins for the remote desktop
 internal/displayproxy  scopes HTTP and WebSockets to one authorized browser session
                        and dials the guest over its caller's pinned SSH transport
 internal/doctor    host-side controls and reporting for isolation checks
@@ -41,7 +41,13 @@ internal/untrusted cleans text that came from a VM (escape sequences, control
                    characters) before box prints it
 internal/execx     a small process-runner interface, so code that shells out
                    can be tested with a fake
+docs/              design, operations, test records and spike findings
 e2e/               opt-in CLI lifecycle tests against a real VM
+factory/           optional Node.js agent supervisor and Ubuntu user unit
+scripts/           local test runner, link checker and Ubuntu host setup
+smoke/             guest development suites and host-side fixtures
+spikes/            experimental implementations and test fixtures
+.github/           GitHub workflows
 ```
 
 ## Dependency rules
@@ -290,7 +296,7 @@ allows the native host CPU features. Box reconciles the CPU model before
 starting stopped QEMU instances, including records written before the flag
 existed. See the [Android smoke area](../smoke/android/README.md).
 
-Linux CLI host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
+Linux host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
 with Unix SLIRP forwarding. Linux supports saved qcow2 disks and a native
 GTK desktop viewer. Autostart and GPU passthrough are separate work. The gateway's IPv4,
 NAT reflection and existing-flow limits apply here as well.
