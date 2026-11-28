@@ -4,10 +4,9 @@ Changes to the [approved design](plan.md) require the owner's approval.
 
 ## Desktop and remote access
 
-- Exercise creation, provisioning and deletion through the Linux desktop app.
+- Repeat the desktop smoke from a second physical machine over the LAN.
   The existing [Linux desktop smoke checks](host-setup-linux.md#install-desktop-build-dependencies)
-  use a pinned loopback alias for the VM-backed remote SSH path. Repeat the
-  desktop smoke from a second physical machine over the LAN.
+  use a pinned loopback alias for the VM-backed remote SSH path.
 - Measure remote desktop latency, bandwidth and reconnect behavior over LAN
   and Tailscale. Test SSH from outside the LAN via Tailscale. See the
   [remote-desktop spike](spikes/remote-desktop.md).

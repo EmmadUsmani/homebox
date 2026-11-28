@@ -135,3 +135,6 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:27:46.000Z | f553ddefbe2a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.0s | — |
 | 2026-11-28T10:41:36.961Z | 8918295d5d15 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/2 | 1665.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T10:45:23.428Z | 8918295d5d15 | yes | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android, doctor | PASS | 12/0/0 | 218.1s | fresh |
+| 2026-11-28T11:04:49.408Z | 442abe519242 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 487.0s | — |
+| 2026-11-28T11:06:36.460Z | a4ed96863389 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 106.8s | — |
+| 2026-11-28T11:13:53.823Z | eff5d0c5e702 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | PASS | 10/0/0 | 436.4s | GUI profile base |
