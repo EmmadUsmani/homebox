@@ -7,10 +7,10 @@ struct Failure: LocalizedError {
     var errorDescription: String? { message }
 }
 
-func waitFor<T>(_ description: String, seconds: TimeInterval = 15, _ read: () -> T?) throws -> T {
+func waitFor<T>(_ description: String, seconds: TimeInterval = 15, _ read: () throws -> T?) throws -> T {
     let deadline = Date().addingTimeInterval(seconds)
     repeat {
-        if let result = read() { return result }
+        if let result = try read() { return result }
         Thread.sleep(forTimeInterval: 0.2)
     } while Date() < deadline
     throw Failure(message: "Timed out waiting for \(description)")
@@ -49,34 +49,45 @@ func command(_ path: String, _ arguments: [String], environment: [String: String
 func verify(bundle: String, state: String, screenshots: String, empty: Bool, scenarios: [String]) throws {
     guard AXIsProcessTrusted() else { throw Failure(message: "Accessibility permission required") }
     let url = URL(fileURLWithPath: bundle).resolvingSymlinksInPath()
-    func running() -> NSRunningApplication? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").first {
-            $0.bundleURL?.resolvingSymlinksInPath() == url
-        }
+    let alreadyRunning = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").contains {
+        $0.bundleURL?.resolvingSymlinksInPath() == url
     }
-    guard running() == nil else { throw Failure(message: "This app copy is already running") }
+    guard !alreadyRunning else { throw Failure(message: "This app copy is already running") }
     let minimumPATH = "/usr/bin:/bin:/usr/sbin:/sbin"
-    var launch = ["-n", "--env", "HOMEBOX_HOME=\(state)", "--env", "HOMEBOX_DESKTOP_SETTINGS=\(screenshots)/settings.json"]
-    launch += ["--env", "PATH=\(empty ? minimumPATH : ProcessInfo.processInfo.environment["PATH"] ?? minimumPATH)"]
-    if empty {
-        launch += ["--env", "SSH_AUTH_SOCK="]
-    } else if let socket = ProcessInfo.processInfo.environment["SSH_AUTH_SOCK"] {
-        launch += ["--env", "SSH_AUTH_SOCK=\(socket)"]
-    }
-    launch.append(url.path)
     try FileManager.default.createDirectory(atPath: screenshots, withIntermediateDirectories: true)
-    let (launchStatus, _) = try command("/usr/bin/open", launch, environment: empty ? ["HOME": NSHomeDirectory()] : nil)
-    guard launchStatus == 0 else { throw Failure(message: "open failed") }
+    let config = NSWorkspace.OpenConfiguration()
+    var appEnvironment = [
+        "HOMEBOX_HOME": state,
+        "HOMEBOX_DESKTOP_SETTINGS": "\(screenshots)/settings.json",
+        "PATH": empty ? minimumPATH : ProcessInfo.processInfo.environment["PATH"] ?? minimumPATH,
+    ]
+    appEnvironment["SSH_AUTH_SOCK"] = empty ? "" : ProcessInfo.processInfo.environment["SSH_AUTH_SOCK"]
+    if scenarios.allSatisfy({ $0.hasPrefix("local=") }) {
+        let sshConfig = screenshots + "/files-ssh-config"
+        let knownHosts = screenshots + "/files-known-hosts"
+        try "".write(toFile: sshConfig, atomically: true, encoding: .utf8)
+        try "".write(toFile: knownHosts, atomically: true, encoding: .utf8)
+        appEnvironment["HOMEBOX_DESKTOP_SSH_CONFIG"] = sshConfig
+        appEnvironment["HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS"] = knownHosts
+    }
+    config.environment = appEnvironment
+    config.createsNewApplicationInstance = true
+    var launch: Result<NSRunningApplication, Error>?
+    NSWorkspace.shared.openApplication(at: url, configuration: config) { app, error in
+        launch = app.map { .success($0) } ?? .failure(error ?? Failure(message: "Could not open the app"))
+    }
+    while launch == nil { RunLoop.current.run(until: Date().addingTimeInterval(0.1)) }
+    let app = try launch!.get()
     defer {
-        if let app = running() {
-            app.terminate()
-            if (try? waitFor("app exit", seconds: 5, { app.isTerminated ? true : nil })) == nil {
-                app.forceTerminate()
-            }
+        func exited() -> Bool? {
+            kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+        }
+        app.terminate()
+        if (try? waitFor("app exit", seconds: 3, exited)) == nil {
+            kill(app.processIdentifier, SIGKILL)
+            _ = try? waitFor("app exit after force quit", seconds: 3, exited)
         }
     }
-
-    let app = try waitFor("app launch") { running() }
     let pid = app.processIdentifier
     let root = AXUIElementCreateApplication(pid)
     let window: AXUIElement = try waitFor("AX window") {
@@ -95,13 +106,35 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
     }
     print("App launch and no TCP listener verified (\(empty ? "empty" : "normal"))")
 
+    func activate() throws {
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier != pid {
+            guard kill(pid, 0) == 0 else { throw Failure(message: "Files app exited before activation") }
+            _ = app.unhide()
+            _ = try command("/usr/bin/open", ["-a", url.path])
+        }
+        _ = try waitFor("frontmost Files app (focus lost)", seconds: 3) {
+            NSWorkspace.shared.frontmostApplication?.processIdentifier == pid ? true : nil
+        }
+    }
+
+    func raiseWindow() throws {
+        try activate()
+        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+    }
+
     func labels(_ element: AXUIElement) -> [String] {
         [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute].compactMap { attribute(element, $0) as String? }
     }
 
     func press(_ description: String, in container: AXUIElement? = nil, matching: (String) -> Bool) throws {
         let control = try waitFor(description) {
-            descendants(container ?? web).first {
+            let elements = container.map { target in
+                let windows: [AXUIElement] = attribute(target, kAXWindowsAttribute) ?? []
+                let focused: AXUIElement? = attribute(target, kAXFocusedWindowAttribute)
+                let visible = (focused.map { [$0] } ?? []) + windows
+                return visible.flatMap(descendants) + descendants(target)
+            } ?? descendants(web)
+            return elements.first {
                 let role: String? = attribute($0, kAXRoleAttribute)
                 let enabled: Bool = attribute($0, kAXEnabledAttribute) ?? true
                 return enabled && ["AXButton", "AXRadioButton", "AXCheckBox"].contains(role ?? "")
@@ -117,18 +150,41 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try press(title, in: container) { $0 == title }
     }
 
+    func readMarker(_ marker: String) -> String? {
+        descendants(web).flatMap(labels).first { $0.contains(marker) }
+    }
+
     func see(_ marker: String, seconds: TimeInterval = 15) throws {
-        _ = try waitFor(marker, seconds: seconds) {
-            descendants(web).flatMap(labels).first { $0.contains(marker) }
-        }
+        _ = try waitFor(marker, seconds: seconds) { readMarker(marker) }
         print("AX read: \(marker)")
     }
 
-    func key(_ code: CGKeyCode, _ flags: CGEventFlags = []) {
+    var retryThroughWindowServer = false
+
+    func expectEffect<T>(_ description: String, perform: () throws -> Void, read: () -> T?) throws -> T {
+        try perform()
+        if let result = try? waitFor(description, seconds: 2, read) { return result }
+        retryThroughWindowServer = true
+        defer { retryThroughWindowServer = false }
+        try perform()
+        return try waitFor(description, read)
+    }
+
+    func key(_ code: CGKeyCode, _ flags: CGEventFlags = [], filePicker: Bool = false) throws {
+        if NSWorkspace.shared.frontmostApplication?.processIdentifier != pid {
+            if filePicker { throw Failure(message: "File picker focus lost before keyboard input") }
+            try raiseWindow()
+        }
         for down in [true, false] {
             let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
             event?.flags = flags
-            event?.postToPid(pid)
+            if filePicker || retryThroughWindowServer {
+                // The file panel and a missed shortcut use normal WindowServer routing.
+                event?.post(tap: .cghidEventTap)
+            } else {
+                event?.postToPid(pid)
+            }
+            Thread.sleep(forTimeInterval: 0.05)
         }
     }
 
@@ -149,41 +205,91 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         }
     }
 
-    func paste(_ text: String) {
+    func paste(_ text: String, filePicker: Bool = false) throws {
         clipboard.clearContents()
         clipboard.setString(text, forType: .string)
         lastClipboard = clipboard.changeCount
-        key(9, .maskCommand)
+        try key(9, .maskCommand, filePicker: filePicker)
         Thread.sleep(forTimeInterval: 0.3)
     }
 
     func focus(_ label: String, role: String) throws {
+        try raiseWindow()
         let field = try waitFor(label) {
             descendants(web).first { attribute($0, kAXRoleAttribute) == role && labels($0).contains(label) }
         }
         guard AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, true as CFTypeRef) == .success else {
             throw Failure(message: "Could not focus \(label)")
         }
+        _ = try waitFor("keyboard focus in \(label)", seconds: 3) {
+            let focused: Bool? = attribute(field, kAXFocusedAttribute)
+            return focused == true ? true : nil
+        }
+    }
+
+    func goToTemporaryFolder() throws {
+        _ = try expectEffect("VM folder path entered", perform: {
+            try focus("VM folder path", role: "AXTextField")
+            try key(0, .maskCommand)
+            try paste("/tmp")
+        }) {
+            descendants(web).first {
+                attribute($0, kAXRoleAttribute) == "AXTextField" && labels($0).contains("VM folder path") &&
+                    attribute($0, kAXValueAttribute) == "/tmp"
+            }
+        }
+        try button("Go")
     }
 
     func capture(_ name: String) throws {
+        try raiseWindow()
         Thread.sleep(forTimeInterval: 0.35)
-        let windowID = try waitFor("window ID") {
-            (CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]])?.first {
+        _ = try waitFor("screenshot of \(name)", seconds: 5) { () -> Bool? in
+            let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+            guard let windowID = windows.first(where: {
                 $0[kCGWindowOwnerPID as String] as? pid_t == pid && $0[kCGWindowLayer as String] as? Int == 0
-            }?[kCGWindowNumber as String] as? Int
+            })?[kCGWindowNumber as String] as? Int else {
+                try raiseWindow()
+                return nil
+            }
+            let (status, _) = try command("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), screenshots + "/" + name + ".png"])
+            return status == 0 ? true : nil
         }
-        let (status, _) = try command("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), screenshots + "/" + name + ".png"])
-        guard status == 0 else { throw Failure(message: "Screenshot capture failed") }
     }
 
-    func chooseFolder(_ folder: String) {
-        key(5, [.maskCommand, .maskShift])
-        Thread.sleep(forTimeInterval: 0.4)
-        paste(folder)
-        key(36)
-        Thread.sleep(forTimeInterval: 0.5)
+    func chooseFolder(_ folder: String) throws {
+        try activate()
+        let previous: AXUIElement? = attribute(root, kAXFocusedUIElementAttribute)
+        try key(5, [.maskCommand, .maskShift], filePicker: true)
+        let field = try waitFor("Go to Folder text field", seconds: 4) {
+            guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+                throw Failure(message: "File picker focus lost while opening Go to Folder")
+            }
+            guard let field: AXUIElement = attribute(root, kAXFocusedUIElementAttribute),
+                  previous.map({ !CFEqual($0, field) }) ?? true,
+                  let role: String = attribute(field, kAXRoleAttribute),
+                  ["AXTextField", "AXComboBox"].contains(role) else { return nil as AXUIElement? }
+            return field
+        }
+        try paste(folder, filePicker: true)
+        _ = try waitFor("requested folder in file picker", seconds: 4) {
+            let actual: String? = attribute(field, kAXValueAttribute)
+            return actual == folder || actual == folder + "/" ? true : nil
+        }
+        let leaf = (folder as NSString).lastPathComponent
+        _ = try waitFor("file picker path suggestion", seconds: 4) {
+            guard let picker: AXUIElement = attribute(root, kAXFocusedWindowAttribute) else { return nil as Bool? }
+            return descendants(picker).contains { element in
+                !CFEqual(element, field) && labels(element).contains { $0.hasSuffix(leaf) || $0.hasSuffix(leaf + "/") }
+            } ? true : nil
+        }
+        try key(36, filePicker: true)
+        _ = try waitFor("Go to Folder dismissed", seconds: 4) {
+            let focused: AXUIElement? = attribute(root, kAXFocusedUIElementAttribute)
+            return focused.map { !CFEqual($0, field) } ?? true ? true : nil
+        }
     }
+
 
     let box = url.appendingPathComponent("Contents/MacOS/box").path
     for scenario in scenarios {
@@ -222,44 +328,58 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try button("Show hidden files")
         try capture(kind + "-home")
 
-        try focus("VM folder path", role: "AXTextField")
-        key(0, .maskCommand)
-        paste("/tmp")
-        key(36)
+        try goToTemporaryFolder()
         try button("hb-files-test.txt")
         try see("original")
         try capture(kind + "-editor")
 
-        try focus("File editor", role: "AXTextArea")
-        key(0, .maskCommand)
-        paste("saved from Monaco\n")
+        func focusEditor() throws {
+            try focus("File editor", role: "AXTextArea")
+        }
+
+        func replaceEditorText(_ text: String) throws {
+            _ = try expectEffect("editor text \(text.trimmingCharacters(in: .newlines))", perform: {
+                try focusEditor()
+                try key(0, .maskCommand)
+                try paste(text)
+            }) { readMarker(text.trimmingCharacters(in: .newlines)) }
+        }
+
+        try replaceEditorText("saved from Monaco\n")
         try see("● edited")
-        key(6, .maskCommand)
-        try see("original")
-        key(0, .maskCommand)
-        paste("saved from Monaco\n")
-        key(0, .maskCommand)
-        key(8, .maskCommand)
-        _ = try waitFor("Monaco copy") {
+        _ = try expectEffect("undo restores the original", perform: {
+            try focusEditor()
+            try key(6, .maskCommand)
+        }) { readMarker("original") }
+        try replaceEditorText("saved from Monaco\n")
+        _ = try expectEffect("Monaco copy", perform: {
+            try focusEditor()
+            try key(0, .maskCommand)
+            try key(8, .maskCommand)
+        }) {
             clipboard.changeCount != lastClipboard && clipboard.string(forType: .string) == "saved from Monaco\n" ? true : nil
         }
         lastClipboard = clipboard.changeCount
-        key(1, .maskCommand)
-        _ = try waitFor("saved bytes over plain SSH") {
+        _ = try expectEffect("saved bytes over plain SSH", perform: {
+            try focusEditor()
+            try key(1, .maskCommand)
+        }) {
             (try? ssh("cat " + fixture)) == "saved from Monaco\n" ? true : nil
         }
         try capture(kind + "-saved")
-        key(3, .maskCommand)
-        try see("Find")
+        _ = try expectEffect("Find", perform: {
+            try focusEditor()
+            try key(3, .maskCommand)
+        }) { readMarker("Find") }
         try capture(kind + "-find")
-        key(53)
+        try key(53)
 
         _ = try ssh("printf 'external append\n' >> " + fixture)
-        try focus("File editor", role: "AXTextArea")
-        key(0, .maskCommand)
-        paste("unsaved local draft\n")
-        key(1, .maskCommand)
-        try see("Saving is blocked")
+        try replaceEditorText("unsaved local draft\n")
+        _ = try expectEffect("Saving is blocked", perform: {
+            try focusEditor()
+            try key(1, .maskCommand)
+        }) { readMarker("Saving is blocked") }
         try capture(kind + "-conflict")
         let external = try ssh("cat " + fixture)
         guard external == "saved from Monaco\nexternal append\n" else { throw Failure(message: "Conflict overwrote the VM file") }
@@ -267,29 +387,40 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try see("Current VM file")
         try see("external append")
         try capture(kind + "-compare")
+        try raiseWindow()
         try button("Home")
-        try button("Discard changes", in: root)
+        do {
+            try button("Discard changes", in: root)
+        } catch {
+            try? capture(kind + "-discard-timeout")
+            throw error
+        }
 
-        try focus("VM folder path", role: "AXTextField")
-        key(0, .maskCommand)
-        paste("/tmp")
-        key(36)
+        try goToTemporaryFolder()
         try button("Upload")
         _ = try waitFor("upload picker") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
-        chooseFolder(input.path)
-        let openSheet = try waitFor("open sheet") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
-        try button("Open", in: openSheet)
+        let openButton = try expectEffect("upload picker ready to open the fixture", perform: {
+            try chooseFolder(input.resolvingSymlinksInPath().path)
+        }) {
+            descendants(window).first {
+                attribute($0, kAXRoleAttribute) == "AXButton" &&
+                    (attribute($0, kAXEnabledAttribute) as Bool? ?? true) && labels($0).contains("Open")
+            }
+        }
+        guard AXUIElementPerformAction(openButton, kAXPressAction as CFString) == .success else {
+            throw Failure(message: "Could not open the fixture in the upload picker")
+        }
         try button(filename)
         try see("transfer fixture")
         try focus("File editor", role: "AXTextArea")
-        key(100) // F8 shows the JSON worker's diagnostic.
+        try key(100) // F8 shows the JSON worker's diagnostic.
         try see("Value expected")
         try capture(kind + "-worker")
-        key(53)
+        try key(53)
         try capture(kind + "-uploaded")
         try button("Download")
         _ = try waitFor("save dialog") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
-        chooseFolder(download.path)
+        try chooseFolder(download.path)
         let sheet = try waitFor("save sheet") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
         try button("Save", in: sheet)
         let retrieved = download.appendingPathComponent(filename)

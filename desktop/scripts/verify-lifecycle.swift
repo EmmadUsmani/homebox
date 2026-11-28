@@ -79,7 +79,17 @@ func verify(bundle: String, screenshots: String, index: Int) throws {
         throw VerificationError("Close this build of homebox before running verification.")
     }
     defer {
-        for app in matchingApps() { app.terminate() }
+        for app in matchingApps() {
+            app.terminate()
+            if (try? waitFor("homebox to quit", seconds: 3, {
+                kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+            })) == nil {
+                kill(app.processIdentifier, SIGKILL)
+                _ = try? waitFor("homebox to quit after force quit", seconds: 3) {
+                    kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+                }
+            }
+        }
         if files.fileExists(atPath: boxDir.appendingPathComponent("box.json").path) || files.fileExists(atPath: vmDir.path) {
             print("Stopping disposable VM after failure. Its state remains at \(scratch.path).")
             try? run("/usr/bin/env", ["HOMEBOX_HOME=\(scratch.path)", "PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",

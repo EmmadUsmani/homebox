@@ -115,7 +115,10 @@ func verify(bundle: String, scratch: String, screenshot: String, mode: String, n
             if (try? waitFor("homebox to quit", seconds: 3, {
                 kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
             })) == nil {
-                app.forceTerminate()
+                kill(app.processIdentifier, SIGKILL)
+                _ = try? waitFor("homebox to quit after force quit", seconds: 3) {
+                    kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+                }
             }
         }
     }

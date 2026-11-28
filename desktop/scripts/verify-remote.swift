@@ -18,8 +18,8 @@ func run(_ binary: String, _ arguments: [String]) throws {
     }
 }
 
-func waitFor<T>(_ description: String, _ read: () -> T?) throws -> T {
-    let deadline = Date().addingTimeInterval(15)
+func waitFor<T>(_ description: String, seconds: TimeInterval = 15, _ read: () -> T?) throws -> T {
+    let deadline = Date().addingTimeInterval(seconds)
     repeat {
         if let value = read() { return value }
         Thread.sleep(forTimeInterval: 0.2)
@@ -68,8 +68,13 @@ func verify() throws {
     defer {
         for app in matchingApps() {
             app.terminate()
-            if (try? waitFor("homebox to quit", { app.isTerminated ? true : nil })) == nil {
-                app.forceTerminate()
+            if (try? waitFor("homebox to quit", seconds: 3, {
+                kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+            })) == nil {
+                kill(app.processIdentifier, SIGKILL)
+                _ = try? waitFor("homebox to quit after force quit", seconds: 3) {
+                    kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+                }
             }
         }
     }
