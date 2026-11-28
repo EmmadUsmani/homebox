@@ -106,6 +106,9 @@ func probe(rules Rules, path string, args []string) error {
 	if rules.Daemon {
 		return nil
 	}
+	if err := checkFastOpenFilter(false); err != nil {
+		return err
+	}
 	fd, err = unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
 	if err != nil {
 		return err
@@ -114,6 +117,43 @@ func probe(rules Rules, path string, args []string) error {
 	err = unix.Connect(fd, &unix.SockaddrInet4{Port: port, Addr: [4]byte{127, 0, 0, 1}})
 	if !errors.Is(err, unix.EACCES) && !errors.Is(err, unix.EPERM) {
 		return fmt.Errorf("TCP connect: expected permission denial, got %v", err)
+	}
+	if err := unix.SetsockoptInt(fd, unix.IPPROTO_TCP, unix.TCP_FASTOPEN_CONNECT, 1); err != nil {
+		return fmt.Errorf("set TCP_FASTOPEN_CONNECT for probe: %w", err)
+	}
+	err = unix.Connect(fd, &unix.SockaddrInet4{Port: port, Addr: [4]byte{127, 0, 0, 1}})
+	if !errors.Is(err, unix.EACCES) && !errors.Is(err, unix.EPERM) {
+		return fmt.Errorf("TCP_FASTOPEN_CONNECT: expected permission denial, got %v", err)
+	}
+	return nil
+}
+
+// An invalid descriptor makes the errno distinguish a seccomp denial from
+// normal kernel handling, without depending on network or TCP settings.
+func checkFastOpenFilter(daemon bool) error {
+	const invalidFD = ^uintptr(0)
+	blocked := unix.EPERM
+	if daemon {
+		blocked = unix.EBADF
+	}
+	const fastOpen = unix.MSG_FASTOPEN | unix.MSG_DONTWAIT
+	for _, call := range []struct {
+		name string
+		nr   uintptr
+		arg2 uintptr
+		arg3 uintptr
+		want unix.Errno
+	}{
+		{"sendto Fast Open", unix.SYS_SENDTO, 0, fastOpen, blocked},
+		{"sendmsg Fast Open", unix.SYS_SENDMSG, fastOpen, 0, blocked},
+		{"sendmmsg", unix.SYS_SENDMMSG, 1, 0, blocked},
+		{"ordinary sendto", unix.SYS_SENDTO, 0, unix.MSG_DONTWAIT, unix.EBADF},
+		{"ordinary sendmsg", unix.SYS_SENDMSG, unix.MSG_DONTWAIT, 0, unix.EBADF},
+	} {
+		_, _, err := unix.Syscall6(call.nr, invalidFD, 0, call.arg2, call.arg3, 0, 0)
+		if err != call.want {
+			return fmt.Errorf("%s filter: expected %v, got %v", call.name, call.want, err)
+		}
 	}
 	return nil
 }

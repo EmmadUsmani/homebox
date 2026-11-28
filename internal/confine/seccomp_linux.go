@@ -23,12 +23,34 @@ func installSocketFilter(daemon, qemu bool) error {
 		deny,
 	}
 	forbidden := []uint32{unix.SYS_IO_URING_SETUP, unix.SYS_IO_URING_ENTER, unix.SYS_IO_URING_REGISTER}
+	if !daemon {
+		forbidden = append(forbidden, unix.SYS_SENDMMSG)
+	}
 	if qemu {
 		// Lima passes the gateway as an already connected file descriptor.
 		forbidden = append(forbidden, unix.SYS_CONNECT)
 	}
 	for _, syscall := range forbidden {
 		program = append(program, unix.SockFilter{Code: equal, K: syscall, Jf: 1}, deny)
+	}
+	if !daemon {
+		// TCP Fast Open can initiate an outbound connection from a send syscall.
+		const anyBitSet = unix.BPF_JMP | unix.BPF_JSET | unix.BPF_K
+		for _, call := range []struct {
+			number      uint32
+			flagsOffset uint32
+		}{
+			{unix.SYS_SENDTO, 40},  // seccomp_data.args[3]
+			{unix.SYS_SENDMSG, 32}, // seccomp_data.args[2]
+		} {
+			program = append(program,
+				unix.SockFilter{Code: equal, K: call.number, Jf: 4},
+				unix.SockFilter{Code: load, K: call.flagsOffset},
+				unix.SockFilter{Code: anyBitSet, K: unix.MSG_FASTOPEN, Jf: 1},
+				deny,
+				allow,
+			)
+		}
 	}
 	if qemu {
 		// Unix datagrams can specify a destination in sendmsg without calling connect.

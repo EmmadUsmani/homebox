@@ -66,13 +66,16 @@ Image restores use the same host-agent file, process and network permissions.
   `restrict=on` and `ipv6=off`. QEMU receives the separate gateway
   connection as an inherited Unix socket. A seccomp filter denies QEMU
   outbound connects, IPv6 sockets and datagram sockets. Unknown network
-  arguments abort launch.
+  arguments abort launch. The QEMU and hostagent filters also reject
+  Fast Open sends and batched sends.
 - **Landlock** limits hostagent, QEMU and the gateway daemon to their
   file allowlists. QEMU can write its own disk and selected runtime files.
   The gateway daemon writes only in its own run directory. The launchers
   set `no_new_privs`, scope abstract Unix sockets and signals, and install
   seccomp filters before entering the host processes. A failed filter
-  aborts launch.
+  aborts launch. Landlock limits the hostagent’s TCP connects by port.
+  Its rules cannot restrict the destination IP or the pathname Unix
+  socket destinations used by the hostagent and gateway.
 - **SSH** publishes through the gateway daemon. The daemon matches the
   Unix SSH peer's kernel pidfd to the QEMU launcher identity and watches
   the process for exit. Lima's own SSH forward stays on IPv4 loopback.
