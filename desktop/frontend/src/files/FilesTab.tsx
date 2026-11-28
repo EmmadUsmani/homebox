@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { Call, Dialogs } from "@wailsio/runtime";
 import type { VMRef } from "../types";
+import { visibleText } from "./display";
 import "./files.css";
 
 const Editor = lazy(() => import("./Editor"));
@@ -16,11 +17,6 @@ type SaveResult = { stamp: Stamp; conflict: boolean };
 type Transfer = { active: boolean; bytes: number; total: number };
 
 const date = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
-
-function visibleText(text: string) {
-    return text.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, (character) =>
-        "⟦U+" + character.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0") + "⟧");
-}
 
 function size(bytes: number) {
     if (bytes < 1024) return bytes + " B";

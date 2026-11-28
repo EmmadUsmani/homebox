@@ -142,3 +142,5 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:41:36.961Z | 8918295d5d15 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/2 | 1665.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T10:45:23.428Z | 8918295d5d15 | yes | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android, doctor | PASS | 12/0/0 | 218.1s | fresh |
 | 2026-11-28T10:56:31.221Z | d3f825cf7061 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.6s | — |
+| 2026-11-28T11:02:20.571Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 176.1s | fresh |
+| 2026-11-28T11:04:31.179Z | be400e61c8ff | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 130.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
