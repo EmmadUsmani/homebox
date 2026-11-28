@@ -29,6 +29,7 @@ describe it are true, in the same commit or the one right after.
 |---|---|
 | [README.md](README.md) | Commands, setup steps or user-visible behaviour change |
 | [SECURITY.md](SECURITY.md) | Anything touches isolation, egress, SSH, ports, confinement or secrets |
+| [docs/security-review-2026-11-28.md](docs/security-review-2026-11-28.md) | The findings or coverage of the 2026-11-28 Mac isolation review need a correction |
 | [docs/architecture.md](docs/architecture.md) | Packages, dependencies, host state or known limitations change |
 | [docs/decisions.md](docs/decisions.md) | A decision is made or reversed: record why, the date and who made it |
 | [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |

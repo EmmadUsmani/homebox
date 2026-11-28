@@ -2,6 +2,7 @@ package egress
 
 import (
 	"errors"
+	"net"
 	"net/netip"
 	"testing"
 )
@@ -31,5 +32,22 @@ func TestHostPolicy(t *testing.T) {
 	policy.localNetworks = func() ([]netip.Prefix, error) { return nil, errors.New("interface lookup failed") }
 	if got := policy.denialReason(netip.MustParseAddr("8.8.8.42")); got != "cannot verify host interface networks" {
 		t.Errorf("interface error produced %q", got)
+	}
+}
+
+func TestHostPolicyIncludesLoopbackAliases(t *testing.T) {
+	list := func() ([]net.Interface, error) {
+		return []net.Interface{{Flags: net.FlagUp | net.FlagLoopback}}, nil
+	}
+	addresses := func(*net.Interface) ([]net.Addr, error) {
+		return []net.Addr{&net.IPNet{IP: net.ParseIP("8.8.8.42"), Mask: net.CIDRMask(32, 32)}}, nil
+	}
+	policy := hostPolicy{localNetworks: func() ([]netip.Prefix, error) {
+		return interfaceNetworks(list, addresses)
+	}}
+	for _, target := range []string{"8.8.8.42", "::ffff:8.8.8.42"} {
+		if got := policy.denialReason(netip.MustParseAddr(target)); got != "target is on a host interface network" {
+			t.Errorf("%s: got %q, want host interface denial", target, got)
+		}
 	}
 }
