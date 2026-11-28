@@ -40,10 +40,9 @@ The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
 The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
 cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
 and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
-workflow. Host-side checks on Ubuntu verified pinned SSH and HTTP through
-the LAN address and passed `box doctor` with LAN publishing enabled.
-Measure publishing from a second machine and cover GPU and autostart
-separately.
+workflow. Measuring LAN publishing from a second machine is done for
+Linux. See the [Mac laptop measurements](host-setup-linux.md#lan-publishing-verification).
+GPU and autostart remain open.
 
 ## macOS guests and the iOS Simulator
 

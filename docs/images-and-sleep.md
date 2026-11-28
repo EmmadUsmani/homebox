@@ -108,7 +108,7 @@ The CLI was built from `79f7d3f`. Both `box new` runs used 2 CPUs,
 |---|---:|
 | `box image rebuild --profile ubuntu` | 452.8 s |
 | `box new clone` from the current base | 131.6 s |
-| `box new full --force-provision` | 770.4 s before interruption |
+| `box new full --force-provision` | Unmeasured due to host disk stalls |
 
 The build guest passed doctor and the credential scan. Both agents reported
 signed out. The clone reset its identity, ran the OS and agent update

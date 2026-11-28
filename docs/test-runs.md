@@ -102,3 +102,4 @@ check also passed.
 | 2026-11-28T09:40:51.520Z | 6e64762860b9 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 9.2s | — |
 | 2026-11-28T09:42:47.708Z | cc2f6ffa0589 | no | Mac14,10 | 27.2.1 | change | default | e2e | PASS | 6/0/0 | 723.3s | — |
 | 2026-11-28T10:05:30.437Z | e005109290d6 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.8s | — |
+| 2026-11-28T10:07:24.546Z | 7336928b968a | yes | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.4s | — |
