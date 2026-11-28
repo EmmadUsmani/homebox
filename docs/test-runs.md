@@ -115,3 +115,4 @@ check also passed.
 | 2026-11-28T10:05:30.437Z | e005109290d6 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.8s | — |
 | 2026-11-28T10:07:24.546Z | 7336928b968a | yes | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.4s | — |
 | 2026-11-28T10:07:45.447Z | 085e17158d73 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 226.2s | fresh |
+| 2026-11-28T10:12:28.266Z | e2e2088f9f23 | no | Mac14,10 | 27.2.1 | change | default | android, doctor | PASS | 10/0/1 | 172.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
