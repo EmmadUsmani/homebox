@@ -66,3 +66,6 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:12:23.986Z | 07beebbe9a32 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 4.9s | — |
 | 2026-11-28T08:13:33.508Z | bdc9b295b125 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 5.0s | — |
 | 2026-11-28T08:18:12.309Z | cd361fc2635c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | FAIL | 19/1/1 | 766.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:26:43.713Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 338.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T08:33:19.976Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 394.1s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T08:36:58.200Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 217.0s | fresh |
