@@ -20,7 +20,10 @@ cleanup() {
     rm -rf "$workspace"
 }
 trap cleanup EXIT
-export ANDROID_AVD_HOME="$workspace/avd"
+export ANDROID_USER_HOME="$workspace/android"
+export ANDROID_EMULATOR_HOME="$ANDROID_USER_HOME"
+export ANDROID_AVD_HOME="$ANDROID_USER_HOME/avd"
+mkdir -p "$ANDROID_AVD_HOME"
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 emulator="$ANDROID_HOME/emulator/emulator"
 adb_bin="$ANDROID_HOME/platform-tools/adb"
