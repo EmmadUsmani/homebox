@@ -48,6 +48,23 @@ unless you enable `box host init --lan`. Install `xdg-open` to open
 published URLs from a graphical session. A headless host can use
 `box open --print` and `box desktop --no-open`.
 
+### LAN publishing verification
+
+On 2026-11-28, a Mac laptop on the same LAN connected to a 2-CPU, 4-GiB
+Ubuntu guest on an Ubuntu 26.04.1 LTS host. These measurements describe
+that setup. The laptop was likely using Wi-Fi.
+
+| Check | Result |
+|---|---|
+| SSH with `HostKeyAlias` and `StrictHostKeyChecking` | 3/3 passed, 0.25–0.44 s including connection setup and a round-trip command |
+| Published HTTP | HTTP 200 in 9 ms |
+| Ping to the Linux host | 3.0 ms average RTT |
+| SSH stream, 200 MB per direction | 56 MB/s download, 41 MB/s upload |
+
+From inside the guest, a public HTTPS request returned HTTP 200 and an
+HTTP request to the LAN router was blocked. The guest also passed
+`box doctor` with LAN publishing enabled.
+
 ## Enable nested KVM for Android
 
 On an x86-64 Linux host, read the nesting setting for your CPU vendor.
@@ -119,6 +136,12 @@ from the repository root. The runner uses disposable Linux VM state.
 See [Testing](../README.md#testing) for tier selection, evidence and options,
 and [the smoke image recipe](../images/homebox-smoke/README.md) for building
 the local amd64 image used by the change tier.
+
+Image tests that create state in the system temporary directory still
+require 10 GiB of free space on the filesystem holding that state.
+If a small `/tmp` causes the free-space check to fail, set `TMPDIR` to a
+short writable path on a filesystem with at least 10 GiB available, then
+rerun the tests.
 
 The full tier exercises the Linux app and its native viewer using
 `xvfb-run` and `dbus-run-session`. Install the verifier dependencies below.

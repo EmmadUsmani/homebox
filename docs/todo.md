@@ -40,8 +40,9 @@ The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
 The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
 cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
 and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
-workflow. Measure LAN
-publishing from a second machine and cover GPU and autostart separately.
+workflow. Measuring LAN publishing from a second machine is done for
+Linux. See the [Mac laptop measurements](host-setup-linux.md#lan-publishing-verification).
+GPU and autostart remain open.
 
 Nested KVM is available by opt-in for Linux x86-64 guests. The
 [Android smoke area](../smoke/android/README.md) covers the headless AOSP
@@ -109,7 +110,8 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 
 The Mac VZ and Linux QEMU backends support automatic profile bases and manual refresh with
 `box image rebuild [--profile P]`. See the [Ubuntu recipe](../images/base-ubuntu/README.md).
-Real-VM verification of the base rebuild and reuse on Linux is pending.
+The [Linux verification](images-and-sleep.md#linux-verification) exercised
+base rebuild and reuse on Ubuntu with QEMU/KVM.
 
 ## Start VMs again when the host boots
 

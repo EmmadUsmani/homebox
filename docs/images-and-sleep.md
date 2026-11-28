@@ -97,6 +97,30 @@ agent update steps after the identity reset. `box doctor` passed on the build
 VM, clone, and fully provisioned VM. Both agents reported signed out on the
 build VM and the credential scan passed before saving.
 
+### Linux verification
+
+On 2026-11-28, an x86-64 Ubuntu 26.04.1 LTS host running Lima 2.3.0 and
+QEMU 10.2.1 built and reused the Ubuntu base on an ext4 state volume.
+The CLI was built from `79f7d3f`. Both `box new` runs used 2 CPUs,
+4 GiB of memory, and a 20 GiB disk.
+
+| Command | Elapsed |
+|---|---:|
+| `box image rebuild --profile ubuntu` | 452.8 s |
+| `box new clone` from the current base | 131.6 s |
+| `box new full --force-provision` | Unmeasured due to host disk stalls |
+
+The build guest passed doctor and the credential scan. Both agents reported
+signed out. The clone reset its identity, ran the OS and agent update
+steps, and passed doctor. Its hostname, machine ID, and all three SSH host
+key fingerprints differed from the build guest's. Earlier build attempts
+were interrupted during package installation under sustained disk I/O
+pressure and during a test runner restart.
+
+The forced-provisioning run reached Docker setup. It was stopped after
+sustained host disk stalls while another VM was active, so there is no
+completed full-provisioning timing for comparison.
+
 ## Sleep and resume
 
 Apple's Virtualization framework has this since macOS 14:

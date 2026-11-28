@@ -378,7 +378,8 @@ run the command locally.
   the app and exercise native verifiers when Accessibility is available.
 - **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
   smoke area at quick level on a freshly provisioned guest. Targets 30–60
-  minutes.
+  minutes. The VM lifecycle test requires UDP DNS replies from at least two
+  independent public resolvers inside a Docker container.
 - **Full**, run occasionally, includes every smoke area at full level, the
   remote desktop host checks, and native verification of Files, Settings,
   the Desktop tab and viewer isolation. News Digest
