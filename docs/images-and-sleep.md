@@ -67,7 +67,9 @@ VM disks locally from source.
   belonging to a manually saved image uses full provisioning.
   `box image rebuild [--profile P]` refreshes the cache explicitly. An
   existing managed base is replaced atomically after the new build passes
-  its checks. `box new --force-provision` bypasses the cache.
+  its checks. `box new --force-provision` bypasses the cache. On macOS,
+  the build checks Lima and gateway socket lengths before creating a VM.
+  Choose a shorter `HOMEBOX_HOME` if the path exceeds the system limit.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
   leaves its existing VMs and any exported files in place.

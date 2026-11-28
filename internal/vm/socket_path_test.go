@@ -25,7 +25,15 @@ func TestValidateUnixSocketPath(t *testing.T) {
 		t.Fatalf("overlong socket: %v", err)
 	}
 
-	temp := t.TempDir()
+	scratch, err := os.MkdirTemp("/tmp", "hb-socket-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(scratch) })
+	temp, err := filepath.EvalSymlinks(scratch)
+	if err != nil {
+		t.Fatal(err)
+	}
 	target := filepath.Join(temp, strings.Repeat("a", maxBytes))
 	if err := os.Mkdir(target, 0700); err != nil {
 		t.Fatal(err)
