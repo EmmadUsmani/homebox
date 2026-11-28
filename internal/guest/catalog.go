@@ -76,7 +76,7 @@ func (c *Catalog) loadProfile(path string) (Profile, error) {
 			return profile, fmt.Errorf("each image requires an arch and URL")
 		}
 	}
-	for _, step := range profile.Steps {
+	for _, step := range slices.Concat(profile.Steps, profile.ImageUpdate) {
 		if strings.TrimSpace(step.Name) == "" {
 			return profile, fmt.Errorf("missing step name")
 		}
@@ -95,6 +95,7 @@ func (c *Catalog) Get(name string) (Profile, error) {
 	}
 	profile.Images = slices.Clone(profile.Images)
 	profile.Steps = slices.Clone(profile.Steps)
+	profile.ImageUpdate = slices.Clone(profile.ImageUpdate)
 	return profile, nil
 }
 

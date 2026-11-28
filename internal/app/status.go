@@ -24,6 +24,7 @@ type VMStatus struct {
 	Provisioning  *ProvisionState     `json:"provisioning,omitempty"`
 	UptimeSeconds *uint64             `json:"uptime_seconds,omitempty"`
 	Host          *hostinfo.Usage     `json:"host,omitempty"`
+	HostFreeBytes *uint64             `json:"host_free_bytes,omitempty"`
 	HostAgent     *hostinfo.Usage     `json:"hostagent,omitempty"`
 	Guest         *GuestStatus        `json:"guest,omitempty"`
 	Ports         []PortStatus        `json:"ports,omitempty"`
@@ -107,6 +108,11 @@ func (s *Service) Status(ctx context.Context, name string) (VMStatus, error) {
 		instance.Status = vm.StatusBroken
 	}
 	status := s.localStatus(Listing{Box: box, Status: instance.Status})
+	free, err := s.Store.FreeBytes()
+	if err == nil {
+		status.HostFreeBytes = &free
+	}
+	status.addError("host storage", err)
 	if instance.Status == vm.StatusRunning {
 		status.setHostUsage(s.sampleHost(ctx, []vm.Instance{instance})[name])
 	}

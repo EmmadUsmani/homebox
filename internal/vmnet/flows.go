@@ -46,7 +46,20 @@ const (
 	tcpCopyBuffer       = 32 << 10
 )
 
+type gatewayEgress struct {
+	denialReason func(netip.Addr) string
+	dial         func(context.Context, string, string) (net.Conn, error)
+}
+
+func hostEgress() gatewayEgress {
+	return gatewayEgress{
+		denialReason: egress.HostDenialReason,
+		dial:         (&net.Dialer{Timeout: 5 * time.Second}).DialContext,
+	}
+}
+
 type flows struct {
+	egress   gatewayEgress
 	ctx      context.Context
 	network  *stack.Stack
 	logger   *slog.Logger
@@ -58,9 +71,9 @@ type flows struct {
 	mu       sync.Mutex
 }
 
-func newFlows(ctx context.Context, network *stack.Stack, logger *slog.Logger) *flows {
+func newFlows(ctx context.Context, network *stack.Stack, logger *slog.Logger, upstream gatewayEgress) *flows {
 	return &flows{
-		ctx: ctx, network: network, logger: logger,
+		ctx: ctx, network: network, logger: logger, egress: upstream,
 		slots: make(chan struct{}, maxFlows), attempts: rate.NewLimiter(newFlowsPerSecond, newFlowBurst),
 		denials: rate.NewLimiter(2, 8), refusals: rate.NewLimiter(1, 2),
 	}
@@ -104,7 +117,7 @@ func (f *flows) allowed(protocol string, id stack.TransportEndpointID) bool {
 		return false
 	}
 	address := netip.AddrFrom4(id.LocalAddress.As4())
-	reason := egress.HostDenialReason(address)
+	reason := f.egress.denialReason(address)
 	if reason != "" && f.denials.Allow() {
 		f.logger.Info("egress denied", "protocol", protocol, "destination", address, "reason", reason)
 	}
@@ -120,8 +133,7 @@ func (f *flows) install() {
 
 func (f *flows) dial(protocol string, id stack.TransportEndpointID) (net.Conn, error) {
 	target := netip.AddrPortFrom(netip.AddrFrom4(id.LocalAddress.As4()), id.LocalPort)
-	dialer := net.Dialer{Timeout: 5 * time.Second}
-	return dialer.DialContext(f.ctx, protocol+"4", target.String())
+	return f.egress.dial(f.ctx, protocol+"4", target.String())
 }
 
 func (f *flows) forwardTCP(request *tcp.ForwarderRequest) {

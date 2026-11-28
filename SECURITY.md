@@ -92,7 +92,8 @@ virtual gateway, so the loopback canaries use TCP and UDP.
   connection as an inherited Unix socket. A seccomp filter denies QEMU
   outbound connects, IPv6 sockets and datagram sockets. Unknown network
   arguments abort launch. The QEMU and hostagent filters also reject
-  Fast Open sends and batched sends.
+  Fast Open sends and batched sends. All three Linux profiles deny
+  io_uring, ptrace and cross-process memory syscalls.
 - **Landlock** limits hostagent, QEMU and the gateway daemon to their
   file allowlists. QEMU can write its own disk and selected runtime files.
   The gateway daemon writes only in its own run directory. The launchers
@@ -107,7 +108,8 @@ virtual gateway, so the loopback canaries use TCP and UDP.
   The LAN switch controls the published SSH port and static TCP forwards.
 - **Doctor** checks the live QEMU command and SSH listener owners, probes
   each confinement policy, and tries the host and router canaries through
-  both NICs. See [Linux isolation limits](docs/architecture.md#networking-and-isolation-linux).
+  both NICs. The [Linux isolation review](docs/security-review-2026-11-28-linux.md)
+  maps the controls to their checks and records remaining limits.
 
 ### The VM and the network
 
@@ -130,14 +132,19 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
   is alive. Before it dials the driver's loopback listener and again before
   it forwards traffic, box checks the listener and host process identities.
   Unverified ownership closes the connection and produces a rate-limited daemon
-  warning. The VM's sshd drops a client that stops answering (within about
+  warning. Each relay admits up to 128 active connections and 64 new
+  connections per second, with a burst of 128. The VM's sshd drops a client that stops answering (within about
   two minutes), so a laptop that sleeps, leaves or crashes doesn't leave
   sessions open in the VM. Lima's port forwarder doesn't pass a closed
   connection on to the guest, so without this they would stay open forever.
 - Laptops pin each VM's SSH host keys, so an impostor on the port fails the
   host-key check. `box repin` changes pins only after you review them.
 - Ports are published only on the Mac's loopback unless you turn on LAN
-  publishing (`box host init --lan`), per host.
+  publishing (`box host init --lan`), per host. Lima plain mode disables
+  the Linux guest agent daemon and dynamic port discovery. A configured
+  static forward remains bound to the same host address and port when
+  the guest replaces the service at its published port.
+  [Lima plain mode](https://lima-vm.io/docs/config/plain/)
 
 If the per-VM gateway daemon exits, egress stays blocked. Stop and start
 the VM through box to establish a fresh confined gateway connection.
@@ -334,8 +341,8 @@ and provider credentials to the work you intend to authorize.
   never a personal token with full access.
 - A host-side credential proxy that keeps tokens out of the VM is planned
   (phase 3 in the [design](docs/plan.md)).
-- Images, when they exist (phase 2), will carry whatever was on the disk,
-  logins included. Base images are built before anything is logged in.
+- Explicitly saved images carry the guest disk, including any logins.
+  Managed profile bases start from a fresh cloud image.
 
 Saved images and exported archives include the whole guest disk. They can
 contain SSH credentials, API tokens, agent logins, local data and deleted data
@@ -351,6 +358,9 @@ restricted network and confined processes as freshly provisioned VMs.
 
 The [project image recipes](images/README.md) build signed-out guests and
 check known credential paths and common plaintext token formats before saving.
+The managed base builder uses the normal isolation controls, binds its ports
+to loopback and skips adding laptop SSH keys to the build guest. It checks
+`box doctor` before scanning and saving the disk.
 The [smoke image](images/homebox-smoke/README.md) regenerates its PostgreSQL
 TLS key when a new guest boots.
 The scanner cannot inspect secrets inside compressed archives or arbitrary
@@ -369,6 +379,11 @@ connections but not open them) before turning it on.
 - **A bug in the hypervisor** that lets a guest escape Apple's Virtualization
   framework. homebox relies on Apple here, and on the Seatbelt profiles to
   limit the damage.
+- **QEMU/KVM and host-helper compromise.** Linux confinement limits the
+  damage from a vulnerable host helper. The hostagent can connect to the
+  configured TCP port on any IPv4 destination. The hostagent and gateway
+  can reach pathname Unix sockets. The gateway needs IPv4 sockets to
+  enforce destination rules itself.
 - **A compromised host, or someone with physical access.** Hosts that use
   autostart run without FileVault (the owner's choice), so the disk, VM disks
   included, isn't encrypted at rest.
@@ -379,8 +394,17 @@ connections but not open them) before turning it on.
   in the [architecture](docs/architecture.md#networking-and-isolation-macos)
   and tracked in the [to-do list](docs/todo.md).
 - **Aggregate storage use.** Each VM has a configured virtual disk size.
-  homebox does not enforce an aggregate host storage quota for VM disks,
-  images or Lima logs.
+  VM creation, starts of stopped VMs, and image saves, imports and copies
+  require 10 GiB available on the state volume at admission. Doctor and status
+  report that volume's available space. Running guests, writes admitted before
+  the threshold, Lima logs, and other host processes can still exhaust the
+  volume. There is no aggregate allocation or quota enforcement.
+- **Inbound availability.** The SSH relay's per-VM limits bound its workers.
+  A client with access to the published listener can fill the available slots,
+  and Lima manages the resources used by static TCP forwards separately.
+- **Lima and virtualization transports.** Plain mode disables the normal
+  guest agent daemon. The hypervisor's device interfaces and the confined
+  hostagent remain trusted components.
 - **Guest-reported health.** Doctor, status and logs rely on guest-controlled
   output for guest checks. See the [Mac isolation review](docs/security-review-2026-11-28.md)
   for coverage and remaining checks.

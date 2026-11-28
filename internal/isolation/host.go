@@ -33,6 +33,11 @@ type Host struct {
 
 var _ app.Isolation = (*Host)(nil)
 
+// ValidateSocketPaths checks the gateway socket before a box is reserved.
+func (h *Host) ValidateSocketPaths(name string) error {
+	return vm.ValidateUnixSocketPath(gatewaySocket(h.runDir(name)))
+}
+
 // Up starts the VM's network daemon and returns the confined launch command.
 func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.Session, error) {
 	host, err := h.Store.LoadHost()
@@ -65,14 +70,15 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	if err != nil {
 		return app.Session{}, err
 	}
-	daemon := daemonConfig(box, dir, host.LAN)
+	lan := host.LAN && !box.ImageBuild
+	daemon := daemonConfig(box, dir, lan)
 	daemon.HostPIDFile = filepath.Join(pidDir, filepath.Base(instance.HostPIDFile))
 	hostRules := rules(box, instance)
 	if runtime.GOOS == "linux" {
 		daemon.SSHTargetSocket = filepath.Join(pidDir, confine.QEMUSSHSocket)
 		// Keep the launch identity outside both writable runtime directories.
 		// Replace the inode before granting QEMU an exact-file write rule.
-		daemon.HostPIDFile = filepath.Join(h.Store.BoxDir(box.Name), "qemu-launch.pid")
+		daemon.HostPIDFile = filepath.Join(h.Store.BoxDir(box.Name), confine.QEMULaunchPIDFile)
 		file, err := os.CreateTemp(h.Store.BoxDir(box.Name), ".qemu-launch-")
 		if err != nil {
 			return app.Session{}, err
@@ -103,7 +109,7 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	daemonWrap, err := confine.Prepare(confine.Rules{
 		Daemon: true, RuntimeDir: dir, Executable: executable,
 		GatewaySocket: daemon.Socket, HostPIDFile: daemon.HostPIDFile,
-		BindTCP: []confine.Bind{{Port: daemon.SSHPublish.Port, LAN: host.LAN}},
+		BindTCP: []confine.Bind{{Port: daemon.SSHPublish.Port, LAN: lan}},
 	}, h.Store.BoxDir(box.Name))
 	if err != nil {
 		return app.Session{}, err
@@ -167,10 +173,14 @@ func (h *Host) prepareRunDir(name string) (string, error) {
 	return filepath.EvalSymlinks(dir)
 }
 
+func gatewaySocket(dir string) string {
+	return filepath.Join(dir, "net.sock")
+}
+
 func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 	return vmnet.Config{
 		Name:       box.Name,
-		Socket:     filepath.Join(dir, "net.sock"),
+		Socket:     gatewaySocket(dir),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
 		LogFile:    state.NetworkLogPath(dir),

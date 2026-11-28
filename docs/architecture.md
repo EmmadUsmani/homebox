@@ -15,6 +15,7 @@ internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init, status, top, logs, desktop); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
 internal/vm/lima   the Lima driver: writes Lima YAML, runs limactl
+images/            local image recipes and embedded credential checks
 internal/diskcopy clones or sparsely copies raw disks
 internal/guest     loads guest profiles (images + provisioning steps)
 guest/             the profiles themselves, embedded in the binary:
@@ -112,7 +113,7 @@ original if it exists.
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
-  images/IMAGE/         saved raw or qcow2 disk, plus image.json metadata
+  images/IMAGE/         raw or qcow2 disk and metadata with an optional profile fingerprint
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```
@@ -127,6 +128,14 @@ operation's output in memory and reads step names from the provision record.
 
 The [smoke runner's image archives](../smoke/README.md#container-image-cache)
 live in the host's user cache, separate from box state and VM lifecycles.
+
+### Host state volume headroom
+
+The [state store's free-space check](../internal/state/space_policy.go) measures
+the default volume for VM disks and saved images. VM creation and startup
+check it before creating or launching the instance. Image saves, imports and
+copies check it before staging the destination disk. See the
+[storage limits](../SECURITY.md#not-covered).
 
 ## Ports
 
@@ -258,7 +267,9 @@ Lima connects the gateway socket and passes its descriptor to QEMU. QEMU
 can consequently deny `connect(2)` and datagram sockets in its own seccomp
 profile. The gateway daemon verifies QEMU's Unix peer with `SO_PEERPIDFD`,
 using the pidfs identity written at QEMU launch. It monitors that same
-process with a pidfd. This avoids granting the daemon read access to other
+process with a pidfd. Doctor checks the same recorded identity and inspects
+the running QEMU command line and its connected gateway descriptor. This
+avoids granting the daemon read access to other
 processes' files in `/proc`. OpenSSH static forward sockets use the configured
 loopback or LAN binding.
 
@@ -280,8 +291,8 @@ starting stopped QEMU instances, including records written before the flag
 existed. See the [Android smoke area](../smoke/android/README.md).
 
 Linux CLI host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
-with Unix SLIRP forwarding. Saved disks, autostart, GPU passthrough and the
-native desktop host application are separate work. The gateway's IPv4,
+with Unix SLIRP forwarding. Linux supports saved qcow2 disks and a native
+GTK desktop viewer. Autostart and GPU passthrough are separate work. The gateway's IPv4,
 NAT reflection and existing-flow limits apply here as well.
 
 ## Status on the host

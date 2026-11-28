@@ -70,10 +70,10 @@ Left to do:
 
 ## Follow up on the Mac isolation review
 
-Add controlled guest-side DNS answers for private destinations, fragment
-reassembly and broadcast dispatch fixtures, and a Files-tab check that renders
-unusual filenames in the Mac GUI. The
-[review](security-review-2026-11-28.md) explains existing coverage and limits.
+The gateway now has controlled DNS answer, IPv4 reassembly and broadcast
+dispatch fixtures. A Files-tab check that renders unusual filenames in the
+Mac GUI remains open. The [review](security-review-2026-11-28.md) explains
+existing coverage and limits.
 
 ## Harden the SSH relay
 
@@ -107,10 +107,9 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 
 ## Base images (phase 2)
 
-Saved-image commands are available. Automatically building and refreshing a
-profile's base image, including `box image rebuild [--profile P]`, remains open.
-Future project images, including profile base images for `box image rebuild`,
-follow the [image recipe convention](../images/README.md). See [Images](plan.md#images).
+The Mac VZ and Linux QEMU backends support automatic profile bases and manual refresh with
+`box image rebuild [--profile P]`. See the [Ubuntu recipe](../images/base-ubuntu/README.md).
+Real-VM verification of the base rebuild and reuse on Linux is pending.
 
 ## Start VMs again when the host boots
 

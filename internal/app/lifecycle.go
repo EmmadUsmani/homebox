@@ -32,6 +32,9 @@ func (s *Service) Start(ctx context.Context, name string) error {
 		if err != nil {
 			return err
 		}
+		if box.ImageBuild {
+			return nil
+		}
 		return s.authorizeLaptopKeys(ctx, name, endpoint)
 	})
 }
@@ -49,6 +52,9 @@ func (s *Service) authorizeLaptopKeys(ctx context.Context, name string, endpoint
 func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instance) error {
 	if instance.Status == vm.StatusRunning {
 		return s.networkDaemonError(box.Name)
+	}
+	if err := s.Store.RequireFreeSpace(); err != nil {
+		return err
 	}
 	if err := s.applyLANSetting(ctx, box); err != nil {
 		return err
@@ -98,34 +104,36 @@ func (s *Service) Stop(ctx context.Context, name string) error {
 
 // Remove stops and deletes the VM, releases isolation and deletes its record.
 func (s *Service) Remove(ctx context.Context, name string) error {
-	return s.Store.WithLock(func() error {
-		if _, err := s.loadRecord(name); err != nil {
-			return err
+	return s.Store.WithLock(func() error { return s.remove(ctx, name) })
+}
+
+func (s *Service) remove(ctx context.Context, name string) error {
+	if _, err := s.loadRecord(name); err != nil {
+		return err
+	}
+	instance, err := s.Driver.Get(ctx, name)
+	if err != nil && !errors.Is(err, vm.ErrNotFound) {
+		return err
+	}
+	if err == nil && instance.Status != vm.StatusStopped {
+		s.progress("Stopping %s", name)
+		// The VM is being deleted anyway, so a broken VM that won't shut
+		// down cleanly must not block its removal.
+		if err := s.Driver.Stop(ctx, name); err != nil {
+			s.progress("Graceful stop failed (%v); deleting %s anyway", err, name)
 		}
-		instance, err := s.Driver.Get(ctx, name)
-		if err != nil && !errors.Is(err, vm.ErrNotFound) {
-			return err
-		}
-		if err == nil && instance.Status != vm.StatusStopped {
-			s.progress("Stopping %s", name)
-			// The VM is being deleted anyway, so a broken VM that won't shut
-			// down cleanly must not block its removal.
-			if err := s.Driver.Stop(ctx, name); err != nil {
-				s.progress("Graceful stop failed (%v); deleting %s anyway", err, name)
-			}
-		}
-		s.progress("Removing %s", name)
-		if err := s.Driver.Delete(ctx, name); err != nil {
-			return err
-		}
-		if err := s.releaseIsolation(ctx, name); err != nil {
-			return err
-		}
-		if err := s.Store.Delete(name); err != nil {
-			return err
-		}
-		return s.refreshLocalSSH()
-	})
+	}
+	s.progress("Removing %s", name)
+	if err := s.Driver.Delete(ctx, name); err != nil {
+		return err
+	}
+	if err := s.releaseIsolation(ctx, name); err != nil {
+		return err
+	}
+	if err := s.Store.Delete(name); err != nil {
+		return err
+	}
+	return s.refreshLocalSSH()
 }
 
 func (s *Service) releaseIsolation(ctx context.Context, name string) error {
@@ -145,7 +153,7 @@ func (s *Service) applyLANSetting(ctx context.Context, box *state.Box) error {
 	if err != nil {
 		return err
 	}
-	want := state.HostIP(host.LAN)
+	want := state.HostIP(host.LAN && !box.ImageBuild)
 	forwards := slices.Clone(box.Forwards)
 	changed := false
 	for i := range forwards {

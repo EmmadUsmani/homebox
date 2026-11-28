@@ -23,6 +23,7 @@ type Application interface {
 	DesktopInstall(context.Context, string) error
 	Desktop(context.Context, string, bool, func(string) error) error
 	New(context.Context, app.NewOptions) error
+	RebuildImage(context.Context, string, string) error
 	SaveImage(context.Context, string, string, string) error
 	ListImages() ([]state.Image, error)
 	RemoveImage(string) error
@@ -74,7 +75,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 	}
 	root.CompletionOptions.DisableDefaultCmd = true
 	root.AddCommand(
-		newBoxCommand(service),
+		newBoxCommand(service, version),
 		imageCommand(service, version),
 		resizeCommand(service),
 		hostCommand(service),
@@ -115,12 +116,13 @@ func namedCommand(use, summary string, run func(context.Context, string) error) 
 	}}
 }
 
-func newBoxCommand(service Application) *cobra.Command {
-	var options app.NewOptions
+func newBoxCommand(service Application, version string) *cobra.Command {
+	options := app.NewOptions{Version: version}
 	cmd := namedCommand("new NAME", "Create and provision a VM", func(ctx context.Context, name string) error {
 		options.Name = name
 		return service.New(ctx, options)
 	})
+	cmd.Flags().BoolVar(&options.ForceProvision, "force-provision", false, "Run full provisioning and bypass the profile base image")
 	cmd.Flags().BoolVar(&options.NestedVirt, "nested-virt", false, "Expose hardware virtualization to the guest (Linux QEMU/KVM only)")
 	cmd.Flags().StringVar(&options.Image, "image", "", "Create from a saved image")
 	cmd.Flags().StringVar(&options.Profile, "profile", "", "Guest profile (default ubuntu)")

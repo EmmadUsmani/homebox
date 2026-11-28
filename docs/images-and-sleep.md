@@ -61,9 +61,41 @@ VM disks locally from source.
   is unavailable, it warns and makes a sparse copy. It checks the disk size
   and trusts the recorded disk digest, so use a source store you control.
   The smoke runner uses this path for locally stored images.
+- **Profile bases:** on macOS with Lima VZ and Linux with Lima QEMU,
+  `box new` builds a missing or stale base on a throwaway VM and clones it.
+  The Ubuntu cache is named
+  `base-ubuntu`. Its SHA-256 fingerprint covers the profile definition,
+  full provisioning scripts, and shared image preparation and credential
+  scan. The cached disk must also match the driver, backend, host OS, CPU
+  architecture and guest username. The clone runs OS and coding-agent updates after its
+  identity reset. A disk request below the base size or an occupied name
+  belonging to a manually saved image uses full provisioning.
+  `box image rebuild [--profile P]` refreshes the cache explicitly. An
+  existing managed base is replaced atomically after the new build passes
+  its checks. `box new --force-provision` bypasses the cache. The build checks Lima
+  and gateway socket lengths before creating a VM.
+  Choose a shorter `HOMEBOX_HOME` if the path exceeds the system limit.
+  macOS guests use the installer profile and have no managed base image.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
   leaves its existing VMs and any exported files in place.
+
+### macOS verification
+
+On 2026-11-27, a Mac running macOS 27.2.1 and Lima 2.3.0 built and used the
+Ubuntu base in a short, isolated state directory. Both `box new` runs used
+2 CPUs, 4 GiB of memory, and a 20 GiB disk.
+
+| Command | Elapsed |
+|---|---:|
+| `box image rebuild --profile ubuntu` | 306.8 s |
+| `box new clone` from the current base | 207.0 s |
+| `box new full --force-provision` | 296.0 s |
+
+The clone was ready 89 seconds sooner. Its provisioning log showed the OS and
+agent update steps after the identity reset. `box doctor` passed on the build
+VM, clone, and fully provisioned VM. Both agents reported signed out on the
+build VM and the credential scan passed before saving.
 
 ## Sleep and resume
 

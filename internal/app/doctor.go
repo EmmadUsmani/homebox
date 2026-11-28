@@ -19,6 +19,12 @@ import (
 
 // Doctor verifies host publishing and guest isolation for a named or all running boxes.
 func (s *Service) Doctor(ctx context.Context, name string) error {
+	if free, err := s.Store.FreeBytes(); err != nil {
+		s.progress("Host state volume: %v", err)
+	} else {
+		s.progress("Host state volume: %.1f GiB available (%d GiB minimum for VM starts and image writes)", float64(free)/(1<<30), state.MinimumFreeBytes>>30)
+	}
+
 	if name != "" {
 		box, err := s.load(name)
 		if err != nil {
@@ -77,7 +83,7 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	if out == nil {
 		out = io.Discard
 	}
-	targets, checks, closeCanaries := s.DoctorHost.Probe(ctx, instance.HostAddress, box.SSHPort, host.LAN)
+	targets, checks, closeCanaries := s.DoctorHost.Probe(ctx, instance.HostAddress, box.SSHPort, host.LAN && !box.ImageBuild)
 	defer closeCanaries()
 	if sandbox, ok := s.DoctorHost.(interface {
 		ProbeSandbox(context.Context, string) []doctor.Check
@@ -90,9 +96,9 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	}
 	checks = append(checks, daemonCheck)
 	if relay, ok := s.DoctorHost.(interface {
-		ProbeLinuxSSHRelay(context.Context, string, string, int) []doctor.Check
+		ProbeLinuxSSHRelay(context.Context, string, string, string, int) []doctor.Check
 	}); ok {
-		checks = append(checks, relay.ProbeLinuxSSHRelay(ctx, instance.SSHPIDFile, instance.RuntimeDir, state.DriverSSHPort(box.Index))...)
+		checks = append(checks, relay.ProbeLinuxSSHRelay(ctx, instance.SSHPIDFile, instance.RuntimeDir, s.Store.BoxDir(box.Name), state.DriverSSHPort(box.Index))...)
 	} else if relay, ok := s.DoctorHost.(interface {
 		ProbeSSHRelay(string, int) doctor.Check
 	}); ok {
@@ -157,7 +163,10 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		}
 	}
 	result.CheckedAt = time.Now().UTC()
-	saveErr := s.Store.SaveDoctorResult(box, result)
+	var saveErr error
+	if !box.ImageBuild {
+		saveErr = s.Store.SaveDoctorResult(box, result)
+	}
 	if err := errors.Join(hostErr, guestErr, ctx.Err(), saveErr); err != nil {
 		return fmt.Errorf("doctor %s: %w", box.Name, err)
 	}

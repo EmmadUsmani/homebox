@@ -355,6 +355,15 @@ same socket path cannot replace that connection. Keep the same fail-closed
 network and surface the recovery commands. Live recovery remains open and
 would require a change to how the drivers hold the connection.
 
+## Profile base images
+
+**Managed profile base cache** (2026-11-28, decided by the lead's worker overnight
+under the owner's autonomy grant). The profile definition, build scripts and
+credential checks determine cache freshness. Build the Ubuntu disk at 20 GiB
+and let the clone grow to the requested size. Keep manual image names intact.
+Refresh a managed disk with an atomic directory exchange after verification,
+so a failed build leaves the previous image available.
+
 ## 2026-11-28 · Mac isolation review
 
 Decided by the lead's worker overnight under the owner's autonomy grant.
@@ -366,6 +375,39 @@ transports. A failed guest doctor check now makes the command fail even
 when SSH returns zero.
 The [Mac isolation review](security-review-2026-11-28.md) records the checks
 and residual limits.
+
+## 2026-11-28 · Linux isolation review
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Use the recorded QEMU launch pidfd identity in doctor, as the SSH relay
+already does. Verify QEMU's restricted SLIRP configuration and connected
+gateway descriptor after launch as well as checking the descriptor's peer
+before exec. Restrict direct exec of library-tree files to the required ELF
+loader, and deny process tracing and cross-process memory access in each
+Linux confinement profile. Keep the hostagent and gateway's pathname Unix
+sockets for current features and record the Landlock limit in SECURITY.md.
+See the [Linux isolation review](security-review-2026-11-28-linux.md).
+
+## 2026-11-28 · Host resource admission and Mac isolation coverage
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Require 10 GiB available on the homebox state volume before accepting new VM
+creation, a stopped VM start, or an image save, import or copy. A fixed
+headroom floor leaves room for host writes without treating sparse virtual
+disk sizes as physical allocations. Report available bytes in status and
+show the floor in doctor. This is an admission check, so ongoing writes
+can still use the remaining space.
+
+Cap the SSH relay at 128 concurrent connections per VM and 64 admissions
+per second with a burst of 128. Bound ownership checks, dials and copy
+workers without terminating established sessions solely because of another
+client's arrival. Keep Lima plain mode and the static forwarding config.
+Test that replacing a published service leaves the published host endpoint
+working and that an unpublished listener remains unavailable on the host.
+
+The Docker e2e check requires a successful public DNS reply from inside the
+container. Try independent resolvers so a single timed-out public endpoint
+does not prevent exercising the local isolation assertions.
 
 ## 2026-11-28 · Nested KVM and Android Emulator
 
