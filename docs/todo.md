@@ -40,8 +40,10 @@ The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
 The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
 cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
 and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
-workflow. Measure LAN
-publishing from a second machine and cover GPU and autostart separately.
+workflow. Host-side checks on Ubuntu verified pinned SSH and HTTP through
+the LAN address and passed `box doctor` with LAN publishing enabled.
+Measure publishing from a second machine and cover GPU and autostart
+separately.
 
 ## macOS guests and the iOS Simulator
 
@@ -105,7 +107,8 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 
 The Mac VZ and Linux QEMU backends support automatic profile bases and manual refresh with
 `box image rebuild [--profile P]`. See the [Ubuntu recipe](../images/base-ubuntu/README.md).
-Real-VM verification of the base rebuild and reuse on Linux is pending.
+The [Linux verification](images-and-sleep.md#linux-verification) exercised
+base rebuild and reuse on Ubuntu with QEMU/KVM.
 
 ## Start VMs again when the host boots
 

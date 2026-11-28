@@ -94,3 +94,4 @@ check also passed.
 | 2026-11-28T09:31:00.832Z | 413d9227ac10 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 908.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T09:31:45.427Z | 354ab6f29d92 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | FAIL | 4/1/0 | 25.2s | — |
 | 2026-11-28T09:32:50.784Z | 354ab6f29d92 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 18.3s | — |
+| 2026-11-28T09:40:51.520Z | 6e64762860b9 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 9.2s | — |

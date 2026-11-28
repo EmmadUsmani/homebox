@@ -99,18 +99,27 @@ build VM and the credential scan passed before saving.
 
 ### Linux verification
 
-On 2026-11-28, an x86-64 Ubuntu 26.04.1 LTS host running Lima 2.3.0
-and QEMU 10.2.1 booted the Ubuntu build guest and started provisioning.
-Another VM was active throughout both attempts.
+On 2026-11-28, an x86-64 Ubuntu 26.04.1 LTS host running Lima 2.3.0 and
+QEMU 10.2.1 built and reused the Ubuntu base on an ext4 state volume.
+The CLI was built from `79f7d3f`. Both `box new` runs used 2 CPUs,
+4 GiB of memory, and a 20 GiB disk.
 
-| Command | Elapsed | Result |
-|---|---:|---|
-| `box image rebuild --profile ubuntu` | 167.1 s | Interrupted during base package installation |
-| `box new clone --cpus 2 --memory 4 --disk 20` with an empty cache | 359.2 s | Automatic base build stopped during base package installation |
+| Command | Elapsed |
+|---|---:|
+| `box image rebuild --profile ubuntu` | 452.8 s |
+| `box new clone` from the current base | 131.6 s |
+| `box new full --force-provision` | 770.4 s before interruption |
 
-Both attempts were stopped after sustained host disk I/O stalls. Neither
-completed a base image. Cache-hit and forced-provisioning timings, clone
-identity checks, and doctor on a base clone remain pending.
+The build guest passed doctor and the credential scan. Both agents reported
+signed out. The clone reset its identity, ran the OS and agent update
+steps, and passed doctor. Its hostname, machine ID, and all three SSH host
+key fingerprints differed from the build guest's. Earlier build attempts
+were interrupted during package installation under sustained disk I/O
+pressure and during a test runner restart.
+
+The forced-provisioning run reached Docker setup. It was stopped after
+sustained host disk stalls while another VM was active, so there is no
+completed full-provisioning timing for comparison.
 
 ## Sleep and resume
 
