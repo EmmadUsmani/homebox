@@ -69,8 +69,11 @@ func verify(bundle: String, state: String, screenshot: String, mode: String, sce
     defer {
         if let app = running() {
             app.terminate()
-            if (try? waitFor("application exit", seconds: 5, { app.isTerminated ? true : nil })) == nil {
-                app.forceTerminate()
+            if (try? waitFor("application exit", seconds: 5, { kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil })) == nil {
+                kill(app.processIdentifier, SIGKILL)
+                _ = try? waitFor("application exit after force quit", seconds: 3) {
+                    kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+                }
             }
         }
     }

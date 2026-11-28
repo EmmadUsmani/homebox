@@ -144,14 +144,25 @@ LAN publishing is a host setting (`box host init --lan`).
 
 The [macOS networking spike](spikes/udp-macos.md) established the two-NIC
 design. Lima's built-in NIC handles inbound SSH and static HTTP forwards.
-The second NIC connects to box's IPv4 gateway over a Unix socket.
+The second NIC connects to box's IPv4 gateway over a Unix socket. The
+[Go network config](../internal/vmnet/config.go) supplies the socket NIC MAC
+and expected DHCP subnet to [Ubuntu provisioning](../guest/ubuntu/network.sh).
+
+Lima 2.3.0 dials the socket at launch. On macOS, the VZ network device holds
+a [file-handle attachment](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driver/vz/vm_darwin.go).
+On Linux, QEMU receives a [connected socket netdev descriptor](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driver/qemu/qemu.go).
+On EOF, QEMU's [stream backend](https://github.com/qemu/qemu/blob/v10.2.0/net/socket.c)
+closes that descriptor and can accept again only if it owns a listening
+descriptor. The VZ attachment also remains bound to its original connection.
+Recreating the socket path does not reconnect either device. Box reports a
+dead daemon and a stop/start creates a fresh attachment.
 
 1. Box starts `box _vmnet NAME` under its own Seatbelt profile. The daemon
    binds an owner-only Unix socket in the VM's run directory and accepts
    one attachment. It provides DHCP and uses gVisor netstack to terminate
    guest TCP and UDP and handle IPv4 echo. Every new flow checks the numeric
    destination against the shared egress policy and the host's current
-   interface networks before opening a host socket. The daemon bounds flow
+   interface networks, including loopback aliases, before opening a host socket. The daemon bounds flow
    count, connection attempts, idle time and denial logs. Each VM has 1,536
    active flow slots and admits up to 500 new flows per second with a burst of
    1,536. DNS over UDP releases its slot after two seconds of inactivity.
@@ -173,7 +184,8 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
    resolvers directly. Provisioning removes the old proxy settings,
    redirects and Docker resolver override. The built-in NIC remains
    confined if guest root changes its routing. The socket daemon discards
-   IPv6 Ethernet frames and creates IPv4 host sockets only.
+   IPv6 Ethernet frames and unsupported IPv4 protocols before stack
+   processing. It creates IPv4 host sockets only.
 4. The daemon opens the published SSH relay after observing the driver
    host process. It checks the listener and the watched process's kernel
    start time before and after each upstream dial. On macOS the check reads
@@ -184,6 +196,8 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
+- The Mac host runs Ubuntu guests through `box`. A macOS guest needs its
+  own verified SSH and isolation path. See the [macOS guest spike](spikes/macos-guests.md).
 - Public egress supports IPv4 TCP, UDP and ICMP echo. IPv6 and other IP
   protocols are outside this gateway's scope.
 - A router with NAT reflection can reflect connections to its public IP
@@ -280,3 +294,11 @@ the current saved and detected fingerprints inside the shared re-pin lock.
 - CI runs ShellCheck on guest scripts. The [local test runner](../README.md#testing)
   checks shell scripts across the checkout, selects smoke areas by changed
   path, and keeps VM state and test logs separate from the regular box store.
+
+## Guest agent factory
+
+The optional [agent factory](../factory/README.md) runs in a Linux guest as
+the SSH user. It uses the guest's Node.js, Git and Codex CLI. The supervisor
+publishes to the project's existing origin and writes local status files that
+the operator can read over SSH. The Ubuntu systemd user unit is an optional
+launcher.

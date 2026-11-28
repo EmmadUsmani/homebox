@@ -63,6 +63,7 @@ func TestDoctor(t *testing.T) {
 	}
 	wantEnv := map[string]string{
 		"HOMEBOX_BUILTIN_GATEWAY": "192.0.2.10",
+		"HOMEBOX_GATEWAY_IP":      "10.114.0.1",
 		"HOMEBOX_DENY_TARGETS":    "192.0.2.10:12345 192.0.2.11:80",
 		"HOMEBOX_PUBLIC_URL":      "https://example.com",
 	}
@@ -73,6 +74,12 @@ func TestDoctor(t *testing.T) {
 		t.Fatal("named stopped VM passed doctor")
 	}
 
+	ssh.scriptOutput = "FAIL deny-tcp-canary: unexpected response\n"
+	if err := service.Doctor(t.Context(), "working"); err == nil || !strings.Contains(err.Error(), "guest reported failed checks") {
+		t.Fatalf("doctor accepted a failed check with a successful guest exit: %v", err)
+	}
+	ssh.scriptOutput = ""
+
 	guestFail := errors.New("guest diagnostic failed")
 	ssh.fail = guestFail
 	service.Progress.(*bytes.Buffer).Reset()
@@ -81,12 +88,12 @@ func TestDoctor(t *testing.T) {
 		t.Fatalf("combined error = %v", err)
 	}
 	output := service.Progress.(*bytes.Buffer).String()
-	for _, want := range []string{"Checking broken", "FAIL network-daemon", "Checking working", "PASS network-daemon"} {
+	for _, want := range []string{"Checking broken", "FAIL network-daemon: network daemon stopped; recover with `box stop broken` then `box start broken`", "Checking working", "PASS network-daemon"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output %q missing %q", output, want)
 		}
 	}
-	if len(ssh.calls) != 3 || probes != 3 || cleanups != 3 || strings.Contains(output, "Checking stopped") {
+	if len(ssh.calls) != 4 || probes != 4 || cleanups != 4 || strings.Contains(output, "Checking stopped") {
 		t.Fatalf("unexpected execution: %q, SSH %v, probes %d, cleanups %d", output, ssh.calls, probes, cleanups)
 	}
 }

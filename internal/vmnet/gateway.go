@@ -32,10 +32,8 @@ import (
 )
 
 const (
-	gatewayIP   = "10.114.0.1"
 	guestIP     = "10.114.0.21"
 	gatewayMAC  = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x01")
-	guestMAC    = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x15")
 	networkNIC  = 1
 	ethernetMTU = 1500
 	frameMax    = ethernetMTU + header.EthernetMinimumSize
@@ -44,8 +42,8 @@ const (
 )
 
 var (
-	subnet         = netip.MustParsePrefix("10.114.0.0/24")
-	gatewayAddress = stackAddress(gatewayIP)
+	subnet         = netip.MustParsePrefix(Subnet)
+	gatewayAddress = stackAddress(GatewayIP)
 	guestAddress   = stackAddress(guestIP)
 )
 
@@ -230,11 +228,19 @@ func guestFrame(frame []byte) bool {
 		if !packet.IsValid(len(payload)) {
 			return false
 		}
+		protocol := packet.TransportProtocol()
 		if packet.SourceAddress() == guestAddress {
-			return packet.DestinationAddress() != gatewayAddress || packet.TransportProtocol() != icmp.ProtocolNumber4
+			switch protocol {
+			case tcp.ProtocolNumber, udp.ProtocolNumber:
+				return true
+			case icmp.ProtocolNumber4:
+				return packet.DestinationAddress() != gatewayAddress
+			default:
+				return false
+			}
 		}
 		return packet.SourceAddress() == header.IPv4Any && packet.DestinationAddress() == header.IPv4Broadcast &&
-			packet.TransportProtocol() == udp.ProtocolNumber
+			protocol == udp.ProtocolNumber
 	default:
 		return false
 	}
@@ -260,7 +266,7 @@ func serveDHCP(conn *gonet.UDPConn) {
 		default:
 			continue
 		}
-		gateway := net.ParseIP(gatewayIP).To4()
+		gateway := net.ParseIP(GatewayIP).To4()
 		reply, err := dhcpv4.NewReplyFromRequest(request,
 			dhcpv4.WithMessageType(response),
 			dhcpv4.WithYourIP(net.ParseIP(guestIP).To4()),

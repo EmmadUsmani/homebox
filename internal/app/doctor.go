@@ -14,6 +14,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
+	"github.com/EmmadUsmani/homebox/internal/vmnet"
 )
 
 // Doctor verifies host publishing and guest isolation for a named or all running boxes.
@@ -79,10 +80,11 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	}); ok {
 		checks = append(checks, sandbox.ProbeSandbox(ctx, s.Store.BoxDir(box.Name))...)
 	}
-	checks = append(checks, doctor.Check{
-		Name: "network-daemon", OK: s.Isolation.Running(box.Name),
-		Detail: "network daemon is not running",
-	})
+	daemonCheck := doctor.Check{Name: "network-daemon", OK: true}
+	if err := s.networkDaemonError(box.Name); err != nil {
+		daemonCheck.OK, daemonCheck.Detail = false, err.Error()
+	}
+	checks = append(checks, daemonCheck)
 	if relay, ok := s.DoctorHost.(interface {
 		ProbeLinuxSSHRelay(context.Context, string, string, int) []doctor.Check
 	}); ok {
@@ -112,6 +114,7 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	if guestErr == nil {
 		env := map[string]string{
 			"HOMEBOX_BUILTIN_GATEWAY": instance.HostAddress,
+			"HOMEBOX_GATEWAY_IP":      vmnet.GatewayIP,
 			"HOMEBOX_DENY_TARGETS":    strings.Join(targets, " "),
 			"HOMEBOX_PUBLIC_URL":      "https://example.com",
 		}
@@ -133,6 +136,8 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		countGuestDoctorChecks(&result, stdout.buffer.String())
 		if stdout.exceeded || stderr.exceeded {
 			guestErr = errGuestOutputLimit
+		} else if guestErr == nil && result.Failed > hostFailures {
+			guestErr = errors.New("guest reported failed checks")
 		}
 	}
 	if guestErr != nil {

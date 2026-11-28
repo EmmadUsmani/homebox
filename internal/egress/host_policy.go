@@ -29,16 +29,17 @@ func (p hostPolicy) denialReason(address netip.Addr) string {
 }
 
 func hostInterfaceNetworks() ([]netip.Prefix, error) {
-	interfaces, err := net.Interfaces()
+	return interfaceNetworks(net.Interfaces, (*net.Interface).Addrs)
+}
+
+func interfaceNetworks(list func() ([]net.Interface, error), addressesFor func(*net.Interface) ([]net.Addr, error)) ([]netip.Prefix, error) {
+	interfaces, err := list()
 	if err != nil {
 		return nil, err
 	}
 	var networks []netip.Prefix
 	for _, iface := range interfaces {
-		if iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-		addresses, err := iface.Addrs()
+		addresses, err := addressesFor(&iface)
 		if err != nil {
 			return nil, err
 		}

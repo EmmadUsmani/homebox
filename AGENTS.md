@@ -29,10 +29,11 @@ describe it are true, in the same commit or the one right after.
 |---|---|
 | [README.md](README.md) | Commands, setup steps or user-visible behaviour change |
 | [SECURITY.md](SECURITY.md) | Anything touches isolation, egress, SSH, ports, confinement or secrets |
+| [docs/security-review-2026-11-28.md](docs/security-review-2026-11-28.md) | The findings or coverage of the 2026-11-28 Mac isolation review need a correction |
 | [docs/architecture.md](docs/architecture.md) | Packages, dependencies, host state or known limitations change |
 | [docs/decisions.md](docs/decisions.md) | A decision is made or reversed: record why, the date and who made it |
 | [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |
-| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) |
+| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) and [macOS guests](docs/spikes/macos-guests.md) |
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
 | [docs/host-setup-linux.md](docs/host-setup-linux.md) | Linux host prerequisites or contributor tools change |
 | [images/README.md](images/README.md) | A project-maintained image gets a local build recipe |

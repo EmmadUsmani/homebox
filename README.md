@@ -235,6 +235,10 @@ VMs don't start again on their own after the host restarts yet; run
 `box start NAME`. Setting up an always-on host is in
 [host setup](docs/host-setup-macos.md).
 
+If the network daemon stops while a VM is running, `box status` and
+`box doctor` report the failure. Save any work you can still access, then run
+`box stop NAME` followed by `box start NAME` to restore networking.
+
 ## Isolation
 
 The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
@@ -327,11 +331,13 @@ See the [spike report](docs/spikes/wails-desktop.md) for the build background an
 Run the same command on either macOS host from a checkout with Lima, Go,
 Node.js and ShellCheck installed. Desktop checks also need the Xcode command
 line tools and a signed-in macOS session with Accessibility and Screen
-Recording permissions. To run on the Mac mini, open the checkout there and
+Recording permissions. Close any running copy of the checkout’s desktop build
+before starting the suite. Keep the verifier window in front while it sends
+keyboard or mouse input. To run on the Mac mini, open the checkout there and
 run the command locally.
 
 - **Change**, before merging, targets ten minutes. Runs gofmt, Go vet and
-  unit tests, and ShellCheck. It selects smoke areas from changes since the
+  unit tests, the offline agent factory tests, and ShellCheck. It selects smoke areas from changes since the
   merge base with `origin/main`, including staged, unstaged and untracked
   files. Guest changes select OS checks and two checks for provisioned
   runtimes. CLI and core changes select `box doctor`. Desktop changes build
@@ -439,6 +445,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Code architecture](docs/architecture.md): packages and dependency rules.
 - [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
+- [Mac isolation review](docs/security-review-2026-11-28.md): controls, coverage and limits.
 - [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
 - [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
@@ -446,10 +453,12 @@ shellcheck --shell=sh guest/*/*.sh
 - [Image build recipes](images/README.md) for building project images locally.
 - [Images, sleep and resume](docs/images-and-sleep.md): how they work underneath, for the builders.
 - [Agent logins](docs/agent-logins.md): signing agents in once per host instead of per VM (design, not built).
+- [Agent factory](factory/README.md): running a bounded Codex build loop inside a guest.
 - [Observability and the desktop app](docs/observability.md): status, live logs and the desktop app.
 - [Desktop and CLI parity](docs/desktop-parity.md).
 - [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
 - [Remote desktop spike](docs/spikes/remote-desktop.md) compares display servers over SSH.
+- [macOS guest spike](docs/spikes/macos-guests.md) records the Lima boot and networking findings.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)

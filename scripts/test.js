@@ -109,6 +109,7 @@ async function runSuite(options) {
     const desktopArtifacts = path.join(results, "desktop");
     let scratch;
     let active;
+    let activeVerifier;
     let interrupted;
     let vmAttempted = false;
     const vm = "settingsvm";
@@ -121,7 +122,8 @@ async function runSuite(options) {
 
     function interrupt(signal) {
         interrupted = signal;
-        active?.kill(signal);
+        // Native verifiers own app shutdown and pasteboard restoration.
+        if (!activeVerifier) active?.kill(signal);
     }
     process.on("SIGINT", interrupt);
     process.on("SIGTERM", interrupt);
@@ -133,11 +135,14 @@ async function runSuite(options) {
         return status === "PASS";
     }
 
-    async function command(commandName, args, commandEnv, log, input) {
+    async function command(commandName, args, commandEnv, log, input, nativeVerifier = false) {
         const fd = fs.openSync(log, "a", 0o600);
         try {
             return await new Promise(resolve => {
-                active = spawn(commandName, args, { env: commandEnv, stdio: [input ? "pipe" : "ignore", fd, fd] });
+                active = spawn(commandName, args, {
+                    env: commandEnv, stdio: [input ? "pipe" : "ignore", fd, fd], detached: nativeVerifier,
+                });
+                activeVerifier = nativeVerifier;
                 if (input) {
                     active.stdin.on("error", () => {});
                     active.stdin.end(input);
@@ -145,6 +150,7 @@ async function runSuite(options) {
                 active.on("error", error => fs.writeSync(fd, `${error.message}\n`));
                 active.on("close", code => {
                     active = undefined;
+                    activeVerifier = false;
                     resolve(code === 0);
                 });
             });
@@ -172,7 +178,26 @@ async function runSuite(options) {
 
     const run = (name, executable, args, commandEnv = env) =>
         step(name, log => command(executable, args, commandEnv, log));
+    const runNativeVerifier = (name, executable, args, commandEnv = env) =>
+        step(name, log => command(executable, args, commandEnv, log, undefined, true));
     const box = (name, ...args) => run(name, env.BOX, args);
+
+    const desktopBundle = path.join(root, "desktop/dist/homebox.app");
+    function requireDesktopClosed() {
+        const probe = capture("swift", ["-e", `
+            import AppKit
+            let bundle = URL(fileURLWithPath: CommandLine.arguments[1]).resolvingSymlinksInPath()
+            let apps = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop")
+            for app in apps where app.bundleURL?.resolvingSymlinksInPath() == bundle {
+                print(app.processIdentifier)
+            }
+        `, desktopBundle]);
+        if (probe.status !== 0) throw new Error(probe.stderr?.trim() || "Could not check for a running desktop app");
+        const pids = probe.stdout.trim().split(/\s+/).filter(Boolean);
+        if (pids.length) {
+            throw new Error(`This app copy is already running (PID ${pids.join(", ")}). Close ${desktopBundle} before running desktop verification.`);
+        }
+    }
 
     console.log(`Selected ${tier} (${level} smoke): ${areas.join(", ") || "static checks only"}`);
 
@@ -181,10 +206,14 @@ async function runSuite(options) {
             (!Number.isInteger(index) || index < 1 || index > 99)) {
             throw new Error("HOMEBOX_TEST_INDEX must be an integer from 1 to 99");
         }
+        if (selected.desktop && process.platform === "darwin") requireDesktopClosed();
         await step("gofmt", async log =>
             await command("gofmt", ["-l", "."], env, log) && fs.statSync(log).size === 0);
         await run("vet", "go", ["vet", "./..."]);
         await run("unit", "go", ["test", "./..."], { ...env, HOMEBOX_E2E: "0" });
+        if (process.platform !== "win32" && fs.existsSync(path.join(root, "factory/run.test.js"))) {
+            await run("factory", process.execPath, ["--test", "factory/run.test.js"]);
+        }
         await step("shellcheck", async log => {
             const files = git("ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "*.sh")
                 .split("\0").filter(file => file && fs.existsSync(file));
@@ -208,7 +237,7 @@ async function runSuite(options) {
                     report("desktop-verification", "SKIP", "0.0s", "grant Accessibility to the terminal or runner on this Mac");
                 } else {
                     selected.desktopUI = true;
-                    await run("desktop-viewer", "node", ["desktop/scripts/verify-desktop-isolation.js"]);
+                    await runNativeVerifier("desktop-viewer", "node", ["desktop/scripts/verify-desktop-isolation.js"]);
                 }
             } else if (built && !interrupted && linux) {
                 if (!fs.existsSync(path.join(desktopScripts, "verify-linux.js"))) {
@@ -347,7 +376,7 @@ async function runSuite(options) {
     }
 
     function linuxVerifier(name, script, args, settings = env) {
-        return run(name, "dbus-run-session", ["--", "xvfb-run", "-a", "node",
+        return runNativeVerifier(name, "dbus-run-session", ["--", "xvfb-run", "-a", "node",
             path.join(desktopScripts, script), ...args], settings);
     }
 
@@ -373,19 +402,20 @@ async function runSuite(options) {
             return;
         }
 
-        const bundle = path.join(root, "desktop/dist/homebox.app");
+        const verify = async (stepName, script, ...args) => {
+            requireDesktopClosed();
+            await runNativeVerifier(stepName, "swift", [path.join(desktopScripts, script), desktopBundle, env.HOMEBOX_HOME, ...args]);
+            requireDesktopClosed();
+        };
         fs.mkdirSync(desktopArtifacts);
-        await run("desktop-files", "swift", [path.join(desktopScripts, "verify-files.swift"), bundle,
-            env.HOMEBOX_HOME, desktopArtifacts, "normal", `local=${vm}`]);
+        await verify("desktop-files", "verify-files.swift", desktopArtifacts, "normal", `local=${vm}`);
         if (tier === "full") {
             if (await box("desktop-install", "desktop", vm, "--install") &&
                 await box("desktop-deps", "ssh", vm, "--", "sudo -n apt-get update && sudo -n apt-get install -y xdotool")) {
-                await run("desktop-ui", "swift", [path.join(desktopScripts, "verify-desktop.swift"), bundle,
-                    env.HOMEBOX_HOME, vm, desktopArtifacts]);
+                await verify("desktop-ui", "verify-desktop.swift", vm, desktopArtifacts);
             }
             // Settings changes the scratch VM's SSH host keys, so run it last.
-            await run("desktop-settings", "swift", [path.join(desktopScripts, "verify-settings.swift"), bundle,
-                env.HOMEBOX_HOME, vm, desktopArtifacts, String(20000 + 100 * index)]);
+            await verify("desktop-settings", "verify-settings.swift", vm, desktopArtifacts, String(20000 + 100 * index));
         }
     }
 }
