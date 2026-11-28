@@ -2,37 +2,79 @@
 #import <WebKit/WebKit.h>
 #import "../desktop_view.h"
 
+static void clickProbe(WKWebView *view, NSDictionary *rect, NSInteger clipboard, BOOL retry);
+
+static void readResult(WKWebView *view, NSDictionary *rect, NSInteger clipboard, BOOL retry, CFAbsoluteTime deadline) {
+    [view evaluateJavaScript:@"[Boolean(window.probeStarted), window.result || '']" completionHandler:^(NSArray *state, NSError *error) {
+        NSString *result = error ? @"" : state.lastObject;
+        if (result.length == 0 && (!NSApp.isActive || !view.window.isKeyWindow)) {
+            fputs("Viewer focus lost before the guest reported a result\n", stderr);
+            exit(1);
+        }
+        if (result.length == 0 && CFAbsoluteTimeGetCurrent() < deadline) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+                readResult(view, rect, clipboard, retry, deadline);
+            });
+            return;
+        }
+        if (retry && !error && ![state.firstObject boolValue]) {
+            clickProbe(view, rect, clipboard, NO);
+            return;
+        }
+        BOOL clipboardUnchanged = [NSPasteboard generalPasteboard].changeCount == clipboard;
+        BOOL pass = [result isEqual:@"PASS"] && clipboardUnchanged;
+        fprintf(pass ? stdout : stderr, "Guest isolation %s (%s), pasteboard %s\n",
+            pass ? "passed" : "failed", result.length ? result.UTF8String : "no result",
+            clipboardUnchanged ? "unchanged" : "changed");
+        exit(pass ? 0 : 1);
+    }];
+}
+
+static void sendProbeWhenFocused(WKWebView *view, NSDictionary *rect, NSInteger clipboard, BOOL retry, CFAbsoluteTime deadline) {
+    if (!NSApp.isActive || !view.window.isKeyWindow) {
+        if (CFAbsoluteTimeGetCurrent() >= deadline) {
+            fprintf(stderr, "Viewer focus lost before clicking the guest probe (active=%d, key=%d)\n",
+                NSApp.isActive, view.window.isKeyWindow);
+            exit(1);
+        }
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            sendProbeWhenFocused(view, rect, clipboard, retry, deadline);
+        });
+        return;
+    }
+    CGFloat x = [rect[@"x"] doubleValue] + [rect[@"width"] doubleValue] / 2;
+    CGFloat y = [rect[@"y"] doubleValue] + [rect[@"height"] doubleValue] / 2;
+    NSPoint point = [view convertPoint:NSMakePoint(x, view.isFlipped ? y : NSHeight(view.bounds) - y) toView:nil];
+    for (int index = 0; index < 2; index++) {
+        NSEvent *click = [NSEvent mouseEventWithType:index == 0 ? NSEventTypeLeftMouseDown : NSEventTypeLeftMouseUp
+            location:point modifierFlags:0 timestamp:NSProcessInfo.processInfo.systemUptime
+            windowNumber:view.window.windowNumber context:nil eventNumber:index clickCount:1 pressure:index == 0 ? 1 : 0];
+        [NSApp sendEvent:click];
+    }
+    readResult(view, rect, clipboard, retry, CFAbsoluteTimeGetCurrent() + 3);
+}
+
+static void clickProbe(WKWebView *view, NSDictionary *rect, NSInteger clipboard, BOOL retry) {
+    [NSApp activateIgnoringOtherApps:YES];
+    [view.window orderFrontRegardless];
+    [view.window makeKeyAndOrderFront:nil];
+    [view.window makeFirstResponder:view];
+    sendProbeWhenFocused(view, rect, clipboard, retry, CFAbsoluteTimeGetCurrent() + 3);
+}
+
 static void verify(WKWebView *view, NSInteger clipboard, CFAbsoluteTime deadline) {
     if (CFAbsoluteTimeGetCurrent() >= deadline) {
         fputs("Timed out waiting for the guest test page\n", stderr);
         exit(1);
     }
     [view evaluateJavaScript:@"document.querySelector('#probe')?.getBoundingClientRect().toJSON()" completionHandler:^(id value, NSError *error) {
-        if (![value isKindOfClass:NSDictionary.class]) {
+        if ([value isKindOfClass:NSDictionary.class]) {
+            clickProbe(view, value, clipboard, YES);
+        } else {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 100 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
                 verify(view, clipboard, deadline);
             });
-            return;
         }
-        CGRect screen = CGDisplayBounds(CGMainDisplayID());
-        NSRect window = view.window.contentLayoutRect;
-        NSPoint origin = [view.window convertPointToScreen:NSMakePoint(NSMinX(window), NSMaxY(window))];
-        CGPoint point = CGPointMake(origin.x + [value[@"x"] doubleValue] + 12,
-            CGRectGetMaxY(screen) - origin.y + [value[@"y"] doubleValue] + 10);
-        for (int index = 0; index < 2; index++) {
-            CGEventRef click = CGEventCreateMouseEvent(NULL, index == 0 ? kCGEventLeftMouseDown : kCGEventLeftMouseUp, point, kCGMouseButtonLeft);
-            CGEventPost(kCGHIDEventTap, click);
-            CFRelease(click);
-        }
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 2 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-            [view evaluateJavaScript:@"window.result" completionHandler:^(id result, NSError *readError) {
-                BOOL pass = [result isEqual:@"PASS"] && [NSPasteboard generalPasteboard].changeCount == clipboard;
-                fprintf(pass ? stdout : stderr, "Guest isolation %s (%s), pasteboard %s\n",
-                    pass ? "passed" : "failed", [[result description] UTF8String] ?: "no result",
-                    [NSPasteboard generalPasteboard].changeCount == clipboard ? "unchanged" : "changed");
-                exit(pass ? 0 : 1);
-            }];
-        });
     }];
 }
 
