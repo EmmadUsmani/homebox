@@ -46,9 +46,9 @@ func (p hostProcess) unixDial(path string) func(context.Context) (net.Conn, erro
 	}
 }
 
-// OwnsUnixSSHTarget verifies the Unix peer against the live QEMU PID and start time.
+// OwnsUnixSSHTarget verifies the Unix peer against QEMU’s recorded pidfd identity.
 func OwnsUnixSSHTarget(ctx context.Context, pidFile, path string) bool {
-	process, err := resolveHostProcess(pidFile)
+	process, err := resolveLaunchProcess(pidFile)
 	if err != nil || process.pid == 0 {
 		return false
 	}

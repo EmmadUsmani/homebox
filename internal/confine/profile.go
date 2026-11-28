@@ -17,6 +17,9 @@ const DaemonProfileName = "vmnet.sb"
 // QEMUSSHSocket is the private SSH forward in a Linux VM's runtime directory.
 const QEMUSSHSocket = "boxssh.sock"
 
+// QEMULaunchPIDFile records the Linux QEMU pidfd identity for the SSH relay.
+const QEMULaunchPIDFile = "qemu-launch.pid"
+
 // Rules describes the VM process's permitted network operations.
 type Rules struct {
 	RuntimeDir      string

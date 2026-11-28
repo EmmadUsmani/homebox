@@ -86,9 +86,9 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	}
 	checks = append(checks, daemonCheck)
 	if relay, ok := s.DoctorHost.(interface {
-		ProbeLinuxSSHRelay(context.Context, string, string, int) []doctor.Check
+		ProbeLinuxSSHRelay(context.Context, string, string, string, int) []doctor.Check
 	}); ok {
-		checks = append(checks, relay.ProbeLinuxSSHRelay(ctx, instance.SSHPIDFile, instance.RuntimeDir, state.DriverSSHPort(box.Index))...)
+		checks = append(checks, relay.ProbeLinuxSSHRelay(ctx, instance.SSHPIDFile, instance.RuntimeDir, s.Store.BoxDir(box.Name), state.DriverSSHPort(box.Index))...)
 	} else if relay, ok := s.DoctorHost.(interface {
 		ProbeSSHRelay(string, int) doctor.Check
 	}); ok {

@@ -1,6 +1,7 @@
 package confine
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -179,29 +180,77 @@ func restrictQEMU(args []string, rules Rules) error {
 	if len(ssh) != 1 {
 		return fmt.Errorf("QEMU requires a single configured SSH port")
 	}
+	return checkQEMUNetwork(args, qemuUserNetdev(ssh[0]), RestrictedQEMUSLIRP(ssh[0]), func(fd int) error {
+		peer, err := unix.Getpeername(fd)
+		socket, ok := peer.(*unix.SockaddrUnix)
+		if err != nil || !ok || socket.Name != rules.GatewaySocket {
+			return fmt.Errorf("QEMU did not receive the configured gateway socket")
+		}
+		kind, err := unix.GetsockoptInt(fd, unix.SOL_SOCKET, unix.SO_TYPE)
+		if err != nil || kind != unix.SOCK_STREAM {
+			return fmt.Errorf("QEMU gateway descriptor must be a stream socket")
+		}
+		return nil
+	})
+}
+
+// CheckRunningQEMUNetwork checks the live argument vector and gateway fd.
+// The launcher separately verifies the connected Unix peer before exec.
+func CheckRunningQEMUNetwork(args []string, port, pid int) error {
+	proc := fmt.Sprintf("/proc/%d", pid)
+	return checkQEMUNetwork(args, RestrictedQEMUSLIRP(port), "", func(fd int) error {
+		link, err := os.Readlink(filepath.Join(proc, "fd", strconv.Itoa(fd)))
+		if err != nil || !strings.HasPrefix(link, "socket:[") || !strings.HasSuffix(link, "]") {
+			return fmt.Errorf("QEMU gateway descriptor is not an open socket")
+		}
+		inode := link[len("socket:[") : len(link)-1]
+		table, err := os.Open(filepath.Join(proc, "net", "unix"))
+		if err != nil {
+			return err
+		}
+		defer table.Close()
+		rows := bufio.NewScanner(table)
+		for rows.Scan() {
+			fields := strings.Fields(rows.Text())
+			// Linux procfs: Type 0001 (stream), St 03 (connected), Inode.
+			if len(fields) >= 7 && fields[6] == inode && fields[4] == "0001" && fields[5] == "03" {
+				return nil
+			}
+		}
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		return fmt.Errorf("QEMU gateway descriptor is not a connected Unix stream")
+	})
+}
+
+func checkQEMUNetwork(args []string, user, replacement string, checkGateway func(int) error) error {
 	foundUser, foundGateway := false, false
 	for i, arg := range args {
-		if arg == "-nic" || arg == "-net" || strings.HasPrefix(arg, "-netdev=") {
+		option, _, inline := strings.Cut(arg, "=")
+		if option == "-nic" || option == "-net" || option == "-netdev" && inline {
 			return fmt.Errorf("unsupported QEMU network argument %q", arg)
 		}
-		if arg != "-netdev" || i+1 >= len(args) {
+		if arg != "-netdev" {
 			continue
 		}
+		if i+1 == len(args) {
+			return fmt.Errorf("missing QEMU network backend")
+		}
 		next := args[i+1]
-		want := qemuUserNetdev(ssh[0])
 		switch {
-		case !foundUser && next == want:
-			args[i+1] = RestrictedQEMUSLIRP(ssh[0])
+		case !foundUser && next == user:
+			if replacement != "" {
+				args[i+1] = replacement
+			}
 			foundUser = true
 		case !foundGateway && strings.HasPrefix(next, "socket,id=net1,fd="):
 			fd, err := strconv.Atoi(strings.TrimPrefix(next, "socket,id=net1,fd="))
 			if err != nil || fd < 3 {
 				return fmt.Errorf("QEMU gateway must use an inherited socket")
 			}
-			peer, err := unix.Getpeername(fd)
-			socket, ok := peer.(*unix.SockaddrUnix)
-			if err != nil || !ok || socket.Name != rules.GatewaySocket {
-				return fmt.Errorf("QEMU did not receive the configured gateway socket")
+			if err := checkGateway(fd); err != nil {
+				return err
 			}
 			foundGateway = true
 		default:

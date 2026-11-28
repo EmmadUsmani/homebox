@@ -71,7 +71,8 @@ Image restores use the same host-agent file, process and network permissions.
   connection as an inherited Unix socket. A seccomp filter denies QEMU
   outbound connects, IPv6 sockets and datagram sockets. Unknown network
   arguments abort launch. The QEMU and hostagent filters also reject
-  Fast Open sends and batched sends.
+  Fast Open sends and batched sends. All three Linux profiles deny
+  io_uring, ptrace and cross-process memory syscalls.
 - **Landlock** limits hostagent, QEMU and the gateway daemon to their
   file allowlists. QEMU can write its own disk and selected runtime files.
   The gateway daemon writes only in its own run directory. The launchers
@@ -86,7 +87,8 @@ Image restores use the same host-agent file, process and network permissions.
   The LAN switch controls the published SSH port and static TCP forwards.
 - **Doctor** checks the live QEMU command and SSH listener owners, probes
   each confinement policy, and tries the host and router canaries through
-  both NICs. See [Linux isolation limits](docs/architecture.md#networking-and-isolation-linux).
+  both NICs. The [Linux isolation review](docs/security-review-2026-11-28-linux.md)
+  maps the controls to their checks and records remaining limits.
 
 ### The VM and the network
 
@@ -348,6 +350,11 @@ connections but not open them) before turning it on.
 - **A bug in the hypervisor** that lets a guest escape Apple's Virtualization
   framework. homebox relies on Apple here, and on the Seatbelt profiles to
   limit the damage.
+- **QEMU/KVM and host-helper compromise.** Linux confinement limits the
+  damage from a vulnerable host helper. The hostagent can connect to the
+  configured TCP port on any IPv4 destination. The hostagent and gateway
+  can reach pathname Unix sockets. The gateway needs IPv4 sockets to
+  enforce destination rules itself.
 - **A compromised host, or someone with physical access.** Hosts that use
   autostart run without FileVault (the owner's choice), so the disk, VM disks
   included, isn't encrypted at rest.
