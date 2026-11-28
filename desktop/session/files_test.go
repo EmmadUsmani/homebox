@@ -103,8 +103,12 @@ func TestFilesSFTP(t *testing.T) {
 	})
 	source := filepath.Join(t.TempDir(), "upload.txt")
 	destination := filepath.Join(t.TempDir(), "download.txt")
+	var suggestedName string
 	files := NewFiles(pool, func() (string, error) { return source, nil },
-		func(string) (string, error) { return destination, nil })
+		func(name string) (string, error) {
+			suggestedName = name
+			return destination, nil
+		})
 	t.Cleanup(func() { _ = files.ServiceShutdown() })
 	ref := VMRef{Kind: "local", Name: "test"}
 	one, err := files.Open(t.Context(), ref)
@@ -186,6 +190,18 @@ func TestFilesSFTP(t *testing.T) {
 		t.Fatalf("download = %q, %v", data, err)
 	}
 
+	if suggestedName != "upload.txt" {
+		t.Fatalf("normal download suggested %q", suggestedName)
+	}
+	hostile := path.Join(root, ".bidi-\u202Etxt.exe")
+	write(hostile, "hostile fixture")
+	if err := files.Download(t.Context(), two.ID, hostile); err != nil {
+		t.Fatal(err)
+	}
+	if data, err := os.ReadFile(destination); err != nil || string(data) != "hostile fixture" || suggestedName != "download" {
+		t.Fatalf("hostile download suggested %q, bytes = %q, err = %v", suggestedName, data, err)
+	}
+
 	write(path.Join(root, ".hidden"), "hidden")
 	for _, bad := range []string{"mixed\x00bytes", strings.Repeat("a", maxEditorBytes+1)} {
 		badPath := path.Join(root, ".not-editable")
@@ -211,11 +227,17 @@ func TestFilesSFTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	linkTarget := path.Join(symlink, "upload.txt")
-	linked, err := files.Read(two.ID, linkTarget)
+	if _, err := files.Read(two.ID, linkTarget); err == nil || !strings.Contains(err.Error(), "symbolic links") {
+		t.Fatalf("read through a symlink: %v", err)
+	}
+	if err := files.Download(t.Context(), two.ID, linkTarget); err == nil || !strings.Contains(err.Error(), "symbolic links") {
+		t.Fatalf("download through a symlink: %v", err)
+	}
+	regular, err := files.Read(two.ID, uploaded)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := files.Save(two.ID, linkTarget, linked.Stamp, "blocked"); err == nil || !strings.Contains(err.Error(), "symbolic links") {
+	if _, err := files.Save(two.ID, linkTarget, regular.Stamp, "blocked"); err == nil || !strings.Contains(err.Error(), "symbolic links") {
 		t.Fatalf("write through a symlink: %v", err)
 	}
 }
