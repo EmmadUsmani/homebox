@@ -5,6 +5,14 @@ runner steps as pass/fail/skip. `scripts/test.sh last` reports default and
 partial passes separately. The VM source is recorded for new runs. The
 2026-11-27 01:30 UTC duration includes laptop sleep during VM boot.
 
+The [Ubuntu agent factory run](../factory/README.md#verified-guest-runs)
+on 2026-11-28 ran separately from the change tier. On an x86-64 Ubuntu
+26.04.1 LTS host with a four-CPU, 6 GiB `homebox-smoke` guest, it passed
+ten consecutive project health checks and published ten commits in 27m 57s.
+The final commit (`ed36dbc31cd7` in the guest project) passed eight Python
+tests and HTTP probes. A guest Chromium capture and a Compose persistence
+check also passed.
+
 | UTC time | Commit | Dirty | Host model | OS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-26T21:40:18.519Z | 0dd064dde43f | yes | Mac14,10 | 27.2.1 | batch | partial | os | FAIL | 8/1/0 | 364.6s | — |
@@ -80,3 +88,4 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:52:27.995Z | 9aba63bdcca5 | no | Mac14,10 | 27.2.1 | change | partial | doctor | PASS | 10/0/0 | 170.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:57:08.583Z | de40f5fd8483 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1016.1s | fresh |
 | 2026-11-28T09:16:30.655Z | 86dcbcb53521 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1112.0s | fresh |
+| 2026-11-28T09:19:30.205Z | b57e5254f3d4 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.7s | — |
