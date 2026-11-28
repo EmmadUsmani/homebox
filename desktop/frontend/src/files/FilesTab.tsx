@@ -17,6 +17,11 @@ type Transfer = { active: boolean; bytes: number; total: number };
 
 const date = new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" });
 
+function visibleText(text: string) {
+    return text.replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/gu, (character) =>
+        "⟦U+" + character.codePointAt(0)!.toString(16).toUpperCase().padStart(4, "0") + "⟧");
+}
+
 function size(bytes: number) {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 ** 2) return (bytes / 1024).toFixed(1) + " KB";
@@ -36,7 +41,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
     const [view, setView] = useState<View>();
     const [attempt, setAttempt] = useState(0);
     const [directory, setDirectory] = useState("");
-    const [goto, setGoto] = useState("");
+    const [goto, setGoto] = useState<string>();
     const [hidden, setHidden] = useState(false);
     const [listing, setListing] = useState<Listing>();
     const [revision, setRevision] = useState(0);
@@ -80,11 +85,11 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
             if (active) {
                 setView(result);
                 setDirectory(result.home);
-                setGoto(result.home);
+                setGoto(undefined);
             } else {
                 void call("Close", id);
             }
-        }).catch((error) => { if (active) setConnectionError(String(error)); });
+        }).catch((error) => { if (active) setConnectionError(visibleText(String(error))); });
         return () => {
             active = false;
             if (id) void call("Close", id);
@@ -97,7 +102,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
         setListingError("");
         void call<Listing>("List", view.id, directory, hidden).then((result) => {
             if (active) setListing(result);
-        }).catch((error) => { if (active) setListingError(String(error)); });
+        }).catch((error) => { if (active) setListingError(visibleText(String(error))); });
         return () => { active = false; };
     }, [view, directory, hidden, revision]);
 
@@ -118,7 +123,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
         clearEditor();
         setListing(undefined);
         setDirectory(path);
-        setGoto(path);
+        setGoto(undefined);
     }
 
     async function open(path: string) {
@@ -132,7 +137,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
             setSavedText(file.text);
             setText(file.text);
         } catch (error) {
-            setEditorError(String(error));
+            setEditorError(visibleText(String(error)));
         } finally {
             setLoading(false);
         }
@@ -151,7 +156,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
                 setRevision((value) => value + 1);
             }
         } catch (error) {
-            setEditorError(String(error));
+            setEditorError(visibleText(String(error)));
         } finally {
             setSaving(false);
         }
@@ -163,7 +168,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
         try {
             setCompare(await call<FileContent>("Read", view.id, target));
         } catch (error) {
-            setEditorError(String(error));
+            setEditorError(visibleText(String(error)));
         }
     }
 
@@ -181,7 +186,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
             await call(method, view.id, method === "Upload" ? directory : target);
             if (method === "Upload") setRevision((value) => value + 1);
         } catch (error) {
-            if (!String(error).includes("context canceled")) setTransferError(String(error));
+            if (!String(error).includes("context canceled")) setTransferError(visibleText(String(error)));
         } finally {
             active = false;
             window.clearInterval(poll);
@@ -190,8 +195,8 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
     }
 
     function displayPath(path: string) {
-        if (!view) return path;
-        return path === view.home || path.startsWith(view.home + "/") ? "~" + path.slice(view.home.length) : path;
+        if (!view) return visibleText(path);
+        return visibleText(path === view.home || path.startsWith(view.home + "/") ? "~" + path.slice(view.home.length) : path);
     }
 
     const parent = directory.slice(0, directory.lastIndexOf("/")) || "/";
@@ -202,9 +207,9 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
                 <button disabled={!ready || !!transfer} onClick={() => void transferFile("Upload")}>Upload</button>
                 <button disabled={!ready || !target || !!transfer} onClick={() => void transferFile("Download")}>Download</button>
             </div>
-            <form className="files-path" onSubmit={(event) => { event.preventDefault(); void browse(goto); }}>
-                <input aria-label="VM folder path" disabled={!ready} value={goto} onChange={(event) => setGoto(event.target.value)} maxLength={4096} />
-                <button disabled={!ready || !goto}>Go</button>
+            <form className="files-path" onSubmit={(event) => { event.preventDefault(); void browse(goto ?? directory); }}>
+                <input aria-label="VM folder path" disabled={!ready} value={goto ?? visibleText(directory)} onChange={(event) => setGoto(event.target.value)} maxLength={4096} />
+                <button disabled={!ready || !(goto ?? directory)}>Go</button>
             </form>
             <div className="files-tools files-navigation">
                 <button disabled={!ready || directory === view?.home} onClick={() => void browse(view!.home)}>Home</button>
@@ -227,14 +232,15 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
             {listing?.entries.length === 0 && <p className="files-message muted">No visible files</p>}
             <ul className="files-rows" aria-label={directory ? "Files in " + displayPath(directory) : "Files"}>
                 {listing?.entries.map((entry) => {
+                    const name = visibleText(entry.name);
                     const path = (directory === "/" ? "" : directory) + "/" + entry.name;
                     return <li key={entry.name}>
-                        <button className="files-row" aria-label={entry.name} aria-current={path === target}
+                        <button className="files-row" aria-label={name} aria-current={path === target}
                             disabled={!ready || (entry.kind !== "folder" && entry.kind !== "file")}
-                            title={entry.name + " · " + date.format(entry.modified * 1000)}
+                            title={name + " · " + date.format(entry.modified * 1000)}
                             onClick={() => void (entry.kind === "folder" ? browse(path) : open(path))}>
                             <span className="files-kind" aria-hidden="true">{entry.kind === "folder" ? "▸" : entry.kind === "link" ? "↗" : "·"}</span>
-                            <span className="files-name">{entry.name}</span>
+                            <span className="files-name">{name}</span>
                             <span className="muted">{entry.kind === "file" ? size(entry.size) : ""}</span>
                             <span className="muted files-date">{date.format(entry.modified * 1000)}</span>
                         </button>
@@ -244,7 +250,7 @@ export function FilesTab({ vm, onDirtyChange }: { vm: VMRef; onDirtyChange?: (di
         </section>
         <section className="files-editor" aria-label="Editor">
             {target && <header className="files-editor-header">
-                <code title={target}>{displayPath(target)}</code>
+                <code title={visibleText(target)}>{displayPath(target)}</code>
                 {dirty && <span className="warning files-edited">● edited</span>}
                 <span className="spacer" />
                 {opened && <span className="muted">{size(opened.stamp.size)} · {date.format(opened.stamp.modified * 1000)}</span>}

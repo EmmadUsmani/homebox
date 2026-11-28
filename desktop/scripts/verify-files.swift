@@ -227,15 +227,15 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         }
     }
 
-    func goToTemporaryFolder() throws {
+    func goToFolder(_ path: String) throws {
         _ = try expectEffect("VM folder path entered", perform: {
             try focus("VM folder path", role: "AXTextField")
             try key(0, .maskCommand)
-            try paste("/tmp")
+            try paste(path)
         }) {
             descendants(web).first {
                 attribute($0, kAXRoleAttribute) == "AXTextField" && labels($0).contains("VM folder path") &&
-                    attribute($0, kAXValueAttribute) == "/tmp"
+                    attribute($0, kAXValueAttribute) == path
             }
         }
         try button("Go")
@@ -328,7 +328,97 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try button("Show hidden files")
         try capture(kind + "-home")
 
-        try goToTemporaryFolder()
+        if local {
+            let hostile = "/tmp/hb-names-" + UUID().uuidString.lowercased()
+            let names = [
+                ("escape-\u{001B}[31m.txt", "escape-⟦U+001B⟧[31m.txt"),
+                ("bidi-\u{202E}txt.exe", "bidi-⟦U+202E⟧txt.exe"),
+                ("zero-\u{200B}width", "zero-⟦U+200B⟧width"),
+                ("line\nbreak", "line⟦U+000A⟧break"),
+                ("tab\tstop", "tab⟦U+0009⟧stop"),
+                (String(repeating: "x", count: 255), String(repeating: "x", count: 255)),
+                ("-dash", "-dash"),
+                ("..lookalike", "..lookalike"),
+                ("<img src=x>", "<img src=x>"),
+                ("{{7*7}}", "{{7*7}}"),
+                ("https:example.invalid", "https:example.invalid"),
+                ("emoji-🚀", "emoji-🚀"),
+                ("mixed-pаypal", "mixed-pаypal"), // Cyrillic first a
+            ]
+            func quote(_ value: String) -> String {
+                "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
+            }
+            let fixtures = names.map { "printf 'hostile fixture\\n' > " + quote($0.0) }.joined(separator: "\n")
+            let prepare = """
+                set -eu
+                mkdir -m 700 \(hostile)
+                cd \(hostile)
+                \(fixtures)
+                ln -s /etc/passwd link-passwd
+                ln -s .. link-parent
+                ln -s link-loop link-loop
+                ln -s missing link-dangling
+                ln -s . link-directory
+                mkfifo named-pipe
+                truncate -s 1T sparse.bin
+                touch private-file
+                mkdir private-directory
+                chmod 000 private-file private-directory
+                """
+            defer { _ = try? ssh("chmod u+rwx " + hostile + "/private-directory; rm -rf " + hostile, check: false) }
+            _ = try ssh(prepare)
+            try goToFolder(hostile)
+            try button("Show hidden files")
+
+            func row(named name: String, enabled: Bool) throws {
+                _ = try waitFor("file row \(name)") {
+                    descendants(web).first {
+                        attribute($0, kAXRoleAttribute) == "AXButton" && labels($0).contains(name) &&
+                            (attribute($0, kAXEnabledAttribute) as Bool? ?? true) == enabled
+                    }
+                }
+                print("AX file row: \(name) (\(enabled ? "enabled" : "disabled"))")
+            }
+
+            for (_, name) in names { try row(named: name, enabled: true) }
+            for name in ["link-passwd", "link-parent", "link-loop", "link-dangling", "link-directory", "named-pipe"] {
+                try row(named: name, enabled: false)
+            }
+            try capture("hostile-listing")
+
+            try button("bidi-⟦U+202E⟧txt.exe")
+            try see("hostile fixture")
+            try capture("hostile-editor")
+            try button("Download")
+            let sheet = try waitFor("hostile filename save dialog") {
+                descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" }
+            }
+            try chooseFolder(download.resolvingSymlinksInPath().path)
+            try button("Save", in: sheet)
+            _ = try waitFor("selected destination and exact hostile-file bytes") {
+                let output = download.appendingPathComponent("download")
+                return (try? Data(contentsOf: output)) == Data("hostile fixture\n".utf8) ? true : nil
+            }
+            guard try FileManager.default.contentsOfDirectory(atPath: download.path) == ["download"] else {
+                throw Failure(message: "Hostile download created unexpected files in the destination")
+            }
+
+            try button("sparse.bin")
+            try see("File is too large or binary", seconds: 5)
+            try capture("hostile-sparse-error")
+            try button("private-file")
+            try see("permission denied", seconds: 5)
+            try button("private-directory")
+            try see("permission denied", seconds: 5)
+            try goToFolder(hostile + "/link-directory")
+            try button("sparse.bin")
+            try see("Paths through symbolic links are blocked", seconds: 5)
+            try capture("hostile-symlink-error")
+            try button("Show hidden files")
+            print("local: hostile filenames, disabled links and FIFO, sparse editor limit, permissions, symlinked path and native download passed")
+        }
+
+        try goToFolder("/tmp")
         try button("hb-files-test.txt")
         try see("original")
         try capture(kind + "-editor")
@@ -396,7 +486,7 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
             throw error
         }
 
-        try goToTemporaryFolder()
+        try goToFolder("/tmp")
         try button("Upload")
         _ = try waitFor("upload picker") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
         let openButton = try expectEffect("upload picker ready to open the fixture", perform: {

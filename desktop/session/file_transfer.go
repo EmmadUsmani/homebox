@@ -8,6 +8,8 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
+	"unicode"
 )
 
 type TransferProgress struct {
@@ -137,7 +139,7 @@ func (f *Files) Upload(ctx context.Context, id, directory string) error {
 	if err := remote.Close(); err != nil {
 		return err
 	}
-	if err := writableDirectory(view.client, directory); err != nil {
+	if err := checkDirectoryPath(view.client, directory); err != nil {
 		return err
 	}
 	if err := ctx.Err(); err != nil {
@@ -158,7 +160,13 @@ func (f *Files) Download(ctx context.Context, id, target string) error {
 	if err != nil {
 		return err
 	}
-	destination, err := f.pickDownload(path.Base(target))
+	name := path.Base(target)
+	if strings.ContainsAny(name, `:\`) || strings.ContainsFunc(name, func(r rune) bool {
+		return unicode.Is(unicode.Cc, r) || unicode.Is(unicode.Cf, r) || unicode.Is(unicode.Zl, r) || unicode.Is(unicode.Zp, r)
+	}) {
+		name = "download"
+	}
+	destination, err := f.pickDownload(name)
 	if err != nil || destination == "" {
 		return err
 	}
