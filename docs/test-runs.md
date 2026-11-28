@@ -66,3 +66,5 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:12:56.338Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 731.7s | — |
 | 2026-11-28T08:18:12.309Z | cd361fc2635c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | FAIL | 19/1/1 | 766.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:18:31.301Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 334.8s | fresh |
+| 2026-11-28T08:24:55.875Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 318.8s | fresh |
+| 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
