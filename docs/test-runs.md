@@ -66,3 +66,4 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:03:37.754Z | 6bc4a86c50a3 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | services, doctor, e2e, desktop | PASS | 18/0/1 | 864.5s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T08:11:49.895Z | a58cd1797020 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1029.5s | fresh |
 | 2026-11-28T08:18:12.309Z | cd361fc2635c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | FAIL | 19/1/1 | 766.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:38:23.727Z | 295bcad96c9e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1071.5s | fresh |
