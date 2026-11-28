@@ -158,3 +158,4 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T11:25:45.521Z | c59324f85391 | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 17/0/0 | 276.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 >>>>>>> origin/main
 | 2026-11-28T11:42:58.947Z | 76c1387e8742 | yes | Mac14,10 | 27.2.1 | change | default | doctor, desktop | PASS | 14/0/0 | 218.2s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T11:48:59.977Z | f34e97bc6255 | no | Mac14,10 | 27.2.1 | batch | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e | PASS | 19/0/1 | 1273.6s | fresh |
