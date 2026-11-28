@@ -301,6 +301,8 @@ def verify_create_delete(pid, output, binary, vm):
     press(window, "Set up this host")
     operation(window, "Host setup complete", "Host setup failed", 60)
     capture("host-setup")
+    if json.loads((state / "host.json").read_text())["lan"]:
+        raise RuntimeError("Host setup unexpectedly enabled LAN publishing")
     enabled(window, "New VM")
     press(window, "New VM")
     enabled(window, "Create VM")
@@ -319,6 +321,9 @@ def verify_create_delete(pid, output, binary, vm):
     size = json.loads(record.read_text())
     if (size["cpus"], size["memory_gib"]) != (2, 4):
         raise RuntimeError("New VM did not use the entered CPU and memory values")
+    if not size.get("base_image") or not size["provisioned"]:
+        raise RuntimeError("New VM did not complete provisioning from the profile base")
+    press(window, "Dismiss progress")
 
     cli("ssh", vm, "--", 'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"')
     verify_vm(pid, output, vm, binary, created=True)
@@ -329,6 +334,7 @@ def verify_create_delete(pid, output, binary, vm):
     capture("provisioning")
     operation(window, "Provisioning complete", "Provisioning failed")
     capture("provisioned")
+    press(window, "Dismiss progress")
 
     press(window, "Stop")
     named(window, vm + r".*\bstopped", "button", 120)

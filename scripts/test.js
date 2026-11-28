@@ -256,13 +256,14 @@ async function runSuite(options) {
                     ]);
                     await linuxVerifier("desktop-linux", "verify-linux.js", [path.join(desktopArtifacts, "app")]);
                     if (tier === "full") {
-                        await linuxVerifier("desktop-linux-lifecycle", "verify-linux.js", [
+                        const lifecyclePassed = await linuxVerifier("desktop-linux-lifecycle", "verify-linux.js", [
                             path.join(desktopArtifacts, "lifecycle"),
                             path.join(root, "desktop/dist/homebox-linux/homebox"), "--create-delete",
                         ], {
                             ...env, HOMEBOX_FIRST_INDEX: String(index), GDK_DEBUG: "no-portals",
                             HOMEBOX_VERIFY_NATIVE_DIALOGS: "1", HOMEBOX_VERIFY_CLIPBOARD: "1",
                         });
+                        if (lifecyclePassed) imageSource = "GUI profile base";
                     }
                     // Full Linux verification exercises the VM-backed tabs on the
                     // GUI-created VM. Keep the CLI fixture for explicit image runs.
