@@ -75,7 +75,8 @@ VM disks locally from source.
   its checks. `box new --force-provision` bypasses the cache. The build checks Lima
   and gateway socket lengths before creating a VM.
   Choose a shorter `HOMEBOX_HOME` if the path exceeds the system limit.
-  macOS guests use the installer profile and have no managed base image.
+  macOS guests use the installer profile. See the
+  [macOS clone identity requirements](spikes/macos-guests.md#base-images).
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
   leaves its existing VMs and any exported files in place.

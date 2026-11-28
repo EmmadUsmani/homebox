@@ -56,6 +56,8 @@ emulator. An Android guest profile remains open.
 The `macos` profile is described in the [security model](../SECURITY.md#macos-guest-profile).
 Measure a real laptop SSH connection over the LAN. The local lifecycle check
 uses a separate laptop key and the exported pins over loopback.
+The [iOS smoke area](../smoke/ios/README.md) automates the Simulator check.
+macOS profile bases still need [a clone identity reset](spikes/macos-guests.md#base-images).
 
 ## Update existing Ubuntu VMs for browser sandboxing
 

@@ -47,8 +47,8 @@ admin environment with noninteractive sudo. The Ubuntu tooling,
 saved-image workflows and `box desktop --install` are Ubuntu features.
 See the [macOS guest security model](SECURITY.md#macos-guest-profile).
 
-For iOS development, the [simulator spike](docs/spikes/macos-guests.md#ios-simulator)
-used Xcode 16.2 and an 80 GiB guest disk.
+For iOS development, the [iOS Simulator smoke test](smoke/ios/README.md)
+stages a local Xcode and runtime on an 80 GiB macOS guest.
 
 ## Quick start on Ubuntu Linux
 
@@ -393,6 +393,7 @@ use an amd64 QEMU smoke image for saved-image runs.
 scripts/test.sh change
 scripts/test.sh change --base HEAD~1
 scripts/test.sh batch --area os
+SMOKE_IOS=1 scripts/test.sh change --area ios
 scripts/test.sh full --area containers --match distroless
 scripts/test.sh full --area gui --match 'GTK|Qt'
 scripts/test.sh full --keep-vm
@@ -407,6 +408,8 @@ name, `doctor`, `e2e` or `desktop`. Static checks run at every tier.
 unused index with `HOMEBOX_TEST_INDEX` (default 70) when running alongside
 other VMs or test runners. The News Digest area runs when selected and
 `SMOKE_NEWSDIGEST_REPO` points to a checkout.
+The iOS area runs by itself on a fresh macOS guest and requires
+`SMOKE_IOS=1` and compatible host assets.
 
 The change tier uses `homebox-smoke` from `~/.homebox` when VM checks are
 selected and guest profile files are unchanged. The runner clones the image

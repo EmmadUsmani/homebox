@@ -75,7 +75,8 @@ function selection(options) {
     const sharedSmoke = files.some(file => /^smoke\/(lib|run)\.sh$/.test(file));
     const guest = touched("guest/");
     const smoke = available.filter(area => areas.length ? areas.includes(area)
-        : tier !== "change" || sharedSmoke || touched(`smoke/${area}/`) || (guest && ["os", "runtimes"].includes(area)));
+        : area !== "ios" && (tier !== "change" || sharedSmoke || touched(`smoke/${area}/`) ||
+            (guest && ["os", "runtimes"].includes(area))));
     const profileMatch = path.join(root, "smoke/runtimes/profile-match");
     const runtimeMatch = tier === "change" && !areas.length && guest && !sharedSmoke && !touched("smoke/runtimes/") &&
         fs.existsSync(profileMatch) ? fs.readFileSync(profileMatch, "utf8").trim() : "";
@@ -91,6 +92,12 @@ function selection(options) {
 async function runSuite(options) {
     const selected = selection(options);
     const { tier, match, keep } = options;
+    const ios = selected.smoke.includes("ios");
+    if (ios && (options.areas.length !== 1 || options.image || options.imageHome || options.imageFile)) {
+        throw new Error("--area ios requires its own fresh macOS guest; run it alone without image flags");
+    }
+    const iosEnabled = ios && process.env.SMOKE_IOS === "1" &&
+        process.platform === "darwin" && process.arch === "arm64";
     const nestedAndroid = process.platform === "linux" && selected.smoke.includes("android") &&
         process.env.SMOKE_ANDROID === "1";
     const disk = nestedAndroid ? "50" : tier !== "change" && options.areas.length === 0 ? "80" : "30";
@@ -262,7 +269,9 @@ async function runSuite(options) {
             }
         }
 
-        if (selected.smoke.length || selected.doctor || selected.desktopUI) {
+        if (ios && !iosEnabled) {
+            report("ios", "SKIP", "0.0s", "requires an Apple silicon Mac and SMOKE_IOS=1");
+        } else if (selected.smoke.length || selected.doctor || selected.desktopUI) {
             if (!["darwin", "linux"].includes(process.platform)) throw new Error("VM checks require a macOS or Linux homebox host");
             if (interrupted) throw new Error("interrupted before VM setup");
             scratch = fs.mkdtempSync(path.join(os.homedir(), ".hb-w-"));
@@ -274,10 +283,13 @@ async function runSuite(options) {
             let booted = false;
             if (ready && !interrupted) {
                 if (tier === "change" && selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
-                const useImage = tier === "change" ? !selected.guest : explicitImage;
-                const imageArgs = useImage ? await smokeImage() : freshVM;
+                const useImage = !ios && (tier === "change" ? !selected.guest : explicitImage);
+                const provisionArgs = ios
+                    ? ["--profile", "macos", "--cpus", "4", "--memory", "8", "--disk", "80", "--force-provision"]
+                    : freshVM;
+                const imageArgs = useImage ? await smokeImage() : provisionArgs;
                 if (!interrupted) {
-                    if (imageArgs === freshVM) imageSource = "fresh";
+                    if (imageArgs === provisionArgs) imageSource = ios ? "fresh macOS" : "fresh";
                     vmAttempted = true;
                     booted = await box("vm", "new", vm, ...imageArgs);
                 }
