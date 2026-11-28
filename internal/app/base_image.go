@@ -103,7 +103,7 @@ func (s *Service) profileBase(ctx context.Context, options NewOptions, profile g
 		if err != nil {
 			return "", err
 		}
-		if image.BaseDigest == digest && image.BaseUser == user && image.Driver == s.Driver.Name() && image.Arch == runtime.GOARCH {
+		if image.BaseDigest == digest && image.BaseUser == user && image.BaseOS == runtime.GOOS && image.Driver == s.Driver.Name() && image.Arch == runtime.GOARCH {
 			s.progress("Using profile base image %s", name)
 			return name, nil
 		}

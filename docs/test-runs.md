@@ -39,3 +39,4 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T07:01:20.750Z | f867ec195605 | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor | PASS | 9/0/0 | 416.6s | fresh |
 | 2026-11-28T07:01:54.442Z | 5debd0e0a5c3 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 4/0/0 | 6.5s | — |
 | 2026-11-28T07:02:47.750Z | 928541e1e395 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 7.3s | — |
+| 2026-11-28T07:19:21.923Z | 155f20f93dd5 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | FAIL | 8/2/3 | 256.2s | fresh |

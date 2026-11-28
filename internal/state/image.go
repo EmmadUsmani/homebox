@@ -36,6 +36,7 @@ type Image struct {
 	CreatedAt      time.Time `json:"created_at"`
 	BaseDigest     string    `json:"base_digest,omitempty"`
 	BaseUser       string    `json:"base_user,omitempty"`
+	BaseOS         string    `json:"base_os,omitempty"`
 	BoxVersion     string    `json:"box_version"`
 	Firmware       []byte    `json:"efi_variables,omitempty"`
 	FirmwareSHA256 string    `json:"efi_sha256,omitempty"`
@@ -131,7 +132,7 @@ func (s *Store) saveImage(ctx context.Context, box Box, name, version, digest st
 	publish := os.Rename
 	replace := false
 	if digest != "" {
-		image.BaseDigest, image.BaseUser = digest, box.User
+		image.BaseDigest, image.BaseUser, image.BaseOS = digest, box.User, runtime.GOOS
 		old, _, err := s.LoadImage(name)
 		switch {
 		case err == nil && old.BaseDigest != "" && old.Profile == box.Profile:

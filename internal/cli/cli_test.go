@@ -16,18 +16,25 @@ import (
 
 type stubApp struct {
 	Application
-	newOptions  app.NewOptions
-	hostOptions app.HostInitOptions
-	portOptions app.PortOptions
-	logOptions  app.LogOptions
-	logUnit     string
-	argv        []string
-	name        string
-	sshOptions  app.SSHConfigOptions
+	newOptions     app.NewOptions
+	rebuildProfile string
+	rebuildVersion string
+	hostOptions    app.HostInitOptions
+	portOptions    app.PortOptions
+	logOptions     app.LogOptions
+	logUnit        string
+	argv           []string
+	name           string
+	sshOptions     app.SSHConfigOptions
 }
 
 func (s *stubApp) New(_ context.Context, options app.NewOptions) error {
 	s.newOptions = options
+	return nil
+}
+
+func (s *stubApp) RebuildImage(_ context.Context, profile, version string) error {
+	s.rebuildProfile, s.rebuildVersion = profile, version
 	return nil
 }
 
@@ -146,8 +153,8 @@ func execute(t *testing.T, service *stubApp, terminal bool, input string, args .
 
 func TestNewAndHostFlags(t *testing.T) {
 	service := &stubApp{}
-	_, _, err := execute(t, service, false, "", "new", "main", "--profile", "ubuntu", "--cpus", "2", "--memory", "3", "--disk", "20")
-	want := app.NewOptions{Version: "v0.0.1-test", Name: "main", Profile: "ubuntu", CPUs: 2, MemoryGiB: 3, DiskGiB: 20}
+	_, _, err := execute(t, service, false, "", "new", "main", "--profile", "ubuntu", "--cpus", "2", "--memory", "3", "--disk", "20", "--force-provision")
+	want := app.NewOptions{ForceProvision: true, Version: "v0.0.1-test", Name: "main", Profile: "ubuntu", CPUs: 2, MemoryGiB: 3, DiskGiB: 20}
 	if err != nil || service.newOptions != want {
 		t.Fatalf("new options = %+v, %v", service.newOptions, err)
 	}
@@ -158,6 +165,14 @@ func TestNewAndHostFlags(t *testing.T) {
 	}
 	if _, _, err := execute(t, service, false, "", "host", "init", "--lan", "--no-lan"); err == nil {
 		t.Fatal("accepted conflicting flags")
+	}
+}
+
+func TestImageRebuildProfile(t *testing.T) {
+	service := &stubApp{}
+	_, _, err := execute(t, service, false, "", "image", "rebuild", "--profile", "ubuntu")
+	if err != nil || service.rebuildProfile != "ubuntu" || service.rebuildVersion != "v0.0.1-test" {
+		t.Fatalf("image rebuild profile = %q, version = %q, error = %v", service.rebuildProfile, service.rebuildVersion, err)
 	}
 }
 

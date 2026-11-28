@@ -61,8 +61,8 @@ VM disks locally from source.
   stale base on a throwaway VM and clones it. The Ubuntu cache is named
   `base-ubuntu`. Its SHA-256 fingerprint covers the profile definition,
   full provisioning scripts, and shared image preparation and credential
-  scan. The cached disk must also match the driver, CPU architecture and
-  guest username. The clone runs OS and coding-agent updates after its
+  scan. The cached disk must also match the driver, host OS, CPU architecture
+  and guest username. The clone runs OS and coding-agent updates after its
   identity reset. A disk request below the base size or an occupied name
   belonging to a manually saved image uses full provisioning.
   `box image rebuild [--profile P]` refreshes the cache explicitly. An
@@ -71,6 +71,15 @@ VM disks locally from source.
 - **Storage:** images contain disk data including logins, tokens, installed
   packages and settings. Save and export print a warning. Removing an image
   leaves its existing VMs and any exported files in place.
+
+### macOS verification
+
+On 2026-11-27 (macOS 27.2.1, Lima 2.3.0), the base rebuild and forced full
+provisioning both stalled during the initial VZ boot before SSH. An
+unmodified `main` build at `b0ce3cf` reached the same stall. The change
+tier passed its static and unit checks. Its VM checks could not complete.
+Successful rebuild and clone timings, and `box doctor` on the clone,
+remain unverified on a real VM.
 
 ## Sleep and resume
 
