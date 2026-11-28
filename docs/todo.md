@@ -122,3 +122,8 @@ and pull quotas.
 Done on 2026-11-26. The [change tier](../README.md#testing) takes its saved
 image from the normal homebox store by default and can use another store
 or import an archive directly. The run history records the source and disk digest.
+
+## Agent factory
+
+Run the [guest factory smoke](../factory/README.md#one-turn-smoke-test) on
+the remote Ubuntu host and verify the user unit there.
