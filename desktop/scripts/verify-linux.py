@@ -147,6 +147,7 @@ def verify_vm(pid, output, vm, binary, created=False):
     window = wait_for(lambda: app_window(pid), "Homebox window")
     press(window, re.escape(vm) + ".*")
     named(window, "Stop", "button")
+    named(window, "Servers", "heading")
     screenshot(pid, "homebox", output / "linux-vm-overview.png")
 
     def ssh(command):
@@ -340,6 +341,8 @@ def verify_create_delete(pid, output, binary, vm):
     named(window, vm + r".*\bstopped", "button", 120)
     capture("stopped")
     press(window, "Settings", "page tab")
+    # The native desktop viewer can take X11 focus from the webview.
+    keyboard = Keyboard(pid)
     enter(window, keyboard, "Memory (GiB)", "3")
     enabled(window, "Save VM size")
     press(window, "Save VM size")
@@ -351,7 +354,7 @@ def verify_create_delete(pid, output, binary, vm):
     enter(window, keyboard, "Guest port", "9000")
     enter(window, keyboard, "Host port", str(host_port))
     press(window, "Publish port")
-    press(accessible_app(pid), "Publish")
+    press(accessible_app(pid), "Publish", None)
     visible_text(window, "Published ports updated.")
     visible_text(window, f"Guest 9000 → 127.0.0.1:{host_port}")
     capture("port-published")
@@ -372,6 +375,7 @@ def verify_create_delete(pid, output, binary, vm):
     press(window, "More")
     press(window, "Delete VM…")
     confirmation = f"Type {vm} to confirm"
+    keyboard = Keyboard(pid)
     enter(window, keyboard, confirmation, "wrong")
     if named(window, "Delete VM", "button").get_state_set().contains(Atspi.StateType.ENABLED):
         raise RuntimeError("Delete accepted an incorrect name")
@@ -442,10 +446,10 @@ if __name__ == "__main__":
             verify_vm(int(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4])
         else:
             verify(int(sys.argv[1]), Path(sys.argv[2]))
-    except RuntimeError:
+    except (RuntimeError, subprocess.SubprocessError):
         try:
             screenshot(int(sys.argv[1]), "homebox", Path(sys.argv[2]) / "linux-failure.png")
-        except RuntimeError:
+        except (RuntimeError, subprocess.SubprocessError):
             pass
         window = app_window(int(sys.argv[1]))
         if window:
