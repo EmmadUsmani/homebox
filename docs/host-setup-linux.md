@@ -75,3 +75,15 @@ shellcheck scripts/setup-ubuntu.sh
 go vet ./...
 go test ./...
 ```
+
+## Install desktop build dependencies
+
+The full contributor setup includes the GTK4, WebKitGTK 6.0 and X11
+development libraries used by the Wails v3 desktop module. To add these
+dependencies to an existing Ubuntu 26.04 setup, run these commands.
+
+```sh
+sudo apt-get update
+sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev
+pkg-config --modversion gtk4 webkitgtk-6.0 x11
+```

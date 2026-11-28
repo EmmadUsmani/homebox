@@ -44,6 +44,8 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 
 ## Dependency rules
 
+- On Ubuntu, the desktop module's Wails build uses GTK4, WebKitGTK 6.0
+  and X11 headers. See the [desktop build dependencies](host-setup-linux.md#install-desktop-build-dependencies).
 - CLI and desktop both call `app` and get the local service from
   `internal/wiring`. The desktop binds local status, logs and VM actions to the
   web view; its daemon executable is the sibling `box` inside the bundle.
