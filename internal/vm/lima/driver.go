@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/EmmadUsmani/homebox/internal/execx"
 	"github.com/EmmadUsmani/homebox/internal/vm"
@@ -97,6 +98,9 @@ func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) e
 		return err
 	}
 	instance := record.instance()
+	if instance.GuestOS == vm.DarwinGuest && (len(opts.Wrap) == 0 || opts.Socket.Path == "") {
+		return errors.New("macOS guests require host confinement and a socket network")
+	}
 	if opts.NestedVirt && instance.Status != vm.StatusRunning {
 		if err := d.CheckNestedVirt(); err != nil {
 			return err
@@ -139,16 +143,56 @@ func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) e
 		}
 	}
 	_, err = d.run(ctx, opts.Wrap, "start", "--tty=false", name)
+	if err != nil && instance.GuestOS == vm.DarwinGuest {
+		cleanup := context.WithoutCancel(ctx)
+		if current, inspectErr := d.Get(cleanup, name); inspectErr == nil && current.Status == vm.StatusRunning {
+			err = errors.Join(err, d.Stop(cleanup, name))
+		}
+	}
 	return err
 }
 
 // Stop shuts down a VM.
 func (d *Driver) Stop(ctx context.Context, name string) error {
-	if _, err := d.Get(ctx, name); err != nil {
+	instance, err := d.Get(ctx, name)
+	if err != nil {
 		return err
 	}
-	_, err := d.run(ctx, nil, "stop", name)
+	if instance.GuestOS == vm.DarwinGuest {
+		return d.stopDarwin(ctx, name)
+	}
+	_, err = d.run(ctx, nil, "stop", name)
 	return err
+}
+
+func (d *Driver) stopDarwin(ctx context.Context, name string) error {
+	// VZ can finish the guest shutdown while Lima's graphics window exits
+	// without emitting the hostagent event that limactl stop is waiting for.
+	stopCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	result := make(chan error, 1)
+	go func() {
+		_, err := d.run(stopCtx, nil, "stop", name)
+		result <- err
+	}()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case err := <-result:
+			return err
+		case <-ctx.Done():
+			cancel()
+			<-result
+			return ctx.Err()
+		case <-ticker.C:
+			if instance, err := d.Get(ctx, name); err == nil && instance.Status == vm.StatusStopped {
+				cancel()
+				<-result
+				return nil
+			}
+		}
+	}
 }
 
 // Delete removes a VM and its disks, accepting an already absent VM.

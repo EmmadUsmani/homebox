@@ -11,13 +11,19 @@ uses `aarch64` or `x86_64`. Script paths are relative to this directory, so prof
 can share the scripts in `common/`. Package and service setup belongs to the
 distro profile.
 
+The macOS profile also names a root boot script. Lima runs it from the
+read-only configuration disk before box can provision or authorize laptop
+keys. The script sets up the two guest network services and noninteractive
+sudo. The [security model](../SECURITY.md#macos-guest-profile) describes the
+host-side controls.
+
 Ubuntu uses the socket-backed NIC for IPv4 egress and sends DNS directly
 to public resolvers. Ordinary Docker bridges use the same route via guest
 masquerading. Reprovisioning removes earlier proxy settings, the transparent
 TCP redirect and the Docker DNS override. Lima's built-in NIC carries SSH
 and published services under host-side confinement.
 
-Box runs `common/doctor.sh` separately over SSH as the admin. The script
+For Ubuntu, box runs `common/doctor.sh` separately over SSH as the admin. The script
 checks public HTTPS, DNS over UDP, NTP and IPv4 echo, and probes the deny
 targets supplied as space-separated `host:port` entries in
 `HOMEBOX_DENY_TARGETS`. It also checks for host mounts and SSH agent access.

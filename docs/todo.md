@@ -49,11 +49,9 @@ emulator. An Android guest profile remains open.
 
 ## macOS guests and the iOS Simulator
 
-The [macOS guest spike](spikes/macos-guests.md) covers Lima's installer, first
-boot and socket NIC. Before adding a `box` profile, establish a pinned SSH path
-with the homebox gateway as the only egress path and validate host confinement
-and `box doctor` on a fresh guest. Test the iOS Simulator once Xcode and a
-runtime can be staged into that guest.
+The `macos` profile is described in the [security model](../SECURITY.md#macos-guest-profile).
+Measure a real laptop SSH connection over the LAN. The local lifecycle check
+uses a separate laptop key and the exported pins over loopback.
 
 ## Update existing Ubuntu VMs for browser sandboxing
 

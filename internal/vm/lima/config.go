@@ -18,19 +18,23 @@ type vmOptions struct {
 }
 
 type config struct {
-	VMOpts     *vmOptions        `yaml:"vmOpts,omitempty"`
-	Probes     []probeConfig     `yaml:"probes,omitempty"`
-	Provision  []provisionConfig `yaml:"provision,omitempty"`
-	Param      map[string]string `yaml:"param,omitempty"`
-	VMType     string            `yaml:"vmType"`
-	Images     []image           `yaml:"images"`
-	CPUs       int               `yaml:"cpus"`
-	Memory     string            `yaml:"memory"`
-	Disk       string            `yaml:"disk"`
-	Plain      bool              `yaml:"plain"`
-	Mounts     []string          `yaml:"mounts"`
-	SSH        sshConfig         `yaml:"ssh"`
-	Containerd struct {
+	VMOpts      *vmOptions                 `yaml:"vmOpts,omitempty"`
+	Probes      []probeConfig              `yaml:"probes,omitempty"`
+	Provision   []provisionConfig          `yaml:"provision,omitempty"`
+	Param       map[string]string          `yaml:"param,omitempty"`
+	VMType      string                     `yaml:"vmType"`
+	MinimumLima string                     `yaml:"minimumLimaVersion,omitempty"`
+	OS          string                     `yaml:"os,omitempty"`
+	Video       map[string]string          `yaml:"video,omitempty"`
+	OSOpts      map[string]map[string]bool `yaml:"osOpts,omitempty"`
+	Images      []image                    `yaml:"images"`
+	CPUs        int                        `yaml:"cpus"`
+	Memory      string                     `yaml:"memory"`
+	Disk        string                     `yaml:"disk"`
+	Plain       bool                       `yaml:"plain"`
+	Mounts      []string                   `yaml:"mounts"`
+	SSH         sshConfig                  `yaml:"ssh"`
+	Containerd  struct {
 		System bool `yaml:"system"`
 		User   bool `yaml:"user"`
 	} `yaml:"containerd"`
@@ -154,6 +158,22 @@ func renderHostConfig(spec vm.Spec, goos, goarch string) ([]byte, error) {
 		settings.Probes = []probeConfig{{
 			Mode: "readiness", Description: "the saved disk has a fresh guest identity",
 			Script: fmt.Sprintf("#!/bin/sh\n[ \"$(cat /etc/homebox-image-id)\" = %s ]\n", identity),
+		}}
+	}
+	if spec.GuestOS == vm.DarwinGuest {
+		if goos != "darwin" || spec.ImageDisk != "" || spec.BootScript == "" {
+			return nil, fmt.Errorf("macOS guests require VZ, a restore image and a bootstrap script")
+		}
+		settings.OS = vm.DarwinGuest
+		settings.MinimumLima = "2.3.0"
+		settings.Video = map[string]string{"display": "default"}
+		settings.OSOpts = map[string]map[string]bool{vm.DarwinGuest: {"suppressFirstLoginSetup": true}}
+		settings.User.Home = "/Users/" + spec.User
+		settings.Param = spec.BootParameters
+		settings.Provision = []provisionConfig{{Mode: "system", Script: spec.BootScript}}
+		settings.Probes = []probeConfig{{
+			Mode: "readiness", Description: "the macOS socket network is configured for this boot",
+			Script: "#!/bin/sh\nset -eu\niid=$(sed -n 's/^LIMA_CIDATA_IID=//p' /Volumes/cidata/lima.env)\n[ -n \"$iid\" ] && [ \"$(cat /var/run/homebox-network-ready)\" = \"$iid\" ]",
 		}}
 	}
 	if goos == "linux" {
