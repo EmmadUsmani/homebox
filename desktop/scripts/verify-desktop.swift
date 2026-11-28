@@ -26,6 +26,11 @@ func descendants(_ element: AXUIElement) -> [AXUIElement] {
     return [element] + children.flatMap(descendants)
 }
 
+func windowArea(_ window: [String: Any]) -> CGFloat {
+    guard let bounds = window[kCGWindowBounds as String] as? [String: CGFloat] else { return 0 }
+    return (bounds["Width"] ?? 0) * (bounds["Height"] ?? 0)
+}
+
 func command(_ path: String, _ arguments: [String], environment: [String: String]? = nil) throws -> (Int32, String) {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: path)
@@ -44,10 +49,8 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     let url = URL(fileURLWithPath: bundle).resolvingSymlinksInPath()
     let environment = ProcessInfo.processInfo.environment
     let path = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-    func running() -> NSRunningApplication? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").first {
-            $0.bundleURL?.resolvingSymlinksInPath() == url
-        }
+    let alreadyRunning = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").contains {
+        $0.bundleURL?.resolvingSymlinksInPath() == url
     }
     func ssh(_ script: String) throws -> String {
         let (status, output) = try command(bundle + "/Contents/MacOS/box", ["ssh", name, "--", script],
@@ -56,22 +59,55 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         return output
     }
     _ = try ssh("command -v xdotool >/dev/null || { echo 'Install xdotool in the test guest' >&2; exit 1; }")
-    guard running() == nil else { throw Failure(message: "This app copy is already running") }
+    guard !alreadyRunning else { throw Failure(message: "This app copy is already running") }
     try FileManager.default.createDirectory(atPath: screenshots, withIntermediateDirectories: true)
     let config = screenshots + "/ssh-config"
     let knownHosts = screenshots + "/known-hosts"
     try "".write(toFile: config, atomically: true, encoding: .utf8)
     try "".write(toFile: knownHosts, atomically: true, encoding: .utf8)
-    let (launched, _) = try command("/usr/bin/open", ["-n", "--env", "HOMEBOX_HOME=\(state)", "--env", "PATH=\(path)",
-        "--env", "HOMEBOX_DESKTOP_SSH_CONFIG=\(config)", "--env", "HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS=\(knownHosts)",
-        "--env", "HOMEBOX_DESKTOP_SETTINGS=\(screenshots)/settings.json", url.path])
-    guard launched == 0 else { throw Failure(message: "Could not open the app") }
-    let app = try waitFor("app launch") { running() }
-    defer { app.terminate() }
-    app.activate()
+    let launchConfig = NSWorkspace.OpenConfiguration()
+    launchConfig.environment = [
+        "HOMEBOX_HOME": state,
+        "PATH": path,
+        "HOMEBOX_DESKTOP_SSH_CONFIG": config,
+        "HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS": knownHosts,
+        "HOMEBOX_DESKTOP_SETTINGS": "\(screenshots)/settings.json",
+    ]
+    launchConfig.createsNewApplicationInstance = true
+    var launch: Result<NSRunningApplication, Error>?
+    NSWorkspace.shared.openApplication(at: url, configuration: launchConfig) { app, error in
+        launch = app.map { .success($0) } ?? .failure(error ?? Failure(message: "Could not open the app"))
+    }
+    while launch == nil { RunLoop.current.run(until: Date().addingTimeInterval(0.1)) }
+    let app = try launch!.get()
+    defer {
+        func exited() -> Bool? {
+            kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+        }
+        app.terminate()
+        if (try? waitFor("app exit", seconds: 3, exited)) == nil {
+            kill(app.processIdentifier, SIGKILL)
+            _ = try? waitFor("app exit after force quit", seconds: 3, exited)
+        }
+    }
     let pid = app.processIdentifier
     let root = AXUIElementCreateApplication(pid)
     let window: AXUIElement = try waitFor("AX window") { (attribute(root, kAXWindowsAttribute) as [AXUIElement]?)?.first }
+
+    func windowHasFocus() -> Bool {
+        let focused: AXUIElement? = attribute(root, kAXFocusedWindowAttribute)
+        return NSWorkspace.shared.frontmostApplication?.processIdentifier == pid &&
+            focused.map { CFEqual($0, window) } == true
+    }
+
+    func raiseWindow() throws {
+        _ = app.activate()
+        _ = AXUIElementSetAttributeValue(root, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        _ = try waitFor("frontmost Desktop window (focus lost)", seconds: 3) {
+            windowHasFocus() ? true : nil
+        }
+    }
 
     func press(_ label: String, prefix: Bool = false) throws {
         let element = try waitFor(label) {
@@ -101,13 +137,18 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         return output.split(separator: "\n").filter { $0.hasPrefix("n") }.map { String($0.dropFirst()) }
     }
 
-    func screenshot(_ filename: String) throws {
-        let windowID = try waitFor("window ID") {
-            (CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]])?.first {
+    func windowID() throws -> Int {
+        try waitFor("window ID") {
+            let windows = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
+            return windows.filter {
                 $0[kCGWindowOwnerPID as String] as? pid_t == pid && $0[kCGWindowLayer as String] as? Int == 0
-            }?[kCGWindowNumber as String] as? Int
+            }.max { windowArea($0) < windowArea($1) }?[kCGWindowNumber as String] as? Int
         }
-        let (status, _) = try command("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), screenshots + "/" + filename])
+    }
+
+    func screenshot(_ filename: String) throws {
+        try raiseWindow()
+        let (status, _) = try command("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID()), screenshots + "/" + filename])
         guard status == 0 else { throw Failure(message: "Could not capture app window") }
     }
 
@@ -137,20 +178,58 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     guard absent.contains("absent") else { throw Failure(message: "Guest marker already exists") }
     defer { _ = try? ssh("rm -f ~/\(marker)") }
     _ = try ssh("\(display) nohup xfce4-terminal --disable-server --title=DesktopVerification --geometry=82x20+0+0 >/dev/null 2>&1 </dev/null &")
-    Thread.sleep(forTimeInterval: 3)
+    _ = try waitFor("focused guest terminal") {
+        try ssh("\(display) xdotool getactivewindow getwindowname 2>/dev/null || true")
+            .contains("DesktopVerification") ? true : nil
+    }
+    try raiseWindow()
+    let targetWindow = try windowID()
     var raw: CFTypeRef?
     guard AXUIElementCopyAttributeValue(remote, kAXPositionAttribute as CFString, &raw) == .success,
           let raw, CFGetTypeID(raw) == AXValueGetTypeID() else { throw Failure(message: "Guest view has no position") }
     var position = CGPoint.zero
     AXValueGetValue(raw as! AXValue, .cgPoint, &position)
     let point = CGPoint(x: position.x + 140, y: position.y + 120)
-    for event in [CGEventType.leftMouseDown, .leftMouseUp] {
-        CGEvent(mouseEventSource: nil, mouseType: event, mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+    func requireFocus() throws {
+        guard windowHasFocus() else {
+            throw Failure(message: "Desktop focus lost during guest input")
+        }
     }
+
+    func viewerHasFocus() -> Bool {
+        guard let focused: AXUIElement = attribute(root, kAXFocusedUIElementAttribute) else { return false }
+        return descendants(remote).contains { CFEqual($0, focused) }
+    }
+
+    for _ in 0...1 {
+        try requireFocus()
+        for type in [CGEventType.leftMouseDown, .leftMouseUp] {
+            guard let event = CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: point, mouseButton: .left) else {
+                throw Failure(message: "Could not create the guest viewer click")
+            }
+            event.setIntegerValueField(.mouseEventClickState, value: 1)
+            event.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(targetWindow))
+            event.postToPid(pid)
+        }
+        let clickDeadline = Date().addingTimeInterval(2)
+        while !viewerHasFocus() && Date() < clickDeadline {
+            try requireFocus()
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        if viewerHasFocus() { break }
+    }
+    guard viewerHasFocus() else {
+        throw Failure(message: "Guest viewer did not take keyboard focus after two clicks")
+    }
+
     // Type "touch .homeboxdesktop-test" in the guest terminal via hardware key codes.
-    for code: CGKeyCode in [17,31,32,8,4,49,47,4,31,46,14,11,31,7,2,14,1,40,17,31,35,27,17,14,1,17,36] { key(code) }
+    for code: CGKeyCode in [17,31,32,8,4,49,47,4,31,46,14,11,31,7,2,14,1,40,17,31,35,27,17,14,1,17,36] {
+        try requireFocus()
+        key(code)
+    }
     _ = try waitFor("marker created by the guest terminal") {
-        try ssh("test ! -f ~/\(marker) || echo typed").contains("typed") ? true : nil
+        try requireFocus()
+        return try ssh("test ! -f ~/\(marker) || echo typed").contains("typed") ? true : nil
     }
     try screenshot("desktop-connected.png")
 

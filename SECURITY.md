@@ -112,7 +112,7 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
   [`internal/egress/policy.go`](internal/egress/policy.go). Private ranges,
   loopback, link-local, carrier-grade NAT (which includes Tailscale's
   addresses), multicast and reserved ranges are refused. So are the networks of
-  the host's own interfaces, whatever their range.
+  the host's own interfaces, including aliases on loopback interfaces.
 - The check runs on the host, so root in the VM can't change it by editing
   routes, DNS or firewall rules in the guest.
 - IPv4 TCP, UDP and ICMP echo are allowed to public addresses; IPv6 is dropped.
@@ -133,6 +133,9 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
   host-key check. `box repin` changes pins only after you review them.
 - Ports are published only on the Mac's loopback unless you turn on LAN
   publishing (`box host init --lan`), per host.
+
+If the per-VM gateway daemon exits, egress stays blocked. Stop and start
+the VM through box to establish a fresh confined gateway connection.
 
 ### Checking it
 
@@ -367,6 +370,12 @@ connections but not open them) before turning it on.
   their public address back into the LAN, are listed under "Known limitations"
   in the [architecture](docs/architecture.md#networking-and-isolation-macos)
   and tracked in the [to-do list](docs/todo.md).
+- **Aggregate storage use.** Each VM has a configured virtual disk size.
+  homebox does not enforce an aggregate host storage quota for VM disks,
+  images or Lima logs.
+- **Guest-reported health.** Doctor, status and logs rely on guest-controlled
+  output for guest checks. See the [Mac isolation review](docs/security-review-2026-11-28.md)
+  for coverage and remaining checks.
 - **What the agents do on the internet** with your accounts. The VM can reach
   any public address by design.
 

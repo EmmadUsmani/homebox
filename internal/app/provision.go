@@ -18,6 +18,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
+	"github.com/EmmadUsmani/homebox/internal/vmnet"
 )
 
 var (
@@ -261,15 +262,20 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 		}
 		s.progress("Creating %s", box.Name)
 		var bootScript []byte
+		var bootParameters map[string]string
 		if profile.BootScript != "" {
 			bootScript, err = s.Profiles.ReadScript(profile.BootScript)
 			if err != nil {
 				return err
 			}
+			bootParameters = map[string]string{
+				"HOMEBOX_GATEWAY_IP": vmnet.GatewayIP,
+				"HOMEBOX_SOCKET_MAC": vmnet.GuestMAC(),
+			}
 		}
 		if err := s.Driver.Create(ctx, vm.Spec{
 			Name: box.Name, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
-			GuestOS: profile.OS, BootScript: string(bootScript),
+			GuestOS: profile.OS, BootScript: string(bootScript), BootParameters: bootParameters,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,
 			// Keep the built-in host resolver unused until the guest configures public DNS.
@@ -285,11 +291,11 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	if err := setStep("start"); err != nil {
 		return err
 	}
-	// Existing guests need a boot with the new NIC before provisioning can
-	// remove their proxy configuration and install the new resolver settings.
+	// An incomplete macOS bootstrap must run again before publishing SSH.
+	// Legacy Linux guests may also need a boot with the socket NIC attached.
 	needsBootstrap := instance.GuestOS == vm.DarwinGuest && !box.Provisioned
 	if instance.Status == vm.StatusRunning && (needsBootstrap || instance.HostPIDFile != "" && instance.Socket.Path == "") {
-		s.progress("Restarting %s to attach the egress network", box.Name)
+		s.progress("Restarting %s to configure the egress network", box.Name)
 		instance, err = s.stopForProvision(ctx, box.Name)
 		if err != nil {
 			return err
@@ -322,7 +328,11 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
 		return err
 	}
-	env := map[string]string{"HOMEBOX_USER": box.User}
+	env := map[string]string{
+		"HOMEBOX_USER":           box.User,
+		"HOMEBOX_SOCKET_MAC":     vmnet.GuestMAC(),
+		"HOMEBOX_GATEWAY_SUBNET": vmnet.Subnet,
+	}
 	steps := profile.Steps
 	if restoringImage {
 		steps = nil

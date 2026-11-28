@@ -11,9 +11,13 @@ import (
 	"testing"
 
 	"gvisor.dev/gvisor/pkg/buffer"
+	"gvisor.dev/gvisor/pkg/tcpip"
 	"gvisor.dev/gvisor/pkg/tcpip/header"
 	"gvisor.dev/gvisor/pkg/tcpip/network/ipv4"
 	"gvisor.dev/gvisor/pkg/tcpip/stack"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/icmp"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/tcp"
+	"gvisor.dev/gvisor/pkg/tcpip/transport/udp"
 )
 
 func TestReadFrame(t *testing.T) {
@@ -84,7 +88,7 @@ func FuzzGuestFrame(f *testing.F) {
 	frame := make([]byte, header.EthernetMinimumSize+header.IPv4MinimumSize)
 	header.Ethernet(frame).Encode(&header.EthernetFields{SrcAddr: guestMAC, DstAddr: gatewayMAC, Type: ipv4.ProtocolNumber})
 	header.IPv4(frame[header.EthernetMinimumSize:]).Encode(&header.IPv4Fields{
-		TotalLength: header.IPv4MinimumSize, TTL: 64,
+		TotalLength: header.IPv4MinimumSize, TTL: 64, Protocol: uint8(tcp.ProtocolNumber),
 		SrcAddr: stackAddress(guestIP), DstAddr: stackAddress("192.0.2.1"),
 	})
 	f.Add(frame)
@@ -98,7 +102,7 @@ func TestGuestFrameFiltersEthernetAndIP(t *testing.T) {
 	header.Ethernet(frame).Encode(&header.EthernetFields{SrcAddr: guestMAC, DstAddr: gatewayMAC, Type: ipv4.ProtocolNumber})
 	payload := header.IPv4(frame[header.EthernetMinimumSize:])
 	payload.Encode(&header.IPv4Fields{
-		TotalLength: header.IPv4MinimumSize, TTL: 64,
+		TotalLength: header.IPv4MinimumSize, TTL: 64, Protocol: uint8(tcp.ProtocolNumber),
 		SrcAddr: guestAddress, DstAddr: stackAddress("192.0.2.1"),
 	})
 	if !guestFrame(frame) {
@@ -129,13 +133,48 @@ func TestGuestFrameFiltersEthernetAndIP(t *testing.T) {
 	}
 }
 
+func TestGuestFrameTransportAdmission(t *testing.T) {
+	const greProtocol = 47
+	for _, tc := range []struct {
+		name                string
+		protocol            uint8
+		source, destination tcpip.Address
+		fragment            bool
+		want                bool
+	}{
+		{"TCP", uint8(tcp.ProtocolNumber), guestAddress, stackAddress("192.0.2.1"), false, true},
+		{"UDP fragment", uint8(udp.ProtocolNumber), guestAddress, stackAddress("192.0.2.1"), true, true},
+		{"unsupported protocol", greProtocol, guestAddress, stackAddress("192.0.2.1"), false, false},
+		{"unsupported fragment", greProtocol, guestAddress, stackAddress("192.0.2.1"), true, false},
+		{"gateway ICMP", uint8(icmp.ProtocolNumber4), guestAddress, gatewayAddress, false, false},
+		{"initial DHCP", uint8(udp.ProtocolNumber), header.IPv4Any, header.IPv4Broadcast, false, true},
+		{"non-DHCP broadcast protocol", uint8(tcp.ProtocolNumber), header.IPv4Any, header.IPv4Broadcast, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			frame := make([]byte, header.EthernetMinimumSize+header.IPv4MinimumSize+8)
+			header.Ethernet(frame).Encode(&header.EthernetFields{SrcAddr: guestMAC, DstAddr: gatewayMAC, Type: ipv4.ProtocolNumber})
+			packet := header.IPv4(frame[header.EthernetMinimumSize:])
+			packet.Encode(&header.IPv4Fields{
+				TotalLength: header.IPv4MinimumSize + 8, TTL: 64, Protocol: tc.protocol,
+				SrcAddr: tc.source, DstAddr: tc.destination,
+			})
+			if tc.fragment {
+				packet.SetFlagsFragmentOffset(header.IPv4FlagMoreFragments, 8)
+			}
+			if got := guestFrame(frame); got != tc.want {
+				t.Errorf("guestFrame = %t, want %t", got, tc.want)
+			}
+		})
+	}
+}
+
 func TestGuestARPOnlyTargetsGateway(t *testing.T) {
 	for _, test := range []struct {
 		name, sender, target string
 		want                 bool
 	}{
-		{"gateway discovery", guestIP, gatewayIP, true},
-		{"gateway probe with no configured address", "0.0.0.0", gatewayIP, true},
+		{"gateway discovery", guestIP, GatewayIP, true},
+		{"gateway probe with no configured address", "0.0.0.0", GatewayIP, true},
 		{"guest duplicate-address probe", "0.0.0.0", guestIP, false},
 		{"unrelated address", guestIP, "10.114.0.42", false},
 	} {

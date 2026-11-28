@@ -3,7 +3,7 @@ set -eu
 set -f
 
 builtin=$HOMEBOX_BUILTIN_GATEWAY
-gateway=10.114.0.1
+gateway=$HOMEBOX_GATEWAY_IP
 failed=0
 pass() { printf 'PASS %s\n' "$1"; }
 fail() { printf 'FAIL %s: %s\n' "$1" "$2"; failed=1; }

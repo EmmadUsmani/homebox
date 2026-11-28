@@ -63,6 +63,13 @@ Left to do:
 - Run the VMs as a separate macOS user, so Unix permissions protect the
   owner's files even if a sandbox has a gap.
 
+## Follow up on the Mac isolation review
+
+Add controlled guest-side DNS answers for private destinations, fragment
+reassembly and broadcast dispatch fixtures, and a Files-tab check that renders
+unusual filenames in the Mac GUI. The
+[review](security-review-2026-11-28.md) explains existing coverage and limits.
+
 ## Harden the SSH relay
 
 Done. The relay verifies that the live host process owns the driver's SSH
@@ -83,9 +90,9 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
   side closes and never closes the guest side (seen with Lima 2.3.0). The
   guest's sshd keepalives clean these up within about a minute; report it
   upstream with a reproduction.
-- Reconnect the socket NIC after a daemon failure without restarting the VM.
-- Pass the gateway's MAC address and subnet to the guest from box instead of
-  repeating them in `guest/ubuntu/network.sh`.
+- Live socket NIC recovery remains open. The current Lima attachments require
+  a VM restart after a daemon failure. Box detects this and reports the
+  recovery commands. See [the gateway recovery decision](decisions.md#gateway-socket-recovery).
 - Extend Linux sandbox coverage as newer Landlock pathname Unix-socket
   controls become available. Recheck the QEMU launch contract when updating Lima.
 - NAT reflection: if the router reflects connections to its own public address

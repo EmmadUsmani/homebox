@@ -332,3 +332,24 @@ into the disposable guest with mode 0600. Use a minimal guest configuration.
 Remove the guest credential and delete the VM afterward. Do not save an
 image of it. The [agent login design](agent-logins.md) covers the proposed
 long-term flow.
+
+## Gateway socket recovery
+
+**Guide a stop/start after gateway daemon failure** (2026-11-28, decided by
+the lead's worker overnight under the owner's autonomy grant). Lima 2.3.0
+hands VZ and QEMU a connected descriptor at boot. A daemon restarted at the
+same socket path cannot replace that connection. Keep the same fail-closed
+network and surface the recovery commands. Live recovery remains open and
+would require a change to how the drivers hold the connection.
+
+## 2026-11-28 · Mac isolation review
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Include loopback aliases in the shared host-interface denial policy. macOS can
+assign other address ranges to loopback interfaces and the existing policy
+already denies the standard loopback address ranges. Drop unsupported IPv4
+protocols before stack processing while preserving fragmentation for supported
+transports. A failed guest doctor check now makes the command fail even
+when SSH returns zero.
+The [Mac isolation review](security-review-2026-11-28.md) records the checks
+and residual limits.

@@ -134,6 +134,7 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 		settings.Video = map[string]string{"display": "default"}
 		settings.OSOpts = map[string]map[string]bool{vm.DarwinGuest: {"suppressFirstLoginSetup": true}}
 		settings.User.Home = "/Users/" + spec.User
+		settings.Param = spec.BootParameters
 		settings.Provision = []provisionConfig{{Mode: "system", Script: spec.BootScript}}
 		settings.Probes = []probeConfig{{
 			Mode: "readiness", Description: "the macOS socket network is configured for this boot",

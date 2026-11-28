@@ -2,9 +2,9 @@
 set -eu
 export LC_ALL=C
 
-gateway=10.114.0.1
+gateway=${PARAM_HOMEBOX_GATEWAY_IP:?missing gateway address}
 ssh_gateway=192.168.5.2
-gateway_mac=52:55:0a:72:00:15
+gateway_mac=${PARAM_HOMEBOX_SOCKET_MAC:?missing socket NIC MAC}
 cidata=/Volumes/cidata/lima.env
 user=$(sed -n 's/^LIMA_CIDATA_USER=//p' "$cidata")
 boot_id=$(sed -n 's/^LIMA_CIDATA_IID=//p' "$cidata")

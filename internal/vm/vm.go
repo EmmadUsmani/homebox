@@ -53,17 +53,18 @@ type SocketAttachment struct {
 
 // Spec is everything a driver needs to create a VM.
 type Spec struct {
-	Name       string
-	GuestOS    string
-	BootScript string  // privileged script supplied at boot
-	Images     []Image // the driver picks the one matching the host's arch
-	CPUs       int
-	MemoryGiB  int
-	DiskGiB    int
-	User       string        // admin user created in the guest
-	SSHPort    int           // host loopback port the driver binds for the guest's sshd
-	Forwards   []PortForward // published ports other than SSH
-	Socket     SocketAttachment
+	Name           string
+	GuestOS        string
+	BootScript     string            // privileged script supplied at boot
+	BootParameters map[string]string // values published to the boot script by the driver
+	Images         []Image           // the driver picks the one matching the host's arch
+	CPUs           int
+	MemoryGiB      int
+	DiskGiB        int
+	User           string        // admin user created in the guest
+	SSHPort        int           // host loopback port the driver binds for the guest's sshd
+	Forwards       []PortForward // published ports other than SSH
+	Socket         SocketAttachment
 
 	ImageDisk     string // a local, driver-native disk to copy into the new VM
 	ImageFirmware []byte // EFI boot variables saved with ImageDisk

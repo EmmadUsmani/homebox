@@ -118,7 +118,7 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 
 	return app.Session{Start: vm.StartOptions{
 		Wrap:   wrap,
-		Socket: vm.SocketAttachment{Path: daemon.Socket, Interface: "lima0", MAC: "52:55:0a:72:00:15", RouteMetric: 100},
+		Socket: vm.SocketAttachment{Path: daemon.Socket, Interface: "lima0", MAC: vmnet.GuestMAC(), RouteMetric: 100},
 		DNS:    []string{"9.9.9.9", "1.1.1.1"},
 	}}, nil
 }

@@ -48,7 +48,7 @@ func (s *Service) authorizeLaptopKeys(ctx context.Context, name string, endpoint
 
 func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instance) error {
 	if instance.Status == vm.StatusRunning {
-		return s.restartDeadIsolation(ctx, box, instance)
+		return s.networkDaemonError(box.Name)
 	}
 	if err := s.applyLANSetting(ctx, box); err != nil {
 		return err
@@ -163,16 +163,9 @@ func (s *Service) applyLANSetting(ctx context.Context, box *state.Box) error {
 	return s.Store.Save(*box)
 }
 
-// restartDeadIsolation brings back the host-side services of a running VM
-// whose network daemon died, e.g. after it was killed. The VM keeps its
-// confinement; it only lost its way out until now.
-func (s *Service) restartDeadIsolation(ctx context.Context, box *state.Box, instance vm.Instance) error {
-	if s.Isolation.Running(box.Name) {
-		return nil
-	}
-	s.progress("%s is running but its network daemon isn't; restarting it", box.Name)
-	if _, err := s.Isolation.Up(ctx, *box, instance); err != nil {
-		return fmt.Errorf("restart isolation: %w", err)
+func (s *Service) networkDaemonError(name string) error {
+	if s.Isolation != nil && !s.Isolation.Running(name) {
+		return fmt.Errorf("network daemon stopped; recover with `box stop %s` then `box start %s`", name, name)
 	}
 	return nil
 }

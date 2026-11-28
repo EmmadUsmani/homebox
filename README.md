@@ -253,6 +253,10 @@ VMs don't start again on their own after the host restarts yet; run
 `box start NAME`. Setting up an always-on host is in
 [host setup](docs/host-setup-macos.md).
 
+If the network daemon stops while a VM is running, `box status` and
+`box doctor` report the failure. Save any work you can still access, then run
+`box stop NAME` followed by `box start NAME` to restore networking.
+
 ## Isolation
 
 The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
@@ -345,7 +349,9 @@ See the [spike report](docs/spikes/wails-desktop.md) for the build background an
 Run the same command on either macOS host from a checkout with Lima, Go,
 Node.js and ShellCheck installed. Desktop checks also need the Xcode command
 line tools and a signed-in macOS session with Accessibility and Screen
-Recording permissions. To run on the Mac mini, open the checkout there and
+Recording permissions. Close any running copy of the checkout’s desktop build
+before starting the suite. Keep the verifier window in front while it sends
+keyboard or mouse input. To run on the Mac mini, open the checkout there and
 run the command locally.
 
 - **Change**, before merging, targets ten minutes. Runs gofmt, Go vet and
@@ -450,6 +456,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Code architecture](docs/architecture.md): packages and dependency rules.
 - [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
+- [Mac isolation review](docs/security-review-2026-11-28.md): controls, coverage and limits.
 - [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
 - [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
