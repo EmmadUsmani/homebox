@@ -17,7 +17,7 @@ func TestFlowAdmissionBounds(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	var log bytes.Buffer
-	active := newFlows(ctx, nil, slog.New(slog.NewTextHandler(&log, nil)))
+	active := newFlows(ctx, nil, slog.New(slog.NewTextHandler(&log, nil)), hostEgress())
 	if active.attempts.Limit() != newFlowsPerSecond || active.attempts.Burst() != newFlowBurst {
 		t.Fatal("unexpected production flow rate")
 	}

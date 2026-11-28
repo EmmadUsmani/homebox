@@ -68,3 +68,9 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:18:31.301Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 334.8s | fresh |
 | 2026-11-28T08:24:55.875Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 318.8s | fresh |
 | 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
+| 2026-11-28T07:48:48.235Z | 7f3fa4a991cf | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 803.5s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:07:47.348Z | 0626d22750ea | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 1132.2s | fresh |
+| 2026-11-28T08:17:54.136Z | 7d2dc7f252c8 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 585.4s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:33:24.392Z | db5e415ffab2 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 916.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:49:16.914Z | 6e10b577bd50 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 910.1s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:52:27.995Z | 9aba63bdcca5 | no | Mac14,10 | 27.2.1 | change | partial | doctor | PASS | 10/0/0 | 170.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

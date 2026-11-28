@@ -263,7 +263,8 @@ PYTHON
 	box(time.Minute, "ssh", name, "--", `set -e
 dir=$(mktemp -d)
 printf 'homebox e2e\n' >"$dir/index.html"
-nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >"$dir/server.log" 2>&1 &`)
+nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >"$dir/server.log" 2>&1 &
+printf '%s\n' "$!" >/tmp/homebox-e2e-http.pid`)
 	if len(record.Forwards) == 0 || record.Forwards[0].GuestPort != 8000 {
 		t.Fatal("missing first HTTP forward")
 	}
@@ -271,12 +272,32 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 	if want := fmt.Sprintf("http://127.0.0.1:%d/", record.Forwards[0].HostPort); url != want {
 		t.Fatalf("box open --print = %q, want %q", url, want)
 	}
-	checkHTTP(t, url)
+	checkHTTP(t, url, "homebox e2e\n")
 	checkStatus(t, box, binary, name, url)
 	if output := runOK("curl", "--noproxy", "*", "--fail", "--silent", "--show-error", url); output != "homebox e2e\n" {
 		t.Fatalf("curl response = %q", output)
 	}
 
+	box(time.Minute, "ssh", name, "--", `set -eu
+if pgrep -x lima-guestagent; then
+    echo "Lima guest agent is running in plain mode" >&2
+    exit 1
+else
+    test "$?" -eq 1
+fi
+kill "$(cat /tmp/homebox-e2e-http.pid)"
+for _ in $(seq 20); do
+    if ! curl -q --noproxy '*' -fsS --max-time 1 http://127.0.0.1:8000/ >/dev/null 2>&1; then
+        dir=$(mktemp -d)
+        printf 'homebox rebound\n' >"$dir/index.html"
+        nohup python3 -m http.server 8000 --bind 127.0.0.1 --directory "$dir" </dev/null >"$dir/server.log" 2>&1 &
+        exit 0
+    fi
+    sleep 0.1
+done
+echo "original guest HTTP listener did not close" >&2
+exit 1`)
+	checkHTTP(t, url, "homebox rebound\n")
 	checkUnpublishedPort(t, name, box)
 
 	config := box(time.Minute, "ssh-config", "--host", "example.local")
@@ -381,7 +402,7 @@ curl -q --noproxy '*' -fsS --retry 5 --retry-connrefused --retry-delay 1 --max-t
 	box(time.Minute, "ssh", name, "--", fmt.Sprintf("curl -q --noproxy '*' -fsS --max-time 2 http://127.0.0.1:%d/ | grep -Fx '%s'", port, marker))
 }
 
-func checkHTTP(t *testing.T, url string) {
+func checkHTTP(t *testing.T, url, want string) {
 	t.Helper()
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
@@ -397,7 +418,7 @@ func checkHTTP(t *testing.T, url string) {
 		if err == nil {
 			body, readErr := io.ReadAll(io.LimitReader(resp.Body, 4096))
 			resp.Body.Close()
-			if readErr == nil && resp.StatusCode == http.StatusOK && string(body) == "homebox e2e\n" {
+			if readErr == nil && resp.StatusCode == http.StatusOK && string(body) == want {
 				t.Logf("HTTP forwarding took %s", time.Since(start).Round(time.Millisecond))
 				return
 			}
