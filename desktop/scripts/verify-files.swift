@@ -150,11 +150,20 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try press(title, in: container) { $0 == title }
     }
 
+    func readMarker(_ marker: String) -> String? {
+        descendants(web).flatMap(labels).first { $0.contains(marker) }
+    }
+
     func see(_ marker: String, seconds: TimeInterval = 15) throws {
-        _ = try waitFor(marker, seconds: seconds) {
-            descendants(web).flatMap(labels).first { $0.contains(marker) }
-        }
+        _ = try waitFor(marker, seconds: seconds) { readMarker(marker) }
         print("AX read: \(marker)")
+    }
+
+    func expectEffect<T>(_ description: String, perform: () throws -> Void, read: () -> T?) throws -> T {
+        try perform()
+        if let result = try? waitFor(description, seconds: 2, read) { return result }
+        try perform()
+        return try waitFor(description, read)
     }
 
     func key(_ code: CGKeyCode, _ flags: CGEventFlags = [], filePicker: Bool = false) throws {
@@ -293,37 +302,53 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try see("original")
         try capture(kind + "-editor")
 
-        try focus("File editor", role: "AXTextArea")
-        try key(0, .maskCommand)
-        try paste("saved from Monaco\n")
+        func focusEditor() throws {
+            try focus("File editor", role: "AXTextArea")
+        }
+
+        func replaceEditorText(_ text: String) throws {
+            _ = try expectEffect("editor text \(text.trimmingCharacters(in: .newlines))", perform: {
+                try focusEditor()
+                try key(0, .maskCommand)
+                try paste(text)
+            }) { readMarker(text.trimmingCharacters(in: .newlines)) }
+        }
+
+        try replaceEditorText("saved from Monaco\n")
         try see("● edited")
-        try key(6, .maskCommand)
-        try see("original")
-        try key(0, .maskCommand)
-        try paste("saved from Monaco\n")
-        try key(0, .maskCommand)
-        try key(8, .maskCommand)
-        _ = try waitFor("Monaco copy") {
+        _ = try expectEffect("undo restores the original", perform: {
+            try focusEditor()
+            try key(6, .maskCommand)
+        }) { readMarker("original") }
+        try replaceEditorText("saved from Monaco\n")
+        _ = try expectEffect("Monaco copy", perform: {
+            try focusEditor()
+            try key(0, .maskCommand)
+            try key(8, .maskCommand)
+        }) {
             clipboard.changeCount != lastClipboard && clipboard.string(forType: .string) == "saved from Monaco\n" ? true : nil
         }
         lastClipboard = clipboard.changeCount
-        try key(1, .maskCommand)
-        _ = try waitFor("saved bytes over plain SSH") {
+        _ = try expectEffect("saved bytes over plain SSH", perform: {
+            try focusEditor()
+            try key(1, .maskCommand)
+        }) {
             (try? ssh("cat " + fixture)) == "saved from Monaco\n" ? true : nil
         }
         try capture(kind + "-saved")
-        try focus("File editor", role: "AXTextArea")
-        try key(3, .maskCommand)
-        try see("Find")
+        _ = try expectEffect("Find", perform: {
+            try focusEditor()
+            try key(3, .maskCommand)
+        }) { readMarker("Find") }
         try capture(kind + "-find")
         try key(53)
 
         _ = try ssh("printf 'external append\n' >> " + fixture)
-        try focus("File editor", role: "AXTextArea")
-        try key(0, .maskCommand)
-        try paste("unsaved local draft\n")
-        try key(1, .maskCommand)
-        try see("Saving is blocked")
+        try replaceEditorText("unsaved local draft\n")
+        _ = try expectEffect("Saving is blocked", perform: {
+            try focusEditor()
+            try key(1, .maskCommand)
+        }) { readMarker("Saving is blocked") }
         try capture(kind + "-conflict")
         let external = try ssh("cat " + fixture)
         guard external == "saved from Monaco\nexternal append\n" else { throw Failure(message: "Conflict overwrote the VM file") }
