@@ -14,6 +14,9 @@ import (
 // ErrNotFound is returned when a named VM does not exist in the driver.
 var ErrNotFound = errors.New("vm not found")
 
+// DarwinGuest is the macOS guest operating system.
+const DarwinGuest = "Darwin"
+
 // Status is the coarse lifecycle state of a VM.
 type Status string
 
@@ -50,15 +53,18 @@ type SocketAttachment struct {
 
 // Spec is everything a driver needs to create a VM.
 type Spec struct {
-	Name      string
-	Images    []Image // the driver picks the one matching the host's arch
-	CPUs      int
-	MemoryGiB int
-	DiskGiB   int
-	User      string        // admin user created in the guest
-	SSHPort   int           // host loopback port the driver binds for the guest's sshd
-	Forwards  []PortForward // published ports other than SSH
-	Socket    SocketAttachment
+	Name           string
+	GuestOS        string
+	BootScript     string            // privileged script supplied at boot
+	BootParameters map[string]string // values published to the boot script by the driver
+	Images         []Image           // the driver picks the one matching the host's arch
+	CPUs           int
+	MemoryGiB      int
+	DiskGiB        int
+	User           string        // admin user created in the guest
+	SSHPort        int           // host loopback port the driver binds for the guest's sshd
+	Forwards       []PortForward // published ports other than SSH
+	Socket         SocketAttachment
 
 	ImageDisk     string // a local, driver-native disk to copy into the new VM
 	ImageFirmware []byte // EFI boot variables saved with ImageDisk
@@ -90,9 +96,10 @@ type Size struct {
 
 // Instance is a VM as the driver sees it.
 type Instance struct {
-	Name   string
-	Status Status
-	Size   Size
+	Name    string
+	GuestOS string
+	Status  Status
+	Size    Size
 	// RuntimeDir is the driver's per-VM state directory on the host. The host
 	// confinement needs it, because the VM's host process talks over unix
 	// sockets kept there.

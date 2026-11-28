@@ -76,7 +76,7 @@ can send through Lima's file-handle NIC. Lima's default SSH forward still
 targeted the disconnected user-mode network, so `limactl start` timed
 out waiting for SSH even though VZ and the guest had started.
 
-## Before adding a profile
+## From the spike to the confined profile
 
 The unmodified homebox Seatbelt profile failed a macOS start preflight before
 launching a VM. Homebrew's Darwin guest-agent binary was installed, and
@@ -85,19 +85,38 @@ macOS still needs that binary. A profile needs a narrowly scoped way for
 the confined launcher to read the packaged agent as it builds the
 configuration disk.
 
-Keep this outside `box` until a guest can be booted and reached over pinned
-SSH under the real host policy. A socket-only configuration needs a host
-SSH forward through that network. The existing two-NIC design would need
-a macOS-specific check that the primary NIC can carry inbound SSH while
-the host-side sandbox blocks its egress. Configure the guest network
-service by the intended NIC, because the offline boot exposed no service
-named `Ethernet` for Lima's DNS setup. Provisioning and doctor also need
-an explicit noninteractive admin path. Exercise bootstrap, stop and
-restart, and add macOS guest probes for public internet, host, loopback,
-LAN and router access.
+The [macOS profile](../../README.md#macos-guests-on-apple-silicon) uses stock
+Lima and keeps its user-mode NIC for inbound SSH under Seatbelt. The guest
+uses the socket NIC for egress. The initial profile targets macOS Sequoia
+15.6.1 because the installed Xcode 16.2 supports macOS 15.x. See
+[Apple's Xcode system requirements](https://developer.apple.com/xcode/system-requirements/).
 
-The host has Xcode 16.2. Apple's supported host range for that version ends
-at macOS Sequoia 15.x, so it was not copied into this guest. Test simulator
-boot and a small app with a supported Xcode and iOS runtime after the
-confined guest can receive the tools.
-See [Apple's Xcode system requirements](https://developer.apple.com/xcode/system-requirements/).
+- Lima's `hdiutil makehybrid` exited successfully but built an ISO full of
+  empty files under the original filesystem policy. A control using a
+  13-byte input reproduced the failure. Allowing metadata access to the
+  exact APFS Data mount point restored the contents.
+- Sequoia declined its DHCP offer because the gateway answered ARP for the
+  offered address during macOS duplicate-address detection. Limiting the
+  gateway's ARP handling to its own address fixed DHCP.
+- A fresh Sequoia guest passed doctor after restarting with its original
+  exported SSH pins. Doctor reported 60 passes, zero failures and one skip
+  for Lima's local ICMP reply. A separate client identity connected through
+  the SSH relay over loopback and verified noninteractive sudo and denial
+  of SSH agent forwarding.
+
+## iOS Simulator
+
+An M2 host transferred the local Xcode 16.2 app bundle to the confined
+Sequoia guest with tar over pinned SSH. In the guest, `xcodebuild -license
+accept` and `xcodebuild -runFirstLaunch` completed noninteractively.
+CoreSimulator refused to stage the 8.1 GiB runtime image on the 55 GiB
+guest disk. A fresh guest with 4 vCPUs, 8 GiB RAM and an 80 GiB disk
+imported the host's iOS 18.3.1 runtime (`22D8075`) using
+`simctl runtime add --move`. Both assets were already installed locally,
+so staging required no Apple ID sign-in.
+
+The guest compiled a two-label SwiftUI app with the iOS Simulator SDK,
+booted an iPhone 16 headlessly with `simctl`, and installed and launched
+the app. `simctl bootstatus` finished in 45 seconds. The screenshot taken
+with `simctl io booted screenshot` rendered both labels at 1179 × 2556.
+The scratch VMs and both restore-image downloads were removed.

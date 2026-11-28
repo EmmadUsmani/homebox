@@ -221,8 +221,12 @@ func guestFrame(frame []byte) bool {
 		}
 		packet := header.ARP(payload)
 		source := tcpip.AddrFromSlice(packet.ProtocolAddressSender())
+		target := tcpip.AddrFromSlice(packet.ProtocolAddressTarget())
+		// Netstack spoofing is needed for public IP flows. Limit ARP to
+		// the gateway so it cannot claim the guest's lease during an
+		// IPv4 duplicate-address probe.
 		return packet.IsValid() && string(packet.HardwareAddressSender()) == string(guestMAC) &&
-			(source == guestAddress || source == header.IPv4Any)
+			target == gatewayAddress && (source == guestAddress || source == header.IPv4Any)
 	case ipv4.ProtocolNumber:
 		packet := header.IPv4(payload)
 		if !packet.IsValid(len(payload)) {

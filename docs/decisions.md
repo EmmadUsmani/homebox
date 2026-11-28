@@ -24,11 +24,14 @@ an established open-source project.
 
 ### macOS guest isolation
 
-**Keep macOS guests experimental** (2026-11-28, decided by the lead's worker
-overnight under the owner's autonomy grant). A `box` profile waits for a
-verified pinned SSH path and the same host and LAN isolation as Ubuntu.
-The [spike](spikes/macos-guests.md) records the Lima 2.3.0 networking and
-bootstrap behavior that a profile needs to account for.
+**Use stock Lima and the two-NIC design for macOS guests** (2026-11-28,
+decided by the lead's worker overnight under the owner's autonomy grant).
+The earlier [spike](spikes/macos-guests.md) kept macOS guests experimental
+because Lima's SSH forward needs its built-in NIC. Keep that NIC for inbound
+SSH under Seatbelt and use the confined socket gateway for egress. The initial
+profile pins macOS 15.6.1 so it can run the locally available Xcode 16.2.
+Limit the extra host-side access to the packaged agent, the exact ISO tool
+and metadata on the APFS Data mount point.
 
 ### Linux host confinement
 
