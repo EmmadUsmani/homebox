@@ -144,3 +144,6 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:56:31.221Z | d3f825cf7061 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.6s | — |
 | 2026-11-28T11:06:32.675Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 9.8s | — |
 | 2026-11-28T11:13:14.096Z | 1c7868e74d0a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.4s | — |
+| 2026-11-28T11:04:49.408Z | 442abe519242 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 487.0s | — |
+| 2026-11-28T11:06:36.460Z | a4ed96863389 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 106.8s | — |
+| 2026-11-28T11:13:53.823Z | eff5d0c5e702 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | PASS | 10/0/0 | 436.4s | GUI profile base |

@@ -236,3 +236,19 @@ Set `HOMEBOX_VERIFY_CLIPBOARD=1` on the disposable display to check clipboard
 transfer in both directions. Use `GDK_DEBUG=no-portals` with
 `HOMEBOX_VERIFY_NATIVE_DIALOGS=1` to exercise in-process GTK file choosers
 instead of presenting a chooser on the host's live desktop.
+
+For the full GUI lifecycle, start from empty disposable state. The verifier
+creates its own short state directory under home, checks host setup and creates
+a two-CPU, 4-GiB Ubuntu guest through the app. New VM uses the automatic profile
+base image. The app does not expose a saved-image picker. The verifier also
+checks reprovisioning, stopped-VM resizing and loopback port publishing,
+restart, and exact-name deletion. Keep enough disk space for the base build.
+
+```sh
+HOMEBOX_FIRST_INDEX=86 dbus-run-session -- xvfb-run -a node desktop/scripts/verify-linux.js \
+  PATH_TO_EVIDENCE desktop/dist/homebox-linux/homebox --create-delete
+```
+
+Choose an unused index when running alongside other VMs. The full tier runs
+this verifier when it selects the desktop area, including for
+`scripts/test.sh full --area desktop`.

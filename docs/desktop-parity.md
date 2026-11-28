@@ -3,7 +3,8 @@
 Host management runs on the machine hosting the VM. For VMs on other hosts,
 the app uses the laptop’s pinned SSH connection to the guest. See
 [observability](observability.md#the-desktop-app). The Linux build uses the
-same controls. VM-backed Linux verification is tracked in [To do](todo.md#desktop-and-remote-access).
+same controls. The [Linux desktop lifecycle verifier](host-setup-linux.md#install-desktop-build-dependencies)
+exercises the local VM workflow in the full tier.
 
 | CLI command or flag | App equivalent | Status |
 |---|---|---|
