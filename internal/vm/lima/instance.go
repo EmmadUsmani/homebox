@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"path/filepath"
+	"runtime"
 
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
@@ -42,6 +43,9 @@ func (r instanceRecord) instance() vm.Instance {
 	instance := vm.Instance{
 		Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
 		HostPIDFile: filepath.Join(r.Dir, "ha.pid"),
+	}
+	if runtime.GOOS == "linux" && r.VMType == "qemu" {
+		instance.SSHPIDFile = filepath.Join(r.Dir, "qemu.pid")
 	}
 	const gib = 1 << 30
 	if r.Memory%gib == 0 && r.Disk%gib == 0 {

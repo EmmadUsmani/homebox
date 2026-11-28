@@ -72,7 +72,7 @@ func Run(ctx context.Context, config Config) (err error) {
 		results <- err
 	}()
 	go func() {
-		err := serveRelay(ctx, ssh, config.HostPIDFile, logger)
+		err := serveRelay(ctx, ssh, config.HostPIDFile, config.SSHTargetSocket, logger)
 		logger.Info("SSH relay stopped", "error", err)
 		results <- err
 	}()

@@ -88,6 +88,7 @@ type Service struct {
 	HostCapacity  HostCapacity
 	HostUsage     HostUsage
 	LocalHostName func(context.Context) (string, error)
+	CheckHost     func(context.Context) error
 	OpenURL       func(context.Context, string) error
 	Progress      io.Writer
 }

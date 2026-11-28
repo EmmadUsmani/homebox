@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"os/exec"
+	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -19,8 +20,12 @@ func checkStatus(t *testing.T, box func(time.Duration, ...string) string, binary
 	if err := json.Unmarshal([]byte(output), &status); err != nil {
 		t.Fatalf("status JSON: %v\n%s", err, output)
 	}
+	source := "virtualization"
+	if runtime.GOOS == "linux" {
+		source = "qemu"
+	}
 	if status.State != "running" || status.Guest == nil || status.Guest.Memory == nil || status.Doctor == nil ||
-		status.Host == nil || status.Host.Source != "virtualization" || status.Host.PID <= 1 || status.Host.MemoryBytes == nil ||
+		status.Host == nil || status.Host.Source != source || status.Host.PID <= 1 || status.Host.MemoryBytes == nil ||
 		*status.Host.MemoryBytes == 0 || status.Provisioning == nil || status.Provisioning.FinishedAt == nil || status.Provisioning.Step != "" ||
 		status.HostAgent == nil || status.HostAgent.Source != "hostagent" || status.HostAgent.PID == status.Host.PID ||
 		status.HostAgent.MemoryBytes == nil || *status.HostAgent.MemoryBytes == 0 {

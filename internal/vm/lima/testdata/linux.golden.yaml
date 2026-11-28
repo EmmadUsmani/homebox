@@ -1,3 +1,5 @@
+param:
+    internal_netplanOptional: "true"
 vmType: qemu
 images:
     - location: https://cloud-images.ubuntu.com/releases/resolute/release-20261016/ubuntu-26.04-server-cloudimg-arm64.img
@@ -20,8 +22,6 @@ containerd:
     system: false
     user: false
 propagateProxyEnv: false
-networkOpts:
-    hostLoopback: false
 user:
     name: box
     home: /home/box

@@ -29,6 +29,14 @@ remote VMs, overview, logs, terminal, files and editor).
 
 - Review the desktop app's [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
 
+## Linux host follow-ups
+
+The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
+The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
+cover the sandbox and its limits. Linux saved disks and the full smoke
+runner image are tracked separately from the core lifecycle. Measure LAN
+publishing from a second machine and cover GPU and autostart separately.
+
 ## Update existing Ubuntu VMs for browser sandboxing
 
 New VMs get the [browser sandbox setting](../SECURITY.md#browser-processes-inside-the-ubuntu-guest)
@@ -67,8 +75,8 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 - Reconnect the socket NIC after a daemon failure without restarting the VM.
 - Pass the gateway's MAC address and subnet to the guest from box instead of
   repeating them in `guest/ubuntu/network.sh`.
-- Run the Linux process watcher (`internal/vmnet/host_process_linux.go`) on a
-  real Linux host; so far it is only cross-compiled and vetted.
+- Extend Linux sandbox coverage as newer Landlock pathname Unix-socket
+  controls become available. Recheck the QEMU launch contract when updating Lima.
 - NAT reflection: if the router reflects connections to its own public address
   into the LAN, the VM could reach a forwarded LAN port. Accepted; box could
   also deny the host's public address if it learned it without an outside

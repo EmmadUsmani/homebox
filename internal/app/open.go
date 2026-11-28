@@ -20,7 +20,7 @@ func (s *Service) Open(ctx context.Context, name, port string, print bool) (stri
 	for _, forward := range box.Forwards {
 		if forward.GuestPort == guestPort {
 			url := publishedURL(forward.HostPort)
-			if print || runtime.GOOS != "darwin" {
+			if print || (runtime.GOOS != "darwin" && runtime.GOOS != "linux") {
 				return url, nil
 			}
 			if s.OpenURL == nil {

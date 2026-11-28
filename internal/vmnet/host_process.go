@@ -20,8 +20,10 @@ import (
 )
 
 type hostProcess struct {
-	pid   int
-	start uint64
+	pid    int
+	start  uint64
+	device uint64
+	inode  uint64
 }
 
 func resolveHostProcess(pidFile string) (hostProcess, error) {
@@ -40,6 +42,9 @@ func OwnsSSHTarget(pidFile string, port int) bool {
 }
 
 func (p hostProcess) current() bool {
+	if p.inode != 0 {
+		return p.matchesPIDFD()
+	}
 	return p.pid > 1 && p.start != 0 && processStart(p.pid) == p.start
 }
 
@@ -54,11 +59,15 @@ func (p hostProcess) listenerID(target netip.AddrPort) uint64 {
 	return id
 }
 
-func serveRelay(ctx context.Context, ssh relay.Relay, pidFile string, logger *slog.Logger) error {
+func serveRelay(ctx context.Context, ssh relay.Relay, pidFile, targetSocket string, logger *slog.Logger) error {
 	ticker := time.NewTicker(pollInterval)
 	defer ticker.Stop()
 	for ctx.Err() == nil {
-		process, err := resolveHostProcess(pidFile)
+		resolve := resolveHostProcess
+		if targetSocket != "" {
+			resolve = resolveLaunchProcess
+		}
+		process, err := resolve(pidFile)
 		if err == nil && process.pid != 0 {
 			lifetime, done, err := watchHostProcess(ctx, process)
 			if err != nil {
@@ -66,7 +75,11 @@ func serveRelay(ctx context.Context, ssh relay.Relay, pidFile string, logger *sl
 			}
 			if lifetime != nil {
 				warnings := rate.NewLimiter(rate.Every(time.Minute), 1)
-				ssh.TargetListenerID = process.listenerID
+				if targetSocket != "" {
+					ssh.TargetDial = process.unixDial(targetSocket)
+				} else {
+					ssh.TargetListenerID = process.listenerID
+				}
 				ssh.TargetRefused = func(target netip.AddrPort) {
 					if warnings.Allow() {
 						logger.Warn("SSH relay refused unverified target owner", "target", target.String())

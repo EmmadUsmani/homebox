@@ -18,6 +18,7 @@ type Relay struct {
 	// TargetListenerID returns zero when ownership cannot be verified.
 	TargetListenerID func(netip.AddrPort) uint64
 	TargetRefused    func(netip.AddrPort)
+	TargetDial       func(context.Context) (net.Conn, error) // Optional kernel-verified Unix target.
 }
 
 // Bind opens the relay's listener before serving any traffic.
@@ -85,7 +86,15 @@ func (r Relay) forward(ctx context.Context, client *net.TCPConn, target netip.Ad
 	defer cancel()
 	dialer := net.Dialer{}
 	var upstream net.Conn
-	for {
+	if r.TargetDial != nil {
+		conn, err := r.TargetDial(dialCtx)
+		if err != nil {
+			r.refuse(target)
+			return
+		}
+		upstream = conn
+	}
+	for upstream == nil {
 		var listenerID uint64
 		if r.TargetListenerID != nil {
 			listenerID = r.TargetListenerID(target)
@@ -110,7 +119,7 @@ func (r Relay) forward(ctx context.Context, client *net.TCPConn, target netip.Ad
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
-	server := upstream.(*net.TCPConn)
+	server := upstream.(streamConn)
 	defer server.Close()
 	stop := context.AfterFunc(ctx, func() {
 		client.Close()
@@ -129,7 +138,12 @@ func (r Relay) refuse(target netip.AddrPort) {
 	}
 }
 
-func pipe(destination, source *net.TCPConn) {
+type streamConn interface {
+	net.Conn
+	CloseWrite() error
+}
+
+func pipe(destination, source streamConn) {
 	if _, err := io.Copy(destination, source); err != nil {
 		destination.Close()
 		source.Close()

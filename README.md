@@ -1,12 +1,12 @@
 # homebox
 
-An exe.dev-style development VM on your own hardware. Run homebox on a Mac,
+An exe.dev-style development VM on your own hardware. Run homebox on a Mac or a supported Linux host,
 then SSH from your laptop straight into an isolated Linux VM. In the VM you can
 run coding agents such as Claude Code and Codex with full permissions, run any
 server, and render and screenshot UI.
 
-**Status:** phase 1 (Mac host) works end to end. Windows and Linux hosts come
-later; see the [design document](docs/plan.md).
+**Status:** The Mac host and the Linux CLI host are supported. See the
+[design document](docs/plan.md) for the Windows host plans.
 
 ## Quick start (on the Mac that hosts the VMs)
 
@@ -29,6 +29,30 @@ alias uses the VM driver's existing identity. To add the Include yourself,
 run `box ssh-config --include` and put its output at the top of
 `~/.ssh/config`. The opt-in installer saves a copy of an existing config
 before editing it.
+
+## Quick start on Ubuntu Linux
+
+Use an x86-64 Ubuntu host with KVM access, Landlock ABI 6 or later,
+Lima 2.3.0, QEMU 10.2, OVMF, OpenSSH and iproute2. Install the distro
+QEMU and OVMF packages so QEMU and qemu-img are in `/usr/bin`. The
+[Ubuntu host setup](docs/host-setup-linux.md) has the installation script.
+`box host init` checks host prerequisites. For KVM permission errors,
+check membership in the `kvm` group and start a new login session after
+changing it.
+
+```sh
+go build -o box ./cmd/box
+./box host init
+./box new main --cpus 2 --memory 4
+./box ssh main
+./box doctor main
+```
+
+SSH and published TCP ports bind to loopback by default. For laptop access,
+use the LAN setup below. Use `box open --print main` to print a service URL
+in a session without a browser. Start and stop through `box` so each boot
+loads the Linux confinement policy. Saved VM disks and restoring from images
+require macOS with VZ.
 
 ## SSH from a laptop
 
@@ -101,7 +125,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box logs NAME [-f] [--source S] [--unit U] [-n N] [--json]` | Prints recent logs or follows new entries |
 | `box ssh-config [--host ADDR] [--installer \| --known-hosts \| --include]` | Prints laptop SSH aliases, their installer or pinned keys, or the local Include line |
 | `box repin NAME [--yes]` | Reviews and replaces pins after an intentional guest host-key change |
-| `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or prints it. The guest port defaults to 8000 |
+| `box open NAME [GUEST_PORT] [--print]` | Opens the published URL on macOS or Linux, or prints it. The guest port defaults to 8000 |
 | `box desktop NAME [--install \| --no-open]` | Installs the optional Ubuntu desktop or opens it over pinned SSH |
 | `box doctor [NAME]` | Checks guest networking, host sandbox isolation and SSH listener ownership, then saves the result for `box status` and `box ls` |
 
@@ -147,7 +171,7 @@ box desktop main
 ```
 
 The installer also works on existing boxes. The second command starts Xfce
-on demand and opens the browser on macOS. Use `--no-open` to print the
+on demand and opens the browser on macOS or Linux. Use `--no-open` to print the
 one-time URL and open it in a browser on the same machine within one minute.
 Keep the command running while you use the viewer. Ctrl-C closes the
 tunnel. You can run the command again to return to the same Xfce session
@@ -215,8 +239,9 @@ VMs don't start again on their own after the host restarts yet; run
 ## Isolation
 
 The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
-On macOS, Lima's built-in NIC carries inbound SSH and published HTTP ports
-under Seatbelt confinement. A second NIC sends IPv4 traffic over a Unix
+Lima's built-in NIC carries inbound SSH and published HTTP ports.
+On macOS the VM helper runs under Seatbelt. On Linux QEMU's built-in network
+uses restricted SLIRP and its helper processes use Landlock and seccomp. A second NIC sends IPv4 traffic over a Unix
 socket to box's per-VM gateway, which checks every new destination before
 opening a host socket.
 

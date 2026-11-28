@@ -98,6 +98,7 @@ type Instance struct {
 	// sockets kept there.
 	RuntimeDir  string
 	HostPIDFile string // file maintained by the driver host process
+	SSHPIDFile  string // Optional separate SSH listener process PID file.
 	HostLog     string // host-process log, when available
 	Socket      SocketAttachment
 	// HostAddress is the guest-side address of the host's loopback, usable
