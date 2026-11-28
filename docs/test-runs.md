@@ -124,3 +124,4 @@ check also passed.
 | 2026-11-28T10:26:30.628Z | 110f97d9014d | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 11.7s | — |
 | 2026-11-28T10:27:29.257Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 7.0s | — |
 | 2026-11-28T10:27:54.239Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 5/0/1 | 7.0s | — |
+| 2026-11-28T10:30:14.622Z | 8715a2a5e857 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 8.7s | — |

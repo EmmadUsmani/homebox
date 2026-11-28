@@ -27,11 +27,10 @@ trap cleanup EXIT
 
 bounded 120 sudo -n env "DEVELOPER_DIR=$DEVELOPER_DIR" xcodebuild -license accept
 bounded 300 sudo -n env "DEVELOPER_DIR=$DEVELOPER_DIR" xcodebuild -runFirstLaunch
-sdk=$(xcrun --sdk iphonesimulator --show-sdk-path)
 app=staging/IOSSmoke.app
 mkdir "$app"
 cp Info.plist "$app/Info.plist"
-bounded 120 xcrun swiftc -parse-as-library -sdk "$sdk" -target arm64-apple-ios18.0-simulator \
+bounded 120 xcrun --sdk iphonesimulator swiftc -parse-as-library -target arm64-apple-ios18.0-simulator \
     SmokeApp.swift -o "$app/IOSSmoke"
 codesign --sign - "$app"
 
@@ -42,17 +41,20 @@ for ((attempt=0; attempt<90; attempt++)); do
     [ "$state" = Ready ] && break
     sleep 2
 done
-[ "$state" = Ready ]
+if [ "$state" != Ready ]; then
+    sim runtime list || true
+    fail 'Imported iOS Simulator runtime did not become ready'
+    finish
+fi
 runtime_id=$(sim runtime list -j | plutil -extract "$runtime.runtimeIdentifier" raw -o - -)
 device=$(sim create HomeboxSmoke com.apple.CoreSimulator.SimDeviceType.iPhone-16 "$runtime_id")
 bounded 180 xcrun simctl bootstatus "$device" -b
 sim install "$device" "$app"
-sim launch "$device" "$bundle_id"
+app_log="$PWD/staging/app.log"
+sim launch --stdout="$app_log" "$device" "$bundle_id"
 
-for ((attempt=0; attempt<15; attempt++)); do
-    rendered=$(sim spawn "$device" log show --last 1m --style compact \
-        --predicate 'subsystem == "dev.homebox.ios-smoke" AND eventMessage == "Homebox iOS smoke"' || true)
-    if [[ $rendered == *'Homebox iOS smoke'* ]]; then
+for ((attempt=0; attempt<30; attempt++)); do
+    if [ -f "$app_log" ] && grep -Fxq 'Homebox iOS smoke' "$app_log"; then
         sim io "$device" screenshot screenshot.png
         pass "$label"
         exit 0

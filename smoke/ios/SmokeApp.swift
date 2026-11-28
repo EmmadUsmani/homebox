@@ -1,4 +1,4 @@
-import OSLog
+import Foundation
 import SwiftUI
 
 @main
@@ -10,8 +10,7 @@ struct SmokeApp: App {
             Text(title)
                 .font(.title)
                 .onAppear {
-                    Logger(subsystem: "dev.homebox.ios-smoke", category: "view")
-                        .notice("\(title, privacy: .public)")
+                    FileHandle.standardOutput.write(Data("\(title)\n".utf8))
                 }
         }
     }
