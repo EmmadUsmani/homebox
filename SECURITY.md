@@ -35,15 +35,12 @@ confinement enforce the VM-to-Mac boundary independently. See the
 
 ### The VM and the macOS host
 
-These controls apply to homebox's Ubuntu guests. Lima's experimental macOS
-guest templates have a separate networking and bootstrap path.
-See the [macOS guest spike](docs/spikes/macos-guests.md).
-
-- **A full VM.** Each VM is its own Linux kernel and disk under Apple's
+- **A full VM.** Each VM is its own kernel and disk under Apple's
   Virtualization framework, through Lima's `vz` driver. It's not a container.
 - **Nothing shared.** No mounts of host folders, no SSH agent forwarding and no
-  X11 forwarding: the guest's sshd refuses both, whatever the client asks for
-  ([`guest/ubuntu/base.sh`](guest/ubuntu/base.sh)).
+  X11 forwarding. The guest's default sshd configuration refuses both even if
+  the client requests them. See [Ubuntu provisioning](guest/ubuntu/base.sh) and
+  [macOS boot provisioning](guest/macos/boot.sh).
 - **No host loopback, no host DNS.** Lima's host-loopback access and host
   resolver are turned off, so the VM can't reach services listening on the
   Mac's `localhost`.
@@ -63,6 +60,25 @@ See the [macOS guest spike](docs/spikes/macos-guests.md).
 When restoring an image into a fresh state directory, `box` generates the
 dedicated Lima login key before launching the confined host agent.
 Image restores use the same host-agent file, process and network permissions.
+
+### macOS guest profile
+
+The confined user-mode NIC carries inbound SSH. A separate file-handle NIC
+connects to the IPv4 gateway. The guest bootstrap identifies that NIC by
+its MAC, gives the SSH NIC an address without a default route, and uses
+public DNS on the gateway NIC. The host policy enforces the boundary even
+if guest root changes those settings.
+
+Lima reads its packaged Darwin agent to generate the guest configuration ISO.
+Its Seatbelt profile allows the individually named agent files and
+`/usr/bin/hdiutil` under the same filesystem and network restrictions.
+ISO generation needs metadata access to the APFS Data mount point itself.
+The profile keeps directory contents and Mach service restrictions in place.
+The guest configuration ISO is read-only.
+
+`box doctor` checks public IPv4 access and probes host canaries, LAN addresses
+and the router through both NICs. Lima can answer ICMP locally at its own
+virtual gateway, so the loopback canaries use TCP and UDP.
 
 ### The VM and the Linux host
 
