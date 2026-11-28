@@ -128,3 +128,16 @@ window for end-to-end checks. This matches the
   the accessibility tree omits.
 - Local lifecycle buttons need an explicit daemon executable strategy before
   they can reuse the CLI's isolation setup.
+
+## Ubuntu desktop build
+
+Ubuntu 26.04 uses Wails' GTK4 and WebKitGTK 6.0 backend. The cgo build also
+needs X11 headers for Wails' X11 shortcut implementation. The app builds
+with the matching `box` binary in the same directory. The Ubuntu build and
+real-window verification commands are in [Ubuntu host setup](../host-setup-linux.md#install-desktop-build-dependencies).
+
+The native GTK viewer uses a separate ephemeral WebKitGTK context and
+session. The isolation fixture runs the same C implementation under X11,
+checks a real user gesture, and reopens the origin to check that the first
+view's storage disappears. The fixture and the platform-specific limits
+are documented in [Linux guest viewer](../SECURITY.md#linux-guest-viewer).

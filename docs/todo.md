@@ -16,7 +16,12 @@ remote VMs, overview, logs, terminal, files and editor).
    selection of KasmVNC. Both `box desktop NAME` and the app's Desktop tab
    are built and verified on a local Mac and VM.
 
-   The macOS app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+   The app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+
+- Extend the Ubuntu [desktop smoke checks](host-setup-linux.md#install-desktop-build-dependencies)
+  to a second physical host over the LAN. The Linux VM-backed smoke uses a
+  pinned loopback alias for the remote SSH path. Full creation, provisioning,
+  and deletion through the Linux GUI still need a dedicated run.
 
 - The local Settings tab and About close the host settings and version gaps.
   The [parity audit](desktop-parity.md) tracks remaining coverage, including a

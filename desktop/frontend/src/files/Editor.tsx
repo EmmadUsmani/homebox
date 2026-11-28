@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { isMac } from "../platform";
 import { useEffect, useRef } from "react";
 import { Clipboard } from "@wailsio/runtime";
 import * as monaco from "monaco-editor/editor/editor.api.js";
@@ -43,7 +44,8 @@ export default function Editor({ path, initial, onChange, onSave }: {
         const change = model.onDidChangeContent(() => callbacks.current.onChange(model.getValue(monaco.editor.EndOfLinePreference.TextDefined, true)));
         editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => callbacks.current.onSave());
         const clipboard = editor.onKeyDown((event) => {
-            if (!event.metaKey || event.altKey || event.ctrlKey || event.shiftKey) return;
+            const clipboardModifier = isMac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+            if (!clipboardModifier || event.altKey || event.shiftKey) return;
             if (event.keyCode === monaco.KeyCode.KeyC) {
                 const selected = editor.getSelection();
                 if (!selected || selected.isEmpty()) return;

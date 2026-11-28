@@ -245,6 +245,39 @@ pasteboard change count stayed the same. The
 [bundle verification](desktop/scripts/verify-desktop.swift) checks the
 same native view in the running app with a real VM.
 
+### Linux guest viewer
+
+The [GTK viewer](desktop/desktop_view_linux.c) has a dedicated WebKit web
+context, user content manager, and ephemeral network session with its own
+nonpersistent website data manager. It has no Wails asset scheme, runtime
+scripts or message handlers. Native policy accepts navigation requests and
+displayable main-frame responses on the exact loopback proxy origin,
+including after redirects. The viewer connects directly to the loopback
+listener. The proxy CSP disallows frames and cross-origin
+resources. WebKitGTK's navigation action API does not expose an explicit
+main-frame flag, so the frame restriction starts at the proxy CSP and is
+also checked at the native response stage. Popups, downloads, file pickers,
+context menus and permission requests are declined.
+
+The viewer disables WebKitGTK JavaScript clipboard access and guards clipboard
+methods, legacy editing commands, clipboard shortcuts, paste gestures, and
+drag and drop at document start. KasmVNC's clipboard channels remain disabled.
+The trusted toolbar uses GTK's standard clipboard and the same bounded,
+pinned-SSH plain-text transfer as macOS. GTK text must be UTF-8 and cannot
+contain embedded NULs.
+
+WebKitGTK manages the separate Linux PRIMARY selection internally. The viewer
+suppresses ordinary pointer text selection and middle-click paste. WebKitGTK
+has no per-view switch for automatic publication of programmatically selected
+text to PRIMARY. This is a guest-to-host selection limitation distinct from
+the standard CLIPBOARD selection and explicit toolbar transfers.
+
+The [Linux isolation fixture](desktop/scripts/verify-desktop-isolation-linux.js)
+drives the native viewer with a real click. It checks absence of Wails bindings,
+clipboard API denial, the standard host clipboard, popup and attachment
+denial, direct and redirected navigation to an unrelated origin, and clear
+cookies and local storage on reopening the same origin.
+
 ### Logs
 
 Box treats guest journal entries, provisioning output and host log fields

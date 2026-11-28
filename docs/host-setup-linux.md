@@ -104,3 +104,52 @@ from the repository root. The runner uses disposable Linux VM state.
 See [Testing](../README.md#testing) for tier selection, evidence and options,
 and [the smoke image recipe](../images/homebox-smoke/README.md) for building
 the local amd64 image used by the change tier.
+
+## Install desktop build dependencies
+
+The full contributor setup includes the GTK4, WebKitGTK 6.0 and X11
+development libraries used by the Wails v3 desktop module, plus `xdg-open`
+for published server links. To add these
+dependencies to an existing Ubuntu 26.04 setup, run these commands.
+
+```sh
+sudo apt-get update
+sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev xdg-utils
+pkg-config --modversion gtk4 webkitgtk-6.0 x11
+```
+
+For the build and launcher, see [Desktop app](../README.md#desktop-app).
+To drive the built app and capture its windows in a graphical Ubuntu session,
+run the following from the repository root. The runner uses Xwayland,
+`x11-utils`, `python3-gi`, `gir1.2-atspi-2.0` and `gir1.2-gtk-3.0`.
+
+```sh
+node desktop/scripts/verify-linux.js PATH_TO_EVIDENCE
+```
+
+Run the native isolation fixture on a disposable X11 display. It sets that
+display's clipboard and uses XTest for a real click.
+
+```sh
+xvfb-run -a node desktop/scripts/verify-desktop-isolation-linux.js PATH_TO_EVIDENCE --replace-clipboard
+```
+
+The fixture uses `xvfb`, `xauth` and `libxtst6` in addition to the desktop
+build dependencies.
+
+For VM-backed GUI verification, use a disposable running VM and an Xvfb
+display for reliable keyboard events. Pass the app executable and the VM name. The runner replaces
+`homebox-linux-fixture.txt` in the guest's home directory.
+
+```sh
+box ssh NAME -- 'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"'
+box desktop NAME --install
+HOMEBOX_HOME=PATH_TO_TEST_STATE xvfb-run -a node desktop/scripts/verify-linux.js \
+  PATH_TO_EVIDENCE desktop/dist/homebox-linux/homebox NAME
+```
+
+Set `HOMEBOX_VERIFY_LIFECYCLE=1` to stop and start the disposable VM.
+Set `HOMEBOX_VERIFY_CLIPBOARD=1` on the disposable display to check clipboard
+transfer in both directions. Use `GDK_DEBUG=no-portals` with
+`HOMEBOX_VERIFY_NATIVE_DIALOGS=1` to exercise in-process GTK file choosers
+instead of presenting a chooser on the host's live desktop.

@@ -251,23 +251,42 @@ when root in the guest changes its routes. Run `box doctor` to check.
 See [SECURITY.md](SECURITY.md) for the full security model, and the
 [architecture](docs/architecture.md) for known limitations.
 
-## Desktop app (macOS)
+## Desktop app
 
-For a VM on this Mac, use **Settings** to manage published ports, resize a
+For a local VM, use **Settings** to manage published ports, resize a
 stopped VM, review changed SSH host keys, or copy the laptop SSH setup.
 **About homebox** in the app menu shows the app and bundled `box` versions.
 See [Desktop and CLI parity](docs/desktop-parity.md).
 
-Build from the repository root with Go 1.27.4, Xcode Command Line Tools and
-Node.js 22 (22.12 or later), 24, or 26+. For local VMs, install Lima in a
-standard Homebrew location (`/opt/homebrew/bin` or `/usr/local/bin`).
+Build from the repository root with Go 1.27.4 and Node.js 22 (22.12 or
+later), 24, or 26+. On macOS, install Xcode Command Line Tools and put Lima
+in a standard Homebrew location (`/opt/homebrew/bin` or `/usr/local/bin`).
 
 ```sh
 node desktop/scripts/build.js
 open desktop/dist/homebox.app
 ```
 
-Choose **Set up this Mac** when prompted, then **New VM** under **This Mac**.
+On Ubuntu 26.04, install the [desktop build dependencies](docs/host-setup-linux.md#install-desktop-build-dependencies).
+Build and run the application from a graphical session.
+
+```sh
+node desktop/scripts/build.js
+desktop/dist/homebox-linux/homebox
+```
+
+Keep `homebox` and its bundled `box` together. To add a launcher, install the
+generated entry into the current user's application menu.
+
+```sh
+install -Dm644 desktop/dist/homebox-linux/homebox.desktop "${XDG_DATA_HOME:-$HOME/.local/share}/applications/homebox.desktop"
+```
+
+The launcher points to this build directory. Reinstall the entry after
+moving the build. Local Linux VMs require [Linux host support](docs/host-setup-linux.md).
+
+Choose **Set up this Mac** or **Set up this host** when prompted, then
+**New VM**.
 The form starts with the same profile and sizes as `box new`, and the operation
 panel shows provisioning steps and logs while you browse other VMs.
 The app lists local VMs, including stopped ones, and shows their status,
@@ -279,7 +298,8 @@ connection and run separate shells. For remote VMs, the app offers SSH agent
 keys first, then tries unencrypted default SSH keys. **Files** browses the
 selected VM over SFTP, starting in the SSH user's home directory. Upload and
 download use native file dialogs. Open UTF-8 text files up to 2 MiB for light
-editing, press ⌘S to save or ⌘F to find, and use **Reload and compare** if
+editing, use ⌘S and ⌘F on macOS or Ctrl+S and Ctrl+F on Linux to save
+and find, and use **Reload and compare** if
 the VM file changed since you opened it. Open **Desktop** and choose
 **Connect** to use Xfce in the app. If the layer is missing, choose
 **Install desktop** on a running Ubuntu VM. Leaving the tab or switching
@@ -288,7 +308,7 @@ Use **Paste to VM** and **Copy from VM** in the connected Desktop toolbar
 to transfer plain text, up to 1 MiB per click. After **Paste to VM**,
 paste from the clipboard in the guest app. Run `box desktop NAME --install`
 to add clipboard support to an existing desktop layer. Use **Files** to
-move files between your Mac and the VM.
+move files between your computer and the VM.
 
 The bundle embeds the frontend and includes the matching `box` executable for
 the network daemon.
@@ -296,10 +316,11 @@ Other hosts lists VMs from the laptop SSH installer. Use **Add a host** for
 another SSH alias pinned in `~/.ssh/homebox_known_hosts`. Reachable VMs show
 live guest readings. A changed or missing pin blocks the connection. After an
 intentional rebuild, review and replace the host keys in **Settings** on the
-VM's Mac or run `box repin NAME` there. Then reinstall the
+VM's host or run `box repin NAME` there. Then reinstall the
 laptop SSH config.
 
-See the [spike report](docs/spikes/wails-desktop.md) for the build background.
+See the [spike report](docs/spikes/wails-desktop.md) for the build background and
+[SECURITY.md](SECURITY.md#linux-guest-viewer) for Linux viewer isolation and limits.
 
 ## Testing
 

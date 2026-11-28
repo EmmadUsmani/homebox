@@ -1,3 +1,4 @@
+import { thisHost } from "../platform";
 import { type FormEvent, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Call } from "@wailsio/runtime";
 import type { CreateOptions, Defaults, LifecycleController } from "./useLifecycle";
@@ -104,7 +105,7 @@ export function VMActions({ name, busy, lifecycle }: {
 }
 
 const operationLabels = {
-    Setup: ["Setting up this Mac…", "Host setup complete", "Host setup failed"],
+    Setup: [`Setting up ${thisHost}…`, "Host setup complete", "Host setup failed"],
     Create: ["Creating VM…", "VM created", "VM creation failed"],
     Provision: ["Provisioning VM…", "Provisioning complete", "Provisioning failed"],
     Delete: ["Deleting VM…", "VM deleted", "VM deletion failed"],
@@ -121,8 +122,8 @@ export function LifecycleStatus({ lifecycle }: { lifecycle: LifecycleController 
     return <>
         {host?.error && <p className="notice header-notice" role="alert">{host.error}</p>}
         {host?.data === false && <div className="lifecycle-status">
-            <p>Set up this Mac to create local VMs. Setup checks Lima and saves local-only port publishing.</p>
-            <button type="button" disabled={job?.active} onClick={() => void run("Setup")}>Set up this Mac</button>
+            <p>Set up {thisHost} to create local VMs. Setup checks Lima and saves local-only port publishing.</p>
+            <button type="button" disabled={job?.active} onClick={() => void run("Setup")}>Set up {thisHost}</button>
         </div>}
         {job && <section className="lifecycle-status" aria-label="VM operation progress">
             <div className="lifecycle-status-heading">

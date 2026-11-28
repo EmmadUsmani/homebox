@@ -66,8 +66,10 @@ func NewService(executable func() (string, error)) (*app.Service, error) {
 
 // NewDesktopService supplies the tool path missing from Finder launches.
 func NewDesktopService(executable func() (string, error)) (*app.Service, error) {
-	if err := os.Setenv("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"); err != nil {
-		return nil, err
+	if runtime.GOOS == "darwin" {
+		if err := os.Setenv("PATH", "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"); err != nil {
+			return nil, err
+		}
 	}
 	return NewService(executable)
 }

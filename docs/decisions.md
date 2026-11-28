@@ -305,3 +305,12 @@ directly. Explicit backend and guest architecture metadata keep boot checks
 specific to the hypervisor and CPU. The existing VZ archive layout stays
 readable. Import and restore reject qcow2 references to other files so a
 saved disk needs only the documented host firmware and its own contents.
+
+## 2026-11-27 · Ubuntu desktop build
+
+The owner requested that the desktop app run on the Ubuntu host. The
+implementation uses Wails' default GTK4 build and a dedicated ephemeral
+WebKitGTK viewer inside the existing layout. This keeps the viewer on the
+same platform toolkit as the application while preserving the display proxy
+and pinned SSH path. [Linux viewer isolation](../SECURITY.md#linux-guest-viewer)
+records the WebKitGTK clipboard and navigation limits.

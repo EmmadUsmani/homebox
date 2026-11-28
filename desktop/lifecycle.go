@@ -37,7 +37,7 @@ func (l *Lifecycle) HostReady() (bool, error) {
 func (l *Lifecycle) Setup(ctx context.Context) error {
 	return l.run("", func(service *app.Service) error {
 		if _, err := exec.LookPath("limactl"); err != nil {
-			return errors.New("Install Lima in /opt/homebrew/bin or /usr/local/bin, then try again")
+			return errors.New("Install Lima on the host PATH, then try again")
 		}
 		return service.HostInit(ctx, app.HostInitOptions{})
 	})
