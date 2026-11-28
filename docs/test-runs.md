@@ -5,6 +5,14 @@ runner steps as pass/fail/skip. `scripts/test.sh last` reports default and
 partial passes separately. The VM source is recorded for new runs. The
 2026-11-27 01:30 UTC duration includes laptop sleep during VM boot.
 
+The [Ubuntu agent factory run](../factory/README.md#verified-guest-runs)
+on 2026-11-28 ran separately from the change tier. On an x86-64 Ubuntu
+26.04.1 LTS host with a four-CPU, 6 GiB `homebox-smoke` guest, it passed
+ten consecutive project health checks and published ten commits in 27m 57s.
+The final commit (`ed36dbc31cd7` in the guest project) passed eight Python
+tests and HTTP probes. A guest Chromium capture and a Compose persistence
+check also passed.
+
 | UTC time | Commit | Dirty | Host model | OS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-26T21:40:18.519Z | 0dd064dde43f | yes | Mac14,10 | 27.2.1 | batch | partial | os | FAIL | 8/1/0 | 364.6s | — |
