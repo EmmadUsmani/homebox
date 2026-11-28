@@ -1,6 +1,7 @@
 package lima
 
 import (
+	"context"
 	"errors"
 	"os"
 	"path/filepath"
@@ -198,4 +199,59 @@ func TestMissingHome(t *testing.T) {
 		t.Fatal("List allowed an unset Lima home")
 	}
 	assertCommands(t, runner, []string{})
+}
+
+func TestMacOSStartRequiresConfinementAndSocket(t *testing.T) {
+	const record = `{"name":"mac","status":"Stopped","dir":"/fixture/lima/mac","config":{"os":"Darwin"}}`
+	runner := &execx.Fake{}
+	runner.On("limactl list --json", record, nil)
+	driver := New(Options{Home: fixtureHome, Runner: runner})
+	for _, opts := range []vm.StartOptions{
+		{Wrap: []string{"sandbox-exec"}},
+		{Socket: vm.SocketAttachment{Path: "/fixture/g.sock"}},
+	} {
+		if err := driver.Start(t.Context(), "mac", opts); err == nil {
+			t.Fatal("unconfined or disconnected macOS launch was accepted")
+		}
+	}
+	assertCommands(t, runner, []string{"limactl list --json", "limactl list --json"})
+}
+
+type commandHandler func(context.Context, execx.Cmd) (execx.Result, error)
+
+func (h commandHandler) Run(ctx context.Context, cmd execx.Cmd) (execx.Result, error) {
+	return h(ctx, cmd)
+}
+
+func TestMacOSStopConfirmsShutdownWithoutExitEvent(t *testing.T) {
+	shutdown := make(chan struct{})
+	stopFinished := make(chan struct{})
+	driver := New(Options{Home: fixtureHome, Runner: commandHandler(func(ctx context.Context, cmd execx.Cmd) (execx.Result, error) {
+		switch cmd.Args[0] {
+		case "list":
+			status := "Running"
+			select {
+			case <-shutdown:
+				status = "Stopped"
+			default:
+			}
+			record := `{"name":"mac","status":"` + status + `","dir":"/fixture/lima/mac","config":{"os":"Darwin"}}`
+			return execx.Result{Stdout: []byte(record)}, nil
+		case "stop":
+			close(shutdown)
+			<-ctx.Done()
+			close(stopFinished)
+			return execx.Result{}, ctx.Err()
+		default:
+			return execx.Result{}, errors.New("unexpected command")
+		}
+	})})
+	if err := driver.Stop(t.Context(), "mac"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-stopFinished:
+	default:
+		t.Fatal("shutdown left limactl waiting for its exit event")
+	}
 }

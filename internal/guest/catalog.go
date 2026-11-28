@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/EmmadUsmani/homebox/internal/vm"
 	"go.yaml.in/yaml/v3"
 )
 
@@ -61,6 +62,14 @@ func (c *Catalog) loadProfile(path string) (Profile, error) {
 	}
 	if len(profile.Images) == 0 {
 		return profile, fmt.Errorf("missing images")
+	}
+	if profile.OS != "" && profile.OS != vm.DarwinGuest {
+		return profile, fmt.Errorf("unsupported guest OS %q", profile.OS)
+	}
+	if profile.BootScript != "" {
+		if _, err := c.ReadScript(profile.BootScript); err != nil {
+			return profile, fmt.Errorf("boot script: %w", err)
+		}
 	}
 	for _, image := range profile.Images {
 		if strings.TrimSpace(image.Arch) == "" || strings.TrimSpace(image.URL) == "" {

@@ -17,6 +17,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/untrusted"
+	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
 const baseImageDiskGiB = 20
@@ -75,6 +76,9 @@ func (s *Service) RebuildImage(ctx context.Context, profileName, version string)
 	if err != nil {
 		return err
 	}
+	if profile.OS == vm.DarwinGuest {
+		return errors.New("rebuilding macOS guest base images is unavailable; use box new --profile macos to install a guest")
+	}
 	if len(profile.ImageUpdate) == 0 {
 		return fmt.Errorf("profile %q does not define base image updates", profile.Name)
 	}
@@ -93,7 +97,7 @@ func (s *Service) RebuildImage(ctx context.Context, profileName, version string)
 
 func (s *Service) profileBase(ctx context.Context, options NewOptions, profile guest.Profile, user string) (string, error) {
 	driver, ok := s.Driver.(baseImageDriver)
-	if !ok || driver.ImageBackend() == "" || len(profile.ImageUpdate) == 0 || options.DiskGiB < baseImageDiskGiB {
+	if !ok || driver.ImageBackend() == "" || profile.OS == vm.DarwinGuest || len(profile.ImageUpdate) == 0 || options.DiskGiB < baseImageDiskGiB {
 		return "", nil
 	}
 	name := "base-" + profile.Name

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	guestfs "github.com/EmmadUsmani/homebox/guest"
 	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/state"
@@ -224,5 +225,22 @@ func TestImageCompatibility(t *testing.T) {
 	image.Arch = "riscv64"
 	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "riscv64") {
 		t.Fatalf("foreign image architecture: %v", err)
+	}
+}
+
+func TestRebuildImageRefusesMacOSGuest(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	catalog, err := guest.NewCatalog(guestfs.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service.Profiles = catalog
+	service.Driver = baseTestDriver{testDriver: testDriver{driver}}
+	err = service.RebuildImage(t.Context(), "macos", "test")
+	if err == nil || !strings.Contains(err.Error(), "rebuilding macOS guest base images is unavailable") {
+		t.Fatalf("expected a macOS guest image refusal, got %v", err)
+	}
+	if len(driver.Specs) != 0 {
+		t.Fatal("rebuild created a macOS guest")
 	}
 }

@@ -22,6 +22,8 @@ type Step struct {
 type Profile struct {
 	Name        string
 	Description string
+	OS          string
+	BootScript  string `yaml:"bootScript"`
 	Images      []vm.Image
 	Steps       []Step
 	ImageUpdate []Step `yaml:"imageUpdate"`

@@ -196,8 +196,9 @@ func rules(box state.Box, instance vm.Instance) confine.Rules {
 		binds = append(binds, confine.Bind{Port: forward.HostPort, LAN: forward.HostIP != "127.0.0.1"})
 	}
 	return confine.Rules{
-		RuntimeDir: instance.RuntimeDir,
-		ConnectTCP: []int{sshTarget},
-		BindTCP:    binds,
+		RuntimeDir:  instance.RuntimeDir,
+		DarwinGuest: instance.GuestOS == vm.DarwinGuest,
+		ConnectTCP:  []int{sshTarget},
+		BindTCP:     binds,
 	}
 }
