@@ -103,10 +103,9 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
 
 ## Base images (phase 2)
 
-Saved-image commands are available. Automatically building and refreshing a
-profile's base image, including `box image rebuild [--profile P]`, remains open.
-Future project images, including profile base images for `box image rebuild`,
-follow the [image recipe convention](../images/README.md). See [Images](plan.md#images).
+The Mac VZ and Linux QEMU backends support automatic profile bases and manual refresh with
+`box image rebuild [--profile P]`. See the [Ubuntu recipe](../images/base-ubuntu/README.md).
+Real-VM verification of the base rebuild and reuse on Linux is pending.
 
 ## Start VMs again when the host boots
 

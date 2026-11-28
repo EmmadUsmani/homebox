@@ -84,3 +84,21 @@ automatic publication if the agent changes the checked-out branch, HEAD,
 origin URLs, or tracked owner files. A process with the same guest permissions
 can bypass those checks. Use a dedicated VM containing only the projects and
 credentials this task needs. See [secrets in the VM](../SECURITY.md#secrets-in-the-vm).
+
+## Verified guest runs
+
+- **Apple silicon Mac, 2026-11-28.** The single-turn smoke test built and
+  published a small reading-list app to a bare repository in the guest.
+- **Ubuntu 26.04.1 LTS on x86-64, 2026-11-28.** The supervisor ran inside a
+  Lima QEMU/KVM guest created from `homebox-smoke` with four CPUs and 6 GiB
+  of memory. With `RUN_HOURS=1.5` and medium reasoning, it published ten
+  commits in ten turns to a bare repository in the guest. The run took 27m 57s
+  and was stopped after the mission was complete.
+
+The Ubuntu run built Recipe Shelf, a SQLite recipe manager with a REST API,
+browser CRUD and search, a Dockerfile, and a Compose configuration. Each turn
+passed the test and HTTP health check before publication. Final verification
+covered eight Python tests, a screenshot from sandboxed guest Chromium, and
+SQLite data surviving Compose container replacement. The temporary Codex
+login and guest were removed after the run, and the project history was
+retained as a Git bundle. See the [test record](../docs/test-runs.md).

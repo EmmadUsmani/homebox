@@ -48,6 +48,12 @@ func (*Driver) Name() string { return "lima" }
 
 func (*Driver) ImageBackend() string { return backend(runtime.GOOS) }
 
+// ValidateSocketPaths checks the longest Lima instance socket, including OpenSSH's suffix.
+func (d *Driver) ValidateSocketPaths(name string) error {
+	const longestSocket = "ssh.sock.1234567890123456"
+	return vm.ValidateUnixSocketPath(filepath.Join(d.options.Home, name, longestSocket))
+}
+
 // Create creates a stopped VM from the supplied spec.
 func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {

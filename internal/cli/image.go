@@ -36,6 +36,15 @@ func imageCommand(service Application, version string) *cobra.Command {
 			return service.ExportImage(cmd.Context(), args[0], args[1])
 		}},
 	)
+	var profile string
+	rebuild := &cobra.Command{
+		Use: "rebuild", Short: "Build a signed-out base image from a guest profile", Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return service.RebuildImage(cmd.Context(), profile, version)
+		},
+	}
+	rebuild.Flags().StringVar(&profile, "profile", "", "Guest profile (default ubuntu)")
+	command.AddCommand(rebuild)
 	var sourceHome string
 	copyCommand := &cobra.Command{
 		Use: "copy IMAGE --from-home DIR", Short: "Copy an image from a trusted local store", Args: cobra.ExactArgs(1),

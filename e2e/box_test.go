@@ -104,7 +104,7 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 	cleanupVM(name)
 
-	box(12*time.Minute, "new", name, "--cpus", "2", "--memory", "4", "--disk", "20")
+	box(12*time.Minute, "new", name, "--cpus", "2", "--memory", "4", "--disk", "20", "--force-provision")
 	record, err := store.Load(name)
 	if err != nil {
 		t.Fatal(err)

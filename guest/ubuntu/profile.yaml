@@ -19,3 +19,6 @@ steps:
   - {name: Playwright Chromium, script: common/playwright.sh, root: false}
   - {name: Tailscale, script: ubuntu/tailscale.sh, root: true}
   - {name: Self-test, script: common/selftest.sh, root: false}
+imageUpdate:
+  - {name: OS updates, script: ubuntu/image-update.sh, root: true}
+  - {name: Agent updates, script: common/image-update.sh, root: false}

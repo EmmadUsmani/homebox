@@ -334,8 +334,8 @@ and provider credentials to the work you intend to authorize.
   never a personal token with full access.
 - A host-side credential proxy that keeps tokens out of the VM is planned
   (phase 3 in the [design](docs/plan.md)).
-- Images, when they exist (phase 2), will carry whatever was on the disk,
-  logins included. Base images are built before anything is logged in.
+- Explicitly saved images carry the guest disk, including any logins.
+  Managed profile bases start from a fresh cloud image.
 
 Saved images and exported archives include the whole guest disk. They can
 contain SSH credentials, API tokens, agent logins, local data and deleted data
@@ -351,6 +351,9 @@ restricted network and confined processes as freshly provisioned VMs.
 
 The [project image recipes](images/README.md) build signed-out guests and
 check known credential paths and common plaintext token formats before saving.
+The managed base builder uses the normal isolation controls, binds its ports
+to loopback and skips adding laptop SSH keys to the build guest. It checks
+`box doctor` before scanning and saving the disk.
 The [smoke image](images/homebox-smoke/README.md) regenerates its PostgreSQL
 TLS key when a new guest boots.
 The scanner cannot inspect secrets inside compressed archives or arbitrary
