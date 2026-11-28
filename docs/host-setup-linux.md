@@ -95,3 +95,12 @@ shellcheck scripts/setup-ubuntu.sh
 go vet ./...
 go test ./...
 ```
+
+## Run the smoke tiers
+
+With KVM access, Go, Node.js and ShellCheck available, run
+`scripts/test.sh change`, `scripts/test.sh batch`, or `scripts/test.sh full`
+from the repository root. The runner uses disposable Linux VM state.
+See [Testing](../README.md#testing) for tier selection, evidence and options,
+and [the smoke image recipe](../images/homebox-smoke/README.md) for building
+the local amd64 image used by the change tier.

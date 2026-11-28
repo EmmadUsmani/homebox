@@ -5,7 +5,7 @@ runner steps as pass/fail/skip. `scripts/test.sh last` reports default and
 partial passes separately. The VM source is recorded for new runs. The
 2026-11-27 01:30 UTC duration includes laptop sleep during VM boot.
 
-| UTC time | Commit | Dirty | Mac model | macOS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
+| UTC time | Commit | Dirty | Host model | OS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-26T21:40:18.519Z | 0dd064dde43f | yes | Mac14,10 | 27.2.1 | batch | partial | os | FAIL | 8/1/0 | 364.6s | — |
 | 2026-11-26T21:44:13.706Z | 0dd064dde43f | yes | Mac14,10 | 27.2.1 | full | partial | gui | FAIL | 8/1/0 | 378.4s | — |

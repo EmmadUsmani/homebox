@@ -1,12 +1,12 @@
 # Combined smoke image
 
-`homebox-smoke` is a saved Ubuntu guest disk for Lima VZ on an Apple silicon
-Mac. It includes the normal homebox profile, the Xfce remote desktop layer,
+`homebox-smoke` is a saved Ubuntu guest disk for Lima VZ on Apple silicon macOS
+or Lima QEMU on x86-64 Linux. It includes the normal homebox profile, the Xfce remote desktop layer,
 and the packages, runtimes, browser builds, container images, and test files
 installed by the [smoke areas](../../smoke/README.md#areas). The optional News Digest
 area uses a Git archive of a local checkout and generated fixture data.
 
-## Recorded export (2026-11-26)
+## Recorded macOS export (2026-11-26)
 
 - Archive `~/homebox-images/homebox-smoke-check-20261126.hbimg.gz`
 - Compressed size 18,594,706,851 bytes
@@ -27,8 +27,9 @@ for unavailable hardware performance counters. A fresh restore passed
 
 ## Build it
 
-Use an Apple silicon Mac with [the homebox host prerequisites](../../docs/host-setup-macos.md),
-Go for building `box` (or set `BOX` to a compatible executable), and enough
+Use an [Apple silicon Mac](../../docs/host-setup-macos.md) or an
+[x86-64 Linux host with KVM](../../docs/host-setup-linux.md), Go for building
+`box` (or set `BOX` to a compatible executable), and enough
 CPU and memory for a 4-vCPU, 8 GiB guest. The VM has an 80 GiB logical disk.
 Allow space for both the sparse VM disk and the saved image, plus at least
 20 GB for an optional compressed export. Allow about an hour for provisioning,
@@ -83,7 +84,7 @@ Copy refuses to overwrite an existing image.
 
 ## Load it and repeat the checks
 
-On a compatible Mac, copy the export manually and import it into the intended
+On a host with the same backend and guest architecture, copy the export manually and import it into the intended
 `HOMEBOX_HOME`. For a locally built image, set `HOMEBOX_HOME` to the state
 directory printed by the builder and start at `box new`. If the builder
 compiled the CLI, its executable is at `$HOMEBOX_HOME/box`. Use the image
@@ -102,9 +103,9 @@ SSH host keys and pins. Box restarts it once during setup so systemd and
 the journal use the new identity. Ubuntu generates a fresh TLS key for
 PostgreSQL on first boot. Smoke setup scripts reuse installed tools
 and caches, including both Playwright browser revisions. The runner restages
-the News Digest source from the checkout given for that run. If loading on another Mac, the original files and caches
+the News Digest source from the checkout given for that run. If loading on another host, the original files and caches
 keep their guest home directory and ownership. Run `box image ls` to see the
-logical disk size and the SHA-256 of the raw disk.
+logical disk size and the SHA-256 of the saved disk file.
 
 To apply newer guest-profile scripts to an older restored VM, run
 `box provision smoke-clone` before running the smoke suite.

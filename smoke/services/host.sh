@@ -29,12 +29,18 @@ listener() {
     host_port=$(printf '%s\n' "$1" | cut -d ' ' -f 1)
     bind=$(printf '%s\n' "$1" | cut -d ' ' -f 2)
     case "$bind" in
-        127.0.0.1) address=$bind ;;
-        0.0.0.0) address='*' ;;
+        127.0.0.1|0.0.0.0) ;;
         *) return 1 ;;
     esac
-    [ "$2" = "http://127.0.0.1:$host_port/" ] &&
-        [ "$(lsof -nP -a -iTCP:"$host_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')" = "$address:$host_port" ]
+    if [ "$(uname -s)" = Linux ]; then
+        listeners=$(ss -H -4 -ltn "sport = :$host_port" | awk '{print $4}')
+        address=$bind
+    else
+        listeners=$(lsof -nP -a -iTCP:"$host_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')
+        address=$bind
+        [ "$bind" != 0.0.0.0 ] || address='*'
+    fi
+    [ "$2" = "http://127.0.0.1:$host_port/" ] && [ "$listeners" = "$address:$host_port" ]
 }
 listeners() {
     listener "$(mapping 8000)" "$http_url" && listener "$(mapping 8001)" "$ws_url"
@@ -56,8 +62,8 @@ client.addEventListener('message', event => {
 JS
 }
 
-check 'Mac reaches guest HTTP through a published port' http
-check 'Mac reaches guest WebSocket echo through a published port' websocket
-check 'box ports and box open agree with actual Mac listeners' listeners
+check 'Host reaches guest HTTP through a published port' http
+check 'Host reaches guest WebSocket echo through a published port' websocket
+check 'box ports and box open agree with actual host listeners' listeners
 check 'box doctor verifies host and private-network isolation' "$BOX" doctor "$SMOKE_VM"
 finish

@@ -108,7 +108,7 @@ installs [uv through mise](../guest/common/mise.sh).
 ## Docker Hub pull limits in smoke runs
 
 Done on 2026-11-26. The [smoke runner](../smoke/README.md#container-image-cache)
-caches image archives on the Mac to avoid the Docker Hub anonymous pull limit
+caches image archives on the VM host to avoid the Docker Hub anonymous pull limit
 (HTTP 429) on repeat runs. Cold fills still depend on registry availability
 and pull quotas.
 

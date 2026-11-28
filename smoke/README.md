@@ -6,16 +6,16 @@ one area:
 
 | File | Runs | Purpose |
 |---|---|---|
-| `AREA/prepare.sh` | on the Mac, optional | Stages area inputs over SSH. Gets `SMOKE_VM` and `BOX`. Print a `SKIP` line and exit 77 to skip this area. |
+| `AREA/prepare.sh` | on the VM host, optional | Stages area inputs over SSH. Gets `SMOKE_VM` and `BOX`. Print a `SKIP` line and exit 77 to skip this area. |
 | `AREA/setup.sh` | in the guest, as the VM user | Installs what the area needs. Idempotent. May use `sudo -n`. |
 | `AREA/test.sh` | in the guest, as the VM user | Runs the checks with [lib.sh](lib.sh) (`PASS`/`FAIL`/`SKIP` lines); exits 1 on any failure. |
-| `AREA/host.sh` | on the Mac, optional | Checks from outside the VM (published ports, the desktop proxy). Gets `SMOKE_VM`, `BOX`, and the run output directory in `SMOKE_ARTIFACTS`. |
+| `AREA/host.sh` | on the VM host, optional | Checks from outside the VM (published ports, the desktop proxy). Gets `SMOKE_VM`, `BOX`, and the run output directory in `SMOKE_ARTIFACTS`. |
 | `AREA/README.md` | | What the area covers, what it installs, and known limits. |
 
 Use [the tiered runner](../README.md#testing) to provision and clean up a
 scratch VM automatically. The change tier can use a
 [saved smoke image](../README.md#testing). To use a VM already running
-on this Mac:
+on this host:
 
 ```sh
 smoke/run.sh NAME            # every area
@@ -75,7 +75,7 @@ load those variants from an existing multi-platform archive.
 For an optional News Digest checkout, the runner reads that checkout's
 `docker compose config --images` after staging its source.
 
-The Mac stores archives under `${XDG_CACHE_HOME:-$HOME/.cache}/homebox/smoke-images/v1`.
+The host stores archives under `${XDG_CACHE_HOME:-$HOME/.cache}/homebox/smoke-images/v1`.
 Set `SMOKE_IMAGE_CACHE_DIR` to override the directory above `v1`. Keys include
 the reference, including any pinned digest, and the platform set.
 Docker pulls misses in the guest and retries rate-limit responses with backoff.
@@ -89,8 +89,8 @@ smoke/cache.sh prune
 ```
 
 Refresh pulls again and replaces each archive after a successful save. Prune
-clears cache archives on the Mac. Both operations use the same cache directory
-as the runner. The Mac transfers archives over pinned SSH. Podman imports its
+clears cache archives on the VM host. Both operations use the same cache directory
+as the runner. The host transfers archives over pinned SSH. Podman imports its
 Alpine base from the guest's Docker store, and Buildx uses Docker's built-in
 builder so it can consume the same local platform variants. The containers
 suite still needs public network access for package repositories.
@@ -113,10 +113,10 @@ exercised the native app's [remote views](../docs/observability.md#remote-deskto
 
 ## Areas
 
-- [native](native/README.md): C and C++ toolchains, build systems, C libraries, debuggers and sanitizers, Go, Rust, Zig, WebAssembly, amd64 emulation, Homebrew, Nix and apt.
+- [native](native/README.md): C and C++ toolchains, build systems, C libraries, debuggers and sanitizers, Go, Rust, Zig, WebAssembly, foreign-architecture emulation, Homebrew, Nix and apt.
 - [runtimes](runtimes/README.md): Node, Bun, Deno, Python with pip and uv, Rails, Java with Maven and Gradle, Kotlin, PHP, Elixir, .NET and the coding-agent CLIs.
-- [services](services/README.md): databases, caches, queues and object storage; web servers, TLS, WebSocket, SSE, gRPC, GraphQL and WebRTC; outbound access and blocked private ranges; published ports from the Mac.
+- [services](services/README.md): databases, caches, queues and object storage; web servers, TLS, WebSocket, SSE, gRPC, GraphQL and WebRTC; outbound access and blocked private ranges; published ports from the VM host.
 - [os](os/README.md): systemd services and timers, file watching, limits, disk, memory pressure, swap, locales, users and sudo, tmux, and state surviving a stop and start.
-- [containers](containers/README.md): Docker across distros, BuildKit and amd64 emulation, Compose, volumes, limits, Podman, kind, Dev Containers, Testcontainers, and container isolation from the Mac.
-- [gui](gui/README.md): GUI toolkits, OpenGL, Vulkan, media, fonts and audio, Playwright browsers, and apps driven through the remote desktop from the Mac.
-- [newsdigest](newsdigest/README.md): a full-stack app (News Digest) built, tested, seeded and rendered in the VM and from the Mac; skipped unless `SMOKE_NEWSDIGEST_REPO` points at a checkout.
+- [containers](containers/README.md): Docker across distros, BuildKit and foreign-architecture emulation, Compose, volumes, limits, Podman, kind, Dev Containers, Testcontainers, and container isolation from the VM host.
+- [gui](gui/README.md): GUI toolkits, OpenGL, Vulkan, media, fonts and audio, Playwright browsers, and apps driven through the remote desktop from the VM host.
+- [newsdigest](newsdigest/README.md): a full-stack app (News Digest) built, tested, seeded and rendered in the VM and from the VM host; skipped unless `SMOKE_NEWSDIGEST_REPO` points at a checkout.

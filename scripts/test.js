@@ -196,7 +196,7 @@ async function runSuite(options) {
         }
         if (selected.desktop) {
             const built = await run("desktop-build", "node", ["desktop/scripts/build.js"]);
-            if (built && !interrupted) {
+            if (built && !interrupted && process.platform === "darwin") {
                 const permission = capture("swift", ["-e", "import ApplicationServices; print(AXIsProcessTrusted())"]);
                 if (permission.status !== 0) {
                     report("desktop-accessibility", "FAIL", "0.0s", permission.stderr?.trim() || "Swift probe failed");
@@ -209,8 +209,12 @@ async function runSuite(options) {
             }
         }
 
+        if (selected.desktop && process.platform === "linux") {
+            report("desktop-verification", "SKIP", "0.0s", "Linux desktop verifier is pending integration");
+        }
+
         if (selected.smoke.length || selected.doctor || selected.desktopUI) {
-            if (process.platform !== "darwin") throw new Error("VM checks require a macOS homebox host");
+            if (!["darwin", "linux"].includes(process.platform)) throw new Error("VM checks require a macOS or Linux homebox host");
             if (interrupted) throw new Error("interrupted before VM setup");
             scratch = fs.mkdtempSync(path.join(os.homedir(), ".hb-w-"));
             env.HOMEBOX_HOME = path.join(scratch, "state");
@@ -263,8 +267,7 @@ async function runSuite(options) {
         const totals = Object.fromEntries(["PASS", "FAIL", "SKIP"].map(status =>
             [status, steps.filter(step => step.status === status).length]));
         const outcome = totals.FAIL || interrupted ? "FAIL" : "PASS";
-        const model = capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch();
-        const version = capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a";
+        const [model, version] = hostDetails();
         const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas.join(", ") || "static"} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} | ${imageSource.replaceAll("|", "\\|").replace(/[\r\n]/g, " ")} |\n`;
         console.log(`\n${row.trimEnd()}\nLogs: ${results}`);
         if (!process.env.HOMEBOX_TEST_CHECKOUT) fs.appendFileSync(history, row);
@@ -343,6 +346,23 @@ async function runSuite(options) {
                 env.HOMEBOX_HOME, vm, artifacts, String(20000 + 100 * index)]);
         }
     }
+}
+
+function hostDetails() {
+    if (process.platform !== "linux") {
+        return [capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch(),
+            capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a"];
+    }
+    function read(file) {
+        try {
+            return fs.readFileSync(file, "utf8");
+        } catch {
+            return "";
+        }
+    }
+    const model = read("/sys/devices/virtual/dmi/id/product_name").trim() || os.arch();
+    const release = read("/etc/os-release").match(/^PRETTY_NAME=(.*)$/m)?.[1].replace(/^"|"$/g, "");
+    return [model, release || `Linux ${os.release()}`].map(value => value.replace(/[|\r\n]/g, " "));
 }
 
 function last() {

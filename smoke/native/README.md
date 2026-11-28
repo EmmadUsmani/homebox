@@ -21,8 +21,8 @@ Use a disposable Ubuntu VM. Allow about 15 minutes for the first run on a
 - Capture a GDB backtrace and reopen a GDB-generated core. Run Memcheck,
   strace, ltrace, ASan, UBSan and TSan, and ask perf for software and hardware
   counters.
-- Fetch a Go module, run cgo and race tests, cross-compile Linux/amd64 and
-  Darwin/arm64 binaries, and run the Linux artifact via QEMU and binfmt.
+- Fetch a Go module, run cgo and race tests, cross-compile for the other Linux architecture and
+  Darwin/arm64, and run the foreign Linux artifact via QEMU and binfmt.
 - Fetch crates, test and lint a Rust project, send an HTTP request to its
   Axum/Tokio server, and run a separately compiled WASI program in Wasmtime.
   Build and test a Zig program.

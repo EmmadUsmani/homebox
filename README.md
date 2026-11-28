@@ -323,6 +323,10 @@ run the command locally.
   the Desktop tab and viewer isolation. News Digest
   runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
+
+Run the same tiers on a supported x86-64 Linux host with KVM and Lima 2.3.0.
+Install [the Linux host and contributor tools](docs/host-setup-linux.md) and
+use an amd64 QEMU smoke image for saved-image runs.
 ```sh
 scripts/test.sh change
 scripts/test.sh change --base HEAD~1
@@ -344,7 +348,7 @@ other VMs or test runners. The News Digest area runs when selected and
 
 The change tier uses `homebox-smoke` from `~/.homebox` when VM checks are
 selected and guest profile files are unchanged. The runner clones the image
-into isolated state on the same APFS volume and uses the store's recorded
+into isolated state and uses the store's recorded
 disk digest. If cloning is unavailable, it warns and copies the disk.
 Explicit archives are checked against their recorded digest during import.
 Use a dedicated test image without signed-in accounts. See
