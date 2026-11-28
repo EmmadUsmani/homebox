@@ -118,6 +118,9 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
 - Ports are published only on the Mac's loopback unless you turn on LAN
   publishing (`box host init --lan`), per host.
 
+If the per-VM gateway daemon exits, egress stays blocked. Stop and start
+the VM through box to establish a fresh confined gateway connection.
+
 ### Checking it
 
 `box doctor NAME` tests the boundary from inside a running VM. It checks that

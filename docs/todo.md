@@ -85,9 +85,9 @@ host and copied in by `box new`, and a per-VM Codex device-code login. See
   side closes and never closes the guest side (seen with Lima 2.3.0). The
   guest's sshd keepalives clean these up within about a minute; report it
   upstream with a reproduction.
-- Reconnect the socket NIC after a daemon failure without restarting the VM.
-- Pass the gateway's MAC address and subnet to the guest from box instead of
-  repeating them in `guest/ubuntu/network.sh`.
+- Live socket NIC recovery remains open. The current Lima attachments require
+  a VM restart after a daemon failure. Box detects this and reports the
+  recovery commands. See [the gateway recovery decision](decisions.md#gateway-socket-recovery).
 - Extend Linux sandbox coverage as newer Landlock pathname Unix-socket
   controls become available. Recheck the QEMU launch contract when updating Lima.
 - NAT reflection: if the router reflects connections to its own public address

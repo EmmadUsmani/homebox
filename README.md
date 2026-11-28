@@ -236,6 +236,10 @@ VMs don't start again on their own after the host restarts yet; run
 `box start NAME`. Setting up an always-on host is in
 [host setup](docs/host-setup-macos.md).
 
+If the network daemon stops while a VM is running, `box status` and
+`box doctor` report the failure. Save any work you can still access, then run
+`box stop NAME` followed by `box start NAME` to restore networking.
+
 ## Isolation
 
 The VM has no mounts, and its sshd refuses SSH agent and X11 forwarding.
