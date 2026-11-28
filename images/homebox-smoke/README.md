@@ -25,6 +25,25 @@ The build ran all seven areas with 206 passes, zero failures, and one skip
 for unavailable hardware performance counters. A fresh restore passed
 `box doctor` and the runtimes checks.
 
+## Recorded Linux image (2026-11-27)
+
+Built on Ubuntu 26.04.1 LTS with Lima 2.3.0 and QEMU/KVM. The amd64
+guest had 4 vCPUs, 8 GiB of RAM and an 80 GiB virtual disk.
+
+- qcow2 disk size 36,172,791,808 bytes
+- Disk SHA-256 `424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508`
+- Compressed export size 18,789,561,198 bytes
+- Archive SHA-256 `f2db63a64de6f406fde294841bb465648cceb3fcd197f4ae5181cd2033902d7c`
+- Build and export 38m 04s including the News Digest rerun
+
+The seven smoke areas had 203 passes and two skips after the News Digest
+integration rerun passed on the same build VM. The guest's hardware cycle
+counter was unavailable and Ubuntu AppArmor blocked the bundled host
+Chromium sandbox. The guest GUI checks, host gallery and SSH forwarding
+refusal check still ran. Before saving, the build passed `box doctor` and
+its credential scan and verified that both coding agents were signed out.
+The verified export was imported as `homebox-smoke` in `~/.homebox`.
+
 ## Build it
 
 Use an [Apple silicon Mac](../../docs/host-setup-macos.md) or an
