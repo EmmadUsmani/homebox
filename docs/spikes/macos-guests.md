@@ -120,3 +120,36 @@ booted an iPhone 16 headlessly with `simctl`, and installed and launched
 the app. `simctl bootstatus` finished in 45 seconds. The screenshot taken
 with `simctl io booted screenshot` rendered both labels at 1179 × 2556.
 The scratch VMs and both restore-image downloads were removed.
+
+## Screen Sharing over pinned SSH
+
+A fresh macOS 15.6.1 guest with four vCPUs, 8 GiB RAM and a 45 GiB disk
+authenticated browser sessions through Apple's Screen Sharing service. A
+prototype copied Apple's launchd job, kept its stock service disabled on
+boot, and loaded the copy with `launchctl load -F`. The copy used the same
+service label and explicit IPv4 and IPv6 loopback sockets on TCP 5900.
+It omitted Bonjour. The guest reported only `127.0.0.1:5900` and
+`[::1]:5900` as listeners. After restarting, the stock job was still
+disabled and TCP 5900 remained closed until the copy was loaded.
+
+The host reused the desktop proxy's pinned SSH connection, one-time
+bootstrap link, cookie and Host/Origin checks. It served noVNC 1.7.0
+from the executable and bridged binary WebSocket frames to RFB over SSH.
+The prototype used the guest account through Apple's RFB authentication
+type 30. It left the legacy shared VNC password option off. Headless
+Chromium authenticated, received a 1920 × 1200 canvas, and reconnected
+after reload. The framebuffer stayed black in both connections, including
+after a separate fixture established a logged-in console session. The
+guest's Screen Sharing agent reported `postEventFlag 0 screenCaptureFlag 0`.
+Apple's extended session negotiation also authenticated without producing
+a visible desktop. Guest doctor reported 60 passes, zero failures and
+one skip for Lima's local ICMP reply.
+
+The launchd setup proves the transport and listener confinement. A usable
+desktop still requires macOS to grant the Screen Sharing agent capture and
+input permissions. Apple's [Screen Sharing instructions](https://support.apple.com/guide/mac-help/mh11848/mac)
+enable the service through System Settings, and its
+[Remote Management documentation](https://support.apple.com/guide/remote-desktop/apd8b1c65bd/mac)
+describes the command-line restrictions. The next spike should establish
+a supported permission setup and repeat the pixel, input and reconnect
+checks with a loopback-only listener.

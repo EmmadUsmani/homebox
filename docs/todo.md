@@ -30,7 +30,10 @@ remote VMs, overview, logs, terminal, files and editor).
 - Measure end-to-end desktop latency, bandwidth and reconnect behavior over
   LAN and Tailscale. See [the remote-desktop spike](spikes/remote-desktop.md).
 
-- Optional second display server for macOS Screen Sharing (RFB), selectable per VM alongside KasmVNC.
+- Optional second display server for macOS Screen Sharing (RFB), selectable
+  per VM alongside KasmVNC. Establish a supported way to grant screen
+  capture and input permissions. The [loopback RFB prototype](spikes/macos-guests.md#screen-sharing-over-pinned-ssh)
+  authenticated and reconnected, but its framebuffer was black.
 
 - Review the desktop app's [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
 
