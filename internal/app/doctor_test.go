@@ -63,6 +63,7 @@ func TestDoctor(t *testing.T) {
 	}
 	wantEnv := map[string]string{
 		"HOMEBOX_BUILTIN_GATEWAY": "192.0.2.10",
+		"HOMEBOX_GATEWAY_IP":      "10.114.0.1",
 		"HOMEBOX_DENY_TARGETS":    "192.0.2.10:12345 192.0.2.11:80",
 		"HOMEBOX_PUBLIC_URL":      "https://example.com",
 	}
@@ -81,7 +82,7 @@ func TestDoctor(t *testing.T) {
 		t.Fatalf("combined error = %v", err)
 	}
 	output := service.Progress.(*bytes.Buffer).String()
-	for _, want := range []string{"Checking broken", "FAIL network-daemon", "Checking working", "PASS network-daemon"} {
+	for _, want := range []string{"Checking broken", "FAIL network-daemon: network daemon stopped; recover with `box stop broken` then `box start broken`", "Checking working", "PASS network-daemon"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("output %q missing %q", output, want)
 		}

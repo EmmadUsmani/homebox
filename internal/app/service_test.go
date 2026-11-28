@@ -228,7 +228,9 @@ func TestNewProvisionListAndSSH(t *testing.T) {
 		t.Errorf("unexpected authorized keys: %v", ssh.keys)
 	}
 	wantEnv := map[string]string{
-		"HOMEBOX_USER": spec.User,
+		"HOMEBOX_USER":           spec.User,
+		"HOMEBOX_SOCKET_MAC":     "52:55:0a:72:00:15",
+		"HOMEBOX_GATEWAY_SUBNET": "10.114.0.0/24",
 	}
 	if !reflect.DeepEqual(ssh.env, wantEnv) {
 		t.Errorf("provision env = %v, want %v", ssh.env, wantEnv)
@@ -443,7 +445,7 @@ func TestRemoveDeletesAVMThatWontStop(t *testing.T) {
 	}
 }
 
-func TestStartRestartsTheDaemonOfARunningVM(t *testing.T) {
+func TestDeadNetworkDaemonRequiresVMRestart(t *testing.T) {
 	service, _, _, isolation := fixture(t)
 	if err := service.New(t.Context(), NewOptions{Name: "main"}); err != nil {
 		t.Fatal(err)
@@ -455,10 +457,24 @@ func TestStartRestartsTheDaemonOfARunningVM(t *testing.T) {
 		t.Fatalf("healthy running VM touched isolation: %v", isolation.calls)
 	}
 	delete(isolation.up, "main") // the daemon died
+	const recovery = "recover with `box stop main` then `box start main`"
+	if err := service.Start(t.Context(), "main"); err == nil || !strings.Contains(err.Error(), recovery) {
+		t.Fatalf("start error = %v", err)
+	}
+	status, err := service.Status(t.Context(), "main")
+	if err != nil || !strings.Contains(strings.Join(status.Errors, "\n"), recovery) {
+		t.Fatalf("status = %+v, err = %v", status, err)
+	}
+	if !slices.Equal(isolation.calls, []string{"up main"}) {
+		t.Fatalf("running VM touched isolation: %v", isolation.calls)
+	}
+	if err := service.Stop(t.Context(), "main"); err != nil {
+		t.Fatal(err)
+	}
 	if err := service.Start(t.Context(), "main"); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(isolation.calls, []string{"up main", "up main"}) || !isolation.Running("main") {
-		t.Fatalf("dead daemon not restarted: %v", isolation.calls)
+	if !slices.Equal(isolation.calls, []string{"up main", "down main", "up main"}) || !isolation.Running("main") {
+		t.Fatalf("network daemon not replaced on VM restart: %v", isolation.calls)
 	}
 }
