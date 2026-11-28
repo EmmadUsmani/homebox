@@ -22,6 +22,14 @@ an established open-source project.
 - *Proxmox:* not adopted; a candidate for the Linux GPU box, undecided. It
   replaces the host OS and runs only on x86. See [alternatives](alternatives.md#proxmox-ve).
 
+### macOS guest isolation
+
+**Keep macOS guests experimental** (2026-11-28, decided by the lead's worker
+overnight under the owner's autonomy grant). A `box` profile waits for a
+verified pinned SSH path and the same host and LAN isolation as Ubuntu.
+The [spike](spikes/macos-guests.md) records the Lima 2.3.0 networking and
+bootstrap behavior that a profile needs to account for.
+
 ### Linux host confinement
 
 **Use unprivileged launch-time confinement** (implementation agent,
@@ -308,6 +316,20 @@ same platform toolkit as the application while preserving the display proxy
 and pinned SSH path. [Linux viewer isolation](../SECURITY.md#linux-guest-viewer)
 records the WebKitGTK clipboard and navigation limits.
 
+## 2026-11-28 · Guest agent factory smoke run
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+The supervisor runs in the guest with a separate health check and owns the
+commit and push. This gives it a chance to check the owner files and app
+before publication. The smoke project uses a bare origin in the disposable
+guest, so it needs no GitHub credentials.
+
+For this one smoke run, transfer the existing Codex login over pinned SSH
+into the disposable guest with mode 0600. Use a minimal guest configuration.
+Remove the guest credential and delete the VM afterward. Do not save an
+image of it. The [agent login design](agent-logins.md) covers the proposed
+long-term flow.
+
 ## 2026-11-28 · Mac isolation review
 
 Decided by the lead's worker overnight under the owner's autonomy grant.
@@ -315,7 +337,7 @@ Include loopback aliases in the shared host-interface denial policy. macOS can
 assign other address ranges to loopback interfaces and the existing policy
 already denies the standard loopback address ranges. Drop unsupported IPv4
 protocols before stack processing while preserving fragmentation for supported
-transports. Treat a failure reported
-by a guest doctor check as a command failure even when SSH returns zero.
+transports. A failed guest doctor check now makes the command fail even
+when SSH returns zero.
 The [Mac isolation review](security-review-2026-11-28.md) records the checks
 and residual limits.

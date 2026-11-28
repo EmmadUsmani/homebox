@@ -42,6 +42,14 @@ cover the sandbox and its limits. Linux saved disks and the full smoke
 runner image are tracked separately from the core lifecycle. Measure LAN
 publishing from a second machine and cover GPU and autostart separately.
 
+## macOS guests and the iOS Simulator
+
+The [macOS guest spike](spikes/macos-guests.md) covers Lima's installer, first
+boot and socket NIC. Before adding a `box` profile, establish a pinned SSH path
+with the homebox gateway as the only egress path and validate host confinement
+and `box doctor` on a fresh guest. Test the iOS Simulator once Xcode and a
+runtime can be staged into that guest.
+
 ## Update existing Ubuntu VMs for browser sandboxing
 
 New VMs get the [browser sandbox setting](../SECURITY.md#browser-processes-inside-the-ubuntu-guest)
@@ -129,3 +137,8 @@ and pull quotas.
 Done on 2026-11-26. The [change tier](../README.md#testing) takes its saved
 image from the normal homebox store by default and can use another store
 or import an archive directly. The run history records the source and disk digest.
+
+## Agent factory
+
+Run the [guest factory smoke](../factory/README.md#one-turn-smoke-test) on
+the remote Ubuntu host and verify the user unit there.

@@ -1,0 +1,10 @@
+[Unit]
+Description=Homebox guest build factory
+
+[Service]
+Type=exec
+Environment=RUN_HOURS=2
+Environment=PATH=%h/.local/bin:%h/.local/share/mise/shims:/usr/local/bin:/usr/bin:/bin
+ExecStart=/usr/bin/flock --nonblock --close %h/agent-factory/run.lock /usr/bin/env node %h/agent-factory/run.js %h/factory-project
+TimeoutStopSec=10s
+UMask=0077

@@ -185,6 +185,8 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
+- The Mac host runs Ubuntu guests through `box`. A macOS guest needs its
+  own verified SSH and isolation path. See the [macOS guest spike](spikes/macos-guests.md).
 - Public egress supports IPv4 TCP, UDP and ICMP echo. IPv6 and other IP
   protocols are outside this gateway's scope.
 - A router with NAT reflection can reflect connections to its public IP
@@ -281,3 +283,11 @@ the current saved and detected fingerprints inside the shared re-pin lock.
 - CI runs ShellCheck on guest scripts. The [local test runner](../README.md#testing)
   checks shell scripts across the checkout, selects smoke areas by changed
   path, and keeps VM state and test logs separate from the regular box store.
+
+## Guest agent factory
+
+The optional [agent factory](../factory/README.md) runs in a Linux guest as
+the SSH user. It uses the guest's Node.js, Git and Codex CLI. The supervisor
+publishes to the project's existing origin and writes local status files that
+the operator can read over SSH. The Ubuntu systemd user unit is an optional
+launcher.
