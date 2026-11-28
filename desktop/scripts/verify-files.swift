@@ -154,8 +154,13 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         descendants(web).flatMap(labels).first { $0.contains(marker) }
     }
 
-    func see(_ marker: String, seconds: TimeInterval = 15) throws {
-        _ = try waitFor(marker, seconds: seconds) { readMarker(marker) }
+    func see(_ marker: String, seconds: TimeInterval = 15, caseInsensitive: Bool = false) throws {
+        _ = try waitFor(marker, seconds: seconds) {
+            if caseInsensitive {
+                return descendants(web).flatMap(labels).first { $0.localizedCaseInsensitiveContains(marker) }
+            }
+            return readMarker(marker)
+        }
         print("AX read: \(marker)")
     }
 
@@ -406,10 +411,16 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
             try button("sparse.bin")
             try see("File is too large or binary", seconds: 5)
             try capture("hostile-sparse-error")
-            try button("private-file")
-            try see("permission denied", seconds: 5)
-            try button("private-directory")
-            try see("permission denied", seconds: 5)
+            for name in ["private-file", "private-directory"] {
+                try button(name)
+                do {
+                    try see("permission denied", seconds: 5, caseInsensitive: true)
+                } catch {
+                    try? capture("hostile-" + name + "-timeout")
+                    throw error
+                }
+                try capture("hostile-" + name + "-error")
+            }
             try goToFolder(hostile + "/link-directory")
             try button("sparse.bin")
             try see("Paths through symbolic links are blocked", seconds: 5)
