@@ -368,3 +368,7 @@ workers without terminating established sessions solely because of another
 client's arrival. Keep Lima plain mode and the static forwarding config.
 Test that replacing a published service leaves the published host endpoint
 working and that an unpublished listener remains unavailable on the host.
+
+The Docker e2e check requires a successful public DNS reply from inside the
+container. Try independent resolvers so a single timed-out public endpoint
+does not prevent exercising the local isolation assertions.

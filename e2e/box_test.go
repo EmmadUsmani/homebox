@@ -216,7 +216,14 @@ import urllib.request
 
 with urllib.request.urlopen("https://example.com", timeout=8) as response:
     assert response.status == 200
-subprocess.run(["nslookup", "example.com", "9.9.9.9"], timeout=8, check=True)
+for resolver in ("9.9.9.9", "1.1.1.1", "8.8.8.8"):
+    try:
+        subprocess.run(["nslookup", "example.com", resolver], timeout=8, check=True)
+        break
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as error:
+        print(f"public DNS via {resolver} failed: {error}", file=sys.stderr)
+else:
+    raise AssertionError("no public DNS resolver answered from the container")
 for target in sys.argv[1:]:
     host, port = target.split(":")
     for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
@@ -256,6 +263,8 @@ printf '%s\n' "$!" >/tmp/homebox-e2e-http.pid`)
 if pgrep -x lima-guestagent; then
     echo "Lima guest agent is running in plain mode" >&2
     exit 1
+else
+    test "$?" -eq 1
 fi
 kill "$(cat /tmp/homebox-e2e-http.pid)"
 for _ in $(seq 20); do
