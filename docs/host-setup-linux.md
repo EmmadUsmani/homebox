@@ -149,6 +149,45 @@ For the separate Chromium framebuffer and input smoke, install a host Chromium
 or Chrome whose sandbox can start under Ubuntu AppArmor. The runner reports
 when either verification is unavailable.
 
+### Diagnose slow VM storage
+
+Check the filesystems and devices behind home and the active Homebox state
+directory. Include the swap device when collecting I/O samples during a
+slow boot or provision.
+
+```sh
+findmnt -T /
+findmnt -T "$HOME"
+findmnt -T "${HOMEBOX_HOME:-$HOME/.homebox}"
+lsblk -o NAME,MODEL,ROTA,TRAN,SIZE,MOUNTPOINTS
+iostat -x 5 3
+free -g
+vmstat 5 3
+cat /proc/pressure/io /proc/pressure/memory
+```
+
+Compare device latency and queue depth with I/O pressure. Check swap-in
+and swap-out rates alongside memory pressure. Swap occupancy alone can
+reflect inactive pages left over from an earlier workload. If active
+paging coincides with stalls, try a smaller guest or run one VM at a
+time. Review swap placement and swappiness if repeated samples still show
+contention between swap and the VM disk.
+
+If latency stays high on the state device, compare the same VM workload on
+an already mounted, writable NVMe filesystem. Use a separate, short
+`HOMEBOX_HOME` path with at least 10 GiB free and keep the original state
+for comparison. When staging an image, allow additional space for its
+copy and separate time spent copying the disk from guest boot time. The
+smoke runner and lifecycle test use disposable state under home, so
+setting `HOMEBOX_HOME` externally does not relocate those scratch VMs.
+
+[Lima 2.3.0](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driver/qemu/qemu.go#L703-L710)
+enables discard on the QEMU boot disk and leaves cache and AIO selection to
+[QEMU](https://www.qemu.org/docs/master/system/invocation.html). The
+defaults are writeback caching and threaded AIO. Check discard activity,
+write latency and flush latency during a stall before attributing it to a
+disk option.
+
 ## Install desktop build dependencies
 
 The full contributor setup includes the GTK4, WebKitGTK 6.0 and X11

@@ -13,6 +13,18 @@ The final commit (`ed36dbc31cd7` in the guest project) passed eight Python
 tests and HTTP probes. A guest Chromium capture and a Compose persistence
 check also passed.
 
+The 2026-11-28 Ubuntu full run at `8918295d5d15` recorded 203 smoke
+checks passed, zero failures, and three skips inside the smoke areas.
+The separate Android opt-in run used a freshly provisioned 8 GiB guest
+with nested KVM. Doctor and the Android smoke APK passed, with a
+23-second emulator cold boot. Host browser input
+and framebuffer checks require a Chromium sandbox that can start under
+AppArmor. The guest could not expose the hardware `perf` cycle counter.
+The Linux native viewer and live-VM desktop checks passed. The runner
+skipped the Settings publishing, resizing, and repinning UI fixture,
+which uses macOS Accessibility. Doctor skipped ICMP against Lima's
+built-in gateway because Lima answers it locally.
+
 | UTC time | Commit | Dirty | Host model | OS | Tier | Scope | Areas | Result | Pass/Fail/Skip | Duration | VM source |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | 2026-11-26T21:40:18.519Z | 0dd064dde43f | yes | Mac14,10 | 27.2.1 | batch | partial | os | FAIL | 8/1/0 | 364.6s | — |
@@ -118,3 +130,5 @@ check also passed.
 | 2026-11-28T10:08:32.165Z | 6a31e8a16723 | no | Mac14,10 | 27.2.1 | change | partial | gui, doctor | PASS | 10/0/0 | 303.8s | fresh |
 | 2026-11-28T10:07:45.447Z | 085e17158d73 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 226.2s | fresh |
 | 2026-11-28T10:12:28.266Z | e2e2088f9f23 | no | Mac14,10 | 27.2.1 | change | default | android, doctor | PASS | 10/0/1 | 172.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T10:41:36.961Z | 8918295d5d15 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/2 | 1665.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T10:45:23.428Z | 8918295d5d15 | yes | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android, doctor | PASS | 12/0/0 | 218.1s | fresh |
