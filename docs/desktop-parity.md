@@ -1,8 +1,9 @@
 # Desktop and CLI parity
 
-Host management runs on the Mac hosting the VM. For VMs on other hosts,
+Host management runs on the machine hosting the VM. For VMs on other hosts,
 the app uses the laptop’s pinned SSH connection to the guest. See
-[observability](observability.md#the-desktop-app).
+[observability](observability.md#the-desktop-app). The Linux build uses the
+same controls. VM-backed Linux verification is tracked in [To do](todo.md#observability-and-the-desktop-app-phase-1b).
 
 | CLI command or flag | App equivalent | Status |
 |---|---|---|

@@ -1,3 +1,4 @@
+import { isMac, thisHost } from "./platform";
 import { useState } from "react";
 import { Call } from "@wailsio/runtime";
 import { DesktopTab } from "./desktop/DesktopTab";
@@ -127,7 +128,7 @@ export default function App() {
             <div className="workspace">
                 <nav className="sidebar" aria-label="Virtual machines">
                     <div className="vm-list">
-                        <h2>This Mac</h2>
+                        <h2>{isMac ? "This Mac" : "This host"}</h2>
                         <button className="new-vm-button" type="button" disabled={!canCreate} onClick={() => setCreating(true)}>New VM</button>
                         {localVMs.map((entry) => <VMRow key={entry.name} name={entry.name} state={entry.state}
                             selected={local?.name === entry.name} select={() => select({ kind: "local", name: entry.name })} />)}
@@ -181,7 +182,7 @@ export default function App() {
                                 {!detail?.data && !detail?.error && <p className="content muted" role="status">Loading VM status…</p>}
                             </> : current && <OverviewTab key={remote?.id} kind="remote" status={current} />)}
                             {tab === "Logs" && (local ? <LogsTab key={`${local.name}:${logSource}`} name={local.name} initialSource={logSource} />
-                                : <p className="content">View guest logs for this VM from its host Mac.</p>)}
+                                : <p className="content">View guest logs for this VM from its {isMac ? "host Mac" : "host"}.</p>)}
                             {tab === "Terminal" && <TerminalTab key={local?.name ?? remote?.id} vm={vm} openSSHSettings={openSSHSettings} />}
                             {tab === "Desktop" && <DesktopTab key={vm.kind + ":" + (local?.name ?? remote?.id)} vm={vm} openSSHSettings={openSSHSettings} />}
                             {tab === "Settings" && local && <SettingsTab key={local.name} name={local.name} state={local.state} focusSSHKeys={focusSSHKeys} />}
@@ -189,7 +190,7 @@ export default function App() {
                         </div>
                     </> : <div className="content empty">
                         {inventory?.error ? <><h1>Local VMs unavailable</h1><p role="alert">{inventory.error}</p></>
-                            : inventory?.data ? <><h1>No VMs on this Mac</h1>
+                            : inventory?.data ? <><h1>No VMs on {thisHost}</h1>
                                 <p><button type="button" className="primary" disabled={!canCreate} onClick={() => setCreating(true)}>New VM</button></p></>
                                 : <p role="status">Loading virtual machines…</p>}
                     </div>}

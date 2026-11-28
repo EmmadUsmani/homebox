@@ -281,3 +281,13 @@ The owner approved a Mac-side cache after the containers smoke runs hit Docker
 Hub's anonymous pull quota. The [smoke runner](../smoke/README.md#container-image-cache)
 stores archives on the Mac and transfers them over pinned SSH initiated by the
 Mac, keeping the cache outside guest reach.
+
+
+## 2026-11-27 · Ubuntu desktop build
+
+The owner requested that the desktop app run on the Ubuntu host. The
+implementation uses Wails' default GTK4 build and a dedicated ephemeral
+WebKitGTK viewer inside the existing layout. This keeps the viewer on the
+same platform toolkit as the application while preserving the display proxy
+and pinned SSH path. [Linux viewer isolation](../SECURITY.md#linux-guest-viewer)
+records the WebKitGTK clipboard and navigation limits.

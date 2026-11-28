@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"time"
 
@@ -45,7 +46,7 @@ func (l *Local) ServiceStartup(ctx context.Context, _ application.ServiceOptions
 
 func (l *Local) ListStatus(ctx context.Context) ([]app.VMStatus, error) {
 	if _, err := l.findTool("limactl"); err != nil {
-		return nil, errors.New("Lima (limactl) could not be found. Install Lima in /opt/homebrew/bin or /usr/local/bin to see local VMs")
+		return nil, errors.New("Lima (limactl) could not be found. Install Lima on the host PATH to see local VMs")
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
@@ -76,8 +77,11 @@ func (l *Local) Doctor(ctx context.Context, name string) error {
 }
 
 func (l *Local) OpenPort(ctx context.Context, name string, port int) error {
-	_, err := l.box.Open(ctx, name, strconv.Itoa(port), false)
-	return err
+	url, err := l.box.Open(ctx, name, strconv.Itoa(port), runtime.GOOS == "linux")
+	if err != nil || runtime.GOOS != "linux" {
+		return err
+	}
+	return application.Get().Browser.OpenURL(url)
 }
 
 type logBatch struct {

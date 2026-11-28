@@ -79,11 +79,31 @@ go test ./...
 ## Install desktop build dependencies
 
 The full contributor setup includes the GTK4, WebKitGTK 6.0 and X11
-development libraries used by the Wails v3 desktop module. To add these
+development libraries used by the Wails v3 desktop module, plus `xdg-open`
+for published server links. To add these
 dependencies to an existing Ubuntu 26.04 setup, run these commands.
 
 ```sh
 sudo apt-get update
-sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev
+sudo apt-get install -y build-essential pkg-config libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev xdg-utils
 pkg-config --modversion gtk4 webkitgtk-6.0 x11
 ```
+
+For the build and launcher, see [Desktop app](../README.md#desktop-app).
+To drive the built app and capture its windows in a graphical Ubuntu session,
+run the following from the repository root. The runner uses Xwayland,
+`x11-utils`, `python3-gi`, `gir1.2-atspi-2.0` and `gir1.2-gtk-3.0`.
+
+```sh
+node desktop/scripts/verify-linux.js PATH_TO_EVIDENCE
+```
+
+Run the native isolation fixture on a disposable X11 display. It sets that
+display's clipboard and uses XTest for a real click.
+
+```sh
+xvfb-run -a node desktop/scripts/verify-desktop-isolation-linux.js PATH_TO_EVIDENCE --replace-clipboard
+```
+
+The fixture uses `xvfb`, `xauth` and `libxtst6` in addition to the desktop
+build dependencies.

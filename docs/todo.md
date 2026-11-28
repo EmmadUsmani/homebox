@@ -16,7 +16,12 @@ remote VMs, overview, logs, terminal, files and editor).
    selection of KasmVNC. Both `box desktop NAME` and the app's Desktop tab
    are built and verified on a local Mac and VM.
 
-   The macOS app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+   The app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+
+- Verify the Ubuntu desktop build with local, confined Linux VMs when the host
+  core is available. Cover lifecycle and doctor, live VM status and logs,
+  native upload/download dialogs, terminal and editor, pinned SSH from another
+  host, and Xfce input, reconnect and one-shot clipboard transfer.
 
 - The local Settings tab and About close the host settings and version gaps.
   The [parity audit](desktop-parity.md) tracks remaining coverage, including a

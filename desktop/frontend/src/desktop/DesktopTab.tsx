@@ -1,3 +1,4 @@
+import { isMac } from "../platform";
 import { useEffect, useRef, useState } from "react";
 import { Call, Events } from "@wailsio/runtime";
 import { HostKeyWarning } from "../terminal/TerminalTab";
@@ -79,7 +80,7 @@ export function DesktopTab({ vm, openSSHSettings }: { vm: VMRef; openSSHSettings
         try {
             await request;
             if (clipboardRequest.current === request) {
-                setClipboardMessage(method === "PasteToVM" ? "Text sent to VM clipboard." : "Text copied to Mac clipboard.");
+                setClipboardMessage(method === "PasteToVM" ? "Text sent to VM clipboard." : (isMac ? "Text copied to Mac clipboard." : "Text copied to host clipboard."));
             }
         } catch (error) {
             if (clipboardRequest.current === request) setClipboardMessage(String(error));
