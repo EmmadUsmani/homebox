@@ -50,6 +50,9 @@ func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instanc
 	if instance.Status == vm.StatusRunning {
 		return s.networkDaemonError(box.Name)
 	}
+	if err := s.Store.RequireFreeSpace(); err != nil {
+		return err
+	}
 	if err := s.applyLANSetting(ctx, box); err != nil {
 		return err
 	}
