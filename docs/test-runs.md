@@ -28,3 +28,4 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-27T01:59:31.519Z | be456086706d | no | Mac14,10 | 27.2.1 | change | partial | os, runtimes, doctor | PASS | 11/0/0 | 198.4s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-27T02:04:12.995Z | be456086706d | yes | Mac14,10 | 27.2.1 | change | default | doctor | PASS | 9/0/0 | 160.1s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-27T02:05:26.732Z | be456086706d | no | Mac14,10 | 27.2.1 | change | partial | doctor | PASS | 9/0/0 | 355.1s | homebox-smoke from ~/homebox-images/homebox-smoke-check-20261126.hbimg.gz (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T03:30:51.775Z | adfe886abda3 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 4/0/0 | 9.2s | — |
