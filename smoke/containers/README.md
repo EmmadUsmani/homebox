@@ -6,7 +6,7 @@ sidecar. It also checks BuildKit caching, Compose, mounts, quotas,
 container egress, the host port mapping and loopback/LAN canaries.
 
 Full adds the other distros, debug and minimal images, the published
-distroless Node service, amd64 execution and multi-platform builds,
+distroless Node service, foreign-architecture execution and multi-platform builds,
 Compose volume persistence, the OOM kill, rootless Podman, kind,
 Dev Containers and Testcontainers.
 
@@ -34,7 +34,7 @@ A cold run can hit Docker Hub's anonymous pull quota.
   isolation policy still apply. BusyBox exercises a built-in applet and
   distroless uses its nonroot debug variant. [Pacman manual](https://man.archlinux.org/man/pacman.8.en)
 - Build and load a multi-stage image with Buildx, prove a cache mount survives
-  across separate build invocations, execute a build stage for amd64, and
+  across separate build invocations, execute a build stage for the foreign architecture, and
   export both arm64 and amd64 artifacts from one build.
 - Start a health-checked Compose HTTP service that queries Postgres and
   Redis by service name. Check named-volume persistence after recreation
@@ -62,8 +62,9 @@ outside this area.
 The [fixtures](fixtures/minimal/) build in full images and copy the results into
 the runtime images. Each run checks the loaded image architecture, the workload
 output or HTTP response, a nonzero effective UID, and the absence of shells at
-standard binary paths in the merged filesystem. The arm64 guest runs the suite
-again as linux/amd64 using Docker's binfmt registration. Pure JavaScript, pure
+standard binary paths in the merged filesystem. The guest runs the suite
+again as the foreign architecture using Docker's binfmt registration
+(arm64 on amd64, amd64 on arm64). Pure JavaScript, pure
 Python, Java bytecode and the ASP.NET assemblies can be built on the guest's
 native architecture. Static Go is cross-compiled. The Python extension wheels
 and dynamically linked C++ and cgo binaries use target-platform build stages.

@@ -18,6 +18,7 @@ const hostAddress = "192.168.5.2"
 type instanceRecord struct {
 	Name         string `json:"name"`
 	VMType       string `json:"vmType"`
+	Arch         string `json:"arch"`
 	Dir          string `json:"dir"`
 	Status       string `json:"status"`
 	CPUs         int    `json:"cpus"`

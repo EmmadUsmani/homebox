@@ -33,7 +33,7 @@ for (const engine of ["chromium", "firefox", "webkit"]) {
     }
 }
 checks.push(
-    ["Mac Playwright sees GUI pixels through the one-time desktop URL", "remote-before-input"],
+    ["Host Playwright sees GUI pixels through the one-time desktop URL", "remote-before-input"],
     ["desktop browser keyboard and click reach the GUI", "remote-after-input"],
     ["guest clipboard helper exchanges UTF-8 with a GUI app", "remote-clipboard"],
 );

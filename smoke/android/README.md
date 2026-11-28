@@ -12,6 +12,16 @@ SMOKE_ANDROID=1 smoke/run.sh android android
 box rm -f android
 ```
 
+To let the tiered runner create and remove the nested VM, run:
+
+```sh
+SMOKE_ANDROID=1 scripts/test.sh full --area android
+```
+
+You can add `--image homebox-smoke` to either VM creation path to
+start from a compatible Linux image. The CPU setting is chosen for the
+new VM even if the source VM used a different setting.
+
 Setting `SMOKE_ANDROID=1` opts in and accepts the Android SDK licenses
 noninteractively. The next SSH session picks up the guest group membership.
 See [Linux host setup](../../docs/host-setup-linux.md#enable-nested-kvm-for-android)

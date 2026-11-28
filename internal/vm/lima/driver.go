@@ -62,13 +62,12 @@ func (*Driver) CheckNestedVirt() error {
 	return errors.New("--nested-virt requires nested KVM enabled in the host kvm_intel or kvm_amd module")
 }
 
+func (*Driver) ImageBackend() string { return backend(runtime.GOOS) }
+
 // Create creates a stopped VM from the supplied spec.
 func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {
 		return err
-	}
-	if spec.ImageDisk != "" && runtime.GOOS != "darwin" {
-		return errors.New("creating a VM from a saved image requires Lima with VZ on macOS")
 	}
 	data, err := renderConfig(spec, runtime.GOOS)
 	if err != nil {

@@ -102,6 +102,17 @@ type portRule struct {
 	Ignore    bool   `yaml:"ignore,omitempty" json:"ignore,omitempty"`
 }
 
+func backend(goos string) string {
+	switch goos {
+	case "darwin":
+		return "vz"
+	case "linux":
+		return "qemu"
+	default:
+		return ""
+	}
+}
+
 // Lima defaults to the host CPU under KVM. Mask both x86 virtualization
 // extensions explicitly so that nesting stays opt-in.
 func qemuCPUType(nested bool) string {
@@ -119,13 +130,8 @@ func renderHostConfig(spec vm.Spec, goos, goarch string) ([]byte, error) {
 	if spec.NestedVirt && (goos != "linux" || goarch != "amd64") {
 		return nil, fmt.Errorf("nested virtualization requires Lima QEMU/KVM on an x86-64 Linux host")
 	}
-	var vmType string
-	switch goos {
-	case "darwin":
-		vmType = "vz"
-	case "linux":
-		vmType = "qemu"
-	default:
+	vmType := backend(goos)
+	if vmType == "" {
 		return nil, fmt.Errorf("unsupported Lima host OS %q", goos)
 	}
 	settings := config{

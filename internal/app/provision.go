@@ -91,9 +91,6 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		if err := driver.CheckNestedVirt(); err != nil {
 			return err
 		}
-		if options.Image != "" {
-			return errors.New("--nested-virt requires a fresh VM because saved-image creation is unavailable on Linux")
-		}
 	}
 	username, err := defaultUser()
 	if err != nil {
@@ -265,6 +262,9 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 		if box.Image != "" {
 			image, path, err := s.Store.LoadImage(box.Image)
 			if err != nil {
+				return err
+			}
+			if err := s.checkImageCompatibility(image); err != nil {
 				return err
 			}
 			imageDisk, imageFirmware = path, image.Firmware
