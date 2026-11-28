@@ -43,6 +43,8 @@ To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
 The [Android area](android/README.md) runs on an opt-in Linux QEMU/KVM
 guest with nested virtualization and requires `SMOKE_ANDROID=1`.
+The [iOS area](ios/README.md) runs on a macOS guest with a local Xcode and
+Simulator runtime and requires `SMOKE_IOS=1`.
 
 ## From another machine on the LAN
 

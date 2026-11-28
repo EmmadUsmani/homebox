@@ -133,5 +133,12 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:22:13.381Z | 8c1ea0760244 | no | Mac14,10 | 27.2.1 | full | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/1 | 2288.4s | fresh |
 | 2026-11-28T10:25:49.348Z | ec9a8620b89f | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.0s | — |
 | 2026-11-28T10:27:46.000Z | f553ddefbe2a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.0s | — |
+| 2026-11-28T10:26:30.628Z | 110f97d9014d | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 11.7s | — |
+| 2026-11-28T10:27:29.257Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 7.0s | — |
+| 2026-11-28T10:27:54.239Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 5/0/1 | 7.0s | — |
+| 2026-11-28T10:30:14.622Z | 8715a2a5e857 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 8.7s | — |
+| 2026-11-28T10:43:24.154Z | 0d608e28cbcf | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 6.9s | — |
+| 2026-11-28T10:55:12.613Z | 0d608e28cbcf | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 11/0/0 | 736.1s | fresh macOS |
 | 2026-11-28T10:41:36.961Z | 8918295d5d15 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/2 | 1665.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T10:45:23.428Z | 8918295d5d15 | yes | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android, doctor | PASS | 12/0/0 | 218.1s | fresh |
+| 2026-11-28T10:56:31.221Z | d3f825cf7061 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.6s | — |

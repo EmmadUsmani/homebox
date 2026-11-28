@@ -17,6 +17,8 @@ Changes to the [approved design](plan.md) require the owner's approval.
   authenticated and reconnected but returned a black framebuffer.
 - Exercise pinned SSH to the macOS guest from a separate laptop on the LAN.
   Local lifecycle checks use a separate laptop key and exported pins over loopback.
+- Verify a [clone identity reset](spikes/macos-guests.md#base-images) before
+  enabling macOS profile base images.
 - Review the [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
   The [parity audit](desktop-parity.md) tracks remaining desktop coverage,
   including a combined live resource view.
@@ -84,8 +86,8 @@ copied into each new VM and a per-VM Codex device-code login.
   [Linux image verification](images-and-sleep.md#linux-verification) and
   [Linux LAN publishing measurements](host-setup-linux.md#lan-publishing-verification).
 - **macOS guest and iOS Simulator.** The Sequoia profile boots with pinned SSH
-  and the homebox gateway. The [iOS Simulator spike](spikes/macos-guests.md#ios-simulator)
-  booted an iOS runtime and ran a sample app.
+  and the homebox gateway. The [iOS smoke area](../smoke/ios/README.md)
+  automates the Simulator boot and sample app.
 - **Host confinement.** The isolation reviews above record the Mac and Linux
   hardening and coverage, including SSH relay ownership and gateway fixtures.
 - **Guest factory.** The [verified factory runs](../factory/README.md#verified-guest-runs)

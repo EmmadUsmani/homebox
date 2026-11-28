@@ -33,6 +33,12 @@ profile pins macOS 15.6.1 so it can run the locally available Xcode 16.2.
 Limit the extra host-side access to the packaged agent, the exact ISO tool
 and metadata on the APFS Data mount point.
 
+**Keep macOS guests on the IPSW install path** (2026-11-28, decided by the
+lead's worker overnight under the owner's autonomy grant). A VZ machine
+identifier reset leaves the source disk's account and key material in place.
+Ship the [iOS Simulator smoke check](../smoke/ios/README.md) independently of
+the [macOS base image work](spikes/macos-guests.md#base-images).
+
 ### Linux host confinement
 
 **Use unprivileged launch-time confinement** (implementation agent,

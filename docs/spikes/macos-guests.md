@@ -121,6 +121,28 @@ the app. `simctl bootstatus` finished in 45 seconds. The screenshot taken
 with `simctl io booted screenshot` rendered both labels at 1179 × 2556.
 The scratch VMs and both restore-image downloads were removed.
 
+The [iOS smoke area](../../smoke/ios/README.md) automates this path with
+a headless boot, a SwiftUI appearance log assertion and a screenshot.
+On 2026-11-28 it passed with Xcode 16.2 and iOS 18.3.1 on a fresh
+macOS 15.6.1 guest. The simulator booted in 68 seconds. Provisioning from
+the IPSW took 488 seconds with the initial download and 184 seconds
+with the IPSW cached. See the [test history](../test-runs.md).
+
+## Base images
+
+Homebox still installs macOS guests from the IPSW. The Linux restore path
+copies a disk and VZ EFI variable store. A macOS VZ guest instead starts with
+the Mac hardware model, auxiliary storage and a Mac machine identifier.
+Lima 2.3's clone code clears the machine identifier, but copies the guest disk.
+The macOS guest agent enables SSH before boot scripts and skips account
+creation when the home directory exists. A clone of a provisioned disk
+therefore needs a separate way to remove source SSH keys and login credentials
+before any SSH listener can use them. The Linux image scripts also omit macOS
+account records and keychains. Retain the refusal until a macOS-specific
+preparation, scan and first-boot reset can be verified. See
+[Lima's clone implementation](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/instance/clone.go)
+and its [macOS guest agent](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/guestagent/fakecloudinit/fakecloudinit_darwin.go).
+
 ## Screen Sharing over pinned SSH
 
 A fresh macOS 15.6.1 guest with four vCPUs, 8 GiB RAM and a 45 GiB disk
