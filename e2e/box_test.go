@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -335,7 +336,7 @@ func checkUnpublishedPort(t *testing.T, name string, box func(time.Duration, ...
 	box(time.Minute, "ssh", name, "--", fmt.Sprintf(`set -eu
 dir=$(mktemp -d)
 printf '%s\n' > "$dir/index.html"
-nohup timeout 40s python3 -m http.server %d --bind 0.0.0.0 --directory "$dir" >"$dir/server.log" 2>&1 </dev/null &
+nohup timeout 90s python3 -m http.server %d --bind 0.0.0.0 --directory "$dir" >"$dir/server.log" 2>&1 </dev/null &
 curl -q --noproxy '*' -fsS --retry 5 --retry-connrefused --retry-delay 1 --max-time 2 http://127.0.0.1:%d/ | grep -Fx '%s'
 `, marker, port, port, marker))
 	// The short-lived fixture belongs to the disposable VM. Sample long
@@ -347,6 +348,9 @@ curl -q --noproxy '*' -fsS --retry 5 --retry-connrefused --retry-delay 1 --max-t
 		if err == nil {
 			conn.Close()
 			t.Fatalf("host opened a listener for unpublished guest port %d", port)
+		}
+		if !errors.Is(err, syscall.ECONNREFUSED) {
+			t.Fatalf("could not establish whether unpublished guest port %d was refused: %v", port, err)
 		}
 		time.Sleep(250 * time.Millisecond)
 	}
