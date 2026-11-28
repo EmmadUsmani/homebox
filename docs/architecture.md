@@ -24,7 +24,7 @@ guest/             the profiles themselves, embedded in the binary:
 internal/state     box's own records (one file per VM) and port allocation
 internal/egress    public-address policy, host interface checks and bounded daemon log
 internal/confine   OS-specific sandbox profiles for the VM's host process and
-                   network daemon (macOS: Seatbelt; Linux: later)
+                   network daemon (macOS: Seatbelt; Linux: Landlock and seccomp)
 internal/vmnet     per-VM network daemon, IPv4 gateway and process monitoring
 internal/relay     publishes the driver's loopback SSH port
 internal/isolation app.Isolation: starts vmnet and confines the VM around it
@@ -34,7 +34,7 @@ internal/sshx      runs commands and scripts in a VM over the system ssh client;
 internal/displayproxy  scopes HTTP and WebSockets to one authorized browser session
                        and dials the guest over its caller's pinned SSH transport
 internal/doctor    host-side controls and reporting for isolation checks
-internal/hostinfo  host sizing, process liveness and macOS VM resource usage
+internal/hostinfo  host sizing, process liveness and VM resource usage
 internal/untrusted cleans text that came from a VM (escape sequences, control
                    characters) before box prints it
 internal/execx     a small process-runner interface, so code that shells out
@@ -210,6 +210,40 @@ during start and provisioning. It stores them in the box record along with
 the driver's identity path, and rebuilds the local OpenSSH files from those
 records. Laptop exports use the same pins and the laptop's own identity.
 
+## Networking and isolation (Linux)
+
+Lima 2.3.0 prepares the cloud image before starting the VM. Box confines
+`limactl start` and its descendants, and starts the gateway daemon under
+its own profile. The QEMU binary override points to a box-owned launcher
+that accepts Lima's capability probes and validates both network backends
+before exec. The built-in SLIRP NIC retains its loopback SSH forward and
+adds a Unix SSH forward for the relay. Only the socket NIC has outbound
+access through the existing shared IPv4 policy.
+
+Lima connects the gateway socket and passes its descriptor to QEMU. QEMU
+can consequently deny `connect(2)` and datagram sockets in its own seccomp
+profile. The gateway daemon verifies QEMU's Unix peer with `SO_PEERPIDFD`,
+using the pidfs identity written at QEMU launch. It monitors that same
+process with a pidfd. This avoids granting the daemon read access to other
+processes' files in `/proc`. OpenSSH static forward sockets use the configured
+loopback or LAN binding.
+
+Landlock checks TCP ports. QEMU and its parent profile permit port zero
+because libslirp reserves an ephemeral loopback source port for each
+Unix-forwarded connection. Landlock ABI 6–8 scopes abstract Unix sockets
+and signals. The Lima hostagent and gateway daemon use pathname Unix
+sockets, whose destination paths those ABIs cannot constrain. The
+hostagent's TCP connect rule limits the driver's SSH port, and normal
+operation dials loopback. Landlock's TCP rule applies to any IPv4
+destination on that port. The daemon needs IPv4 sockets to enforce the
+gateway's destination policy. These are process-confinement limits if a
+host helper is compromised. The QEMU process cannot initiate connections.
+
+Linux CLI host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
+with Unix SLIRP forwarding. Saved disks, autostart, GPU passthrough and the
+native desktop host application are separate work. The gateway's IPv4,
+NAT reflection and existing-flow limits apply here as well.
+
 ## Status on the host
 
 `box ls` reads host-side records and reports host process uptime. `box status`
@@ -225,6 +259,9 @@ labeled fallback when a Virtualization process cannot be identified. The
 `host.memory_bytes` and `hostagent.memory_bytes` JSON fields report macOS
 physical footprint from `proc_pid_rusage`. Each listener's `processes` field
 contains the process names and PIDs available from the guest's `ss` output.
+
+Linux reads QEMU and hostagent process statistics from procfs. The samples
+report resident bytes and CPU use averaged over each process's lifetime.
 
 ## Desktop settings
 

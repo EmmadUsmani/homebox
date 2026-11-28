@@ -15,8 +15,19 @@ if [ -z "$device" ]; then
     echo 'Socket NIC is missing' >&2
     exit 1
 fi
+# The SSH NIC has Lima's built-in gateway; its name depends on the image.
+builtin=$(ip -4 -o route get 192.168.5.2 | awk '{for (i=1; i<NF; i++) if ($i == "dev") print $(i+1)}')
+if [ -z "$builtin" ] || [ "$builtin" = "$device" ]; then
+    echo 'Could not identify the built-in SSH NIC' >&2
+    exit 1
+fi
 resolved=/etc/systemd/resolved.conf.d/80-homebox.conf
-link=/etc/systemd/network/10-netplan-eth0.network.d/80-homebox-dns.conf
+builtin_network=$(LC_ALL=C networkctl status --no-pager "$builtin" | sed -n 's/^[[:space:]]*Network File: .*\/\([^/]*\.network\)$/\1/p')
+if [ -z "$builtin_network" ]; then
+    echo 'Could not identify the systemd network file for the built-in SSH NIC' >&2
+    exit 1
+fi
+link=/etc/systemd/network/$builtin_network.d/80-homebox-dns.conf
 loopback=/etc/systemd/network/05-homebox-dns.network
 egress=/etc/systemd/network/05-homebox-egress.network
 
@@ -63,8 +74,8 @@ fi
 networkctl reload
 networkctl reconfigure "$device"
 systemctl restart systemd-resolved.service
-resolvectl revert eth0
-resolvectl default-route eth0 no
+resolvectl revert "$builtin"
+resolvectl default-route "$builtin" no
 
 unit=/etc/systemd/system/homebox-redsocks.service
 rules=/usr/local/sbin/homebox-tcp-redirect

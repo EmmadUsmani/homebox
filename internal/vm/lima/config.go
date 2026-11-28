@@ -11,6 +11,7 @@ import (
 type config struct {
 	Probes     []probeConfig     `yaml:"probes,omitempty"`
 	Provision  []provisionConfig `yaml:"provision,omitempty"`
+	Param      map[string]string `yaml:"param,omitempty"`
 	VMType     string            `yaml:"vmType"`
 	Images     []image           `yaml:"images"`
 	CPUs       int               `yaml:"cpus"`
@@ -23,15 +24,17 @@ type config struct {
 		System bool `yaml:"system"`
 		User   bool `yaml:"user"`
 	} `yaml:"containerd"`
-	PropagateProxyEnv bool `yaml:"propagateProxyEnv"`
-	NetworkOpts       struct {
-		HostLoopback bool `yaml:"hostLoopback"`
-	} `yaml:"networkOpts"`
-	User         userConfig      `yaml:"user"`
-	PortForwards []portRule      `yaml:"portForwards"`
-	HostResolver *resolverConfig `yaml:"hostResolver,omitempty"`
-	Networks     []networkConfig `yaml:"networks,omitempty"`
-	DNS          []string        `yaml:"dns,omitempty"`
+	PropagateProxyEnv bool            `yaml:"propagateProxyEnv"`
+	NetworkOpts       *networkOptions `yaml:"networkOpts,omitempty"`
+	User              userConfig      `yaml:"user"`
+	PortForwards      []portRule      `yaml:"portForwards"`
+	HostResolver      *resolverConfig `yaml:"hostResolver,omitempty"`
+	Networks          []networkConfig `yaml:"networks,omitempty"`
+	DNS               []string        `yaml:"dns,omitempty"`
+}
+
+type networkOptions struct {
+	HostLoopback bool `yaml:"hostLoopback"`
 }
 
 type probeConfig struct {
@@ -118,7 +121,12 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 			Script: fmt.Sprintf("#!/bin/sh\n[ \"$(cat /etc/homebox-image-id)\" = %s ]\n", identity),
 		}}
 	}
-	settings.NetworkOpts.HostLoopback = spec.HostGateway
+	if goos == "linux" {
+		settings.Param = map[string]string{"internal_netplanOptional": "true"}
+	}
+	if goos == "darwin" {
+		settings.NetworkOpts = &networkOptions{HostLoopback: spec.HostGateway && spec.Socket.Path == ""}
+	}
 	for _, source := range spec.Images {
 		settings.Images = append(settings.Images, image{Location: source.URL, Arch: source.Arch, Digest: source.Digest})
 	}
@@ -128,7 +136,6 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 	}
 	if spec.Socket.Path != "" {
 		settings.Networks = []networkConfig{socketNetwork(spec.Socket)}
-		settings.NetworkOpts.HostLoopback = false
 		settings.HostResolver = &resolverConfig{Enabled: false}
 	}
 	return yaml.Marshal(settings)

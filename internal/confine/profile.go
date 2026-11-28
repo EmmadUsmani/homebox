@@ -14,9 +14,13 @@ const ProfileName = "hostagent.sb"
 // DaemonProfileName is the profile used by the VM network daemon.
 const DaemonProfileName = "vmnet.sb"
 
+// QEMUSSHSocket is the private SSH forward in a Linux VM's runtime directory.
+const QEMUSSHSocket = "boxssh.sock"
+
 // Rules describes the VM process's permitted network operations.
 type Rules struct {
 	RuntimeDir      string
+	Launcher        string
 	Home            string
 	LimaHome        string
 	Executable      string

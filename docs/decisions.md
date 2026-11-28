@@ -22,6 +22,22 @@ an established open-source project.
 - *Proxmox:* not adopted; a candidate for the Linux GPU box, undecided. It
   replaces the host OS and runs only on x86. See [alternatives](alternatives.md#proxmox-ve).
 
+### Linux host confinement
+
+**Use unprivileged launch-time confinement** (implementation agent,
+2026-11-27, implementing the owner's request to bring Linux host work
+forward). QEMU's default SLIRP backend opens host sockets, so the launcher
+restricts that backend and independently denies QEMU connects and
+datagrams. Landlock and seccomp isolate files and sockets without installing
+a privileged firewall service or editing a Docker host's firewall tables.
+The gateway keeps the same public-IPv4 admission policy as on macOS.
+
+**Use a private Unix SSH forward for the relay** (implementation agent,
+2026-11-27). Landlock blocks procfs descriptor inspection across the
+separately confined QEMU and gateway processes. A second SLIRP forward and
+`SO_PEERPIDFD` verify the actual QEMU peer without expanding procfs access.
+Lima's existing loopback SSH forward remains available to its hostagent.
+
 **Windows waits for Lima's driver** (owner, 2026-11-21) rather than using
 Multipass or Hyper-V directly, to keep one VM layer.
 

@@ -39,15 +39,20 @@ func NewService(executable func() (string, error)) (*app.Service, error) {
 		Profiles:      profiles,
 		Store:         store,
 		GuestSSH:      ssh,
-		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner)},
+		DoctorHost:    doctor.Host{Gateway: doctor.DefaultGateway(runner), RequireGateway: runtime.GOOS == "linux"},
 		HostCapacity:  hostinfo.System{},
 		HostUsage:     hostinfo.ProcessUsage{Runner: runner},
 		LocalHostName: ssh.LocalHostName,
 		OpenURL: func(ctx context.Context, url string) error {
-			_, err := runner.Run(ctx, execx.Cmd{Name: "open", Args: []string{url}})
+			opener := "open"
+			if runtime.GOOS == "linux" {
+				opener = "xdg-open"
+			}
+			_, err := runner.Run(ctx, execx.Cmd{Name: opener, Args: []string{url}})
 			return err
 		},
-		Progress: os.Stderr,
+		Progress:  os.Stderr,
+		CheckHost: checkHost,
 	}
 	if executable != nil {
 		exe, err := executable()

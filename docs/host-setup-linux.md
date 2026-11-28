@@ -1,7 +1,8 @@
 # Setting up an Ubuntu development host
 
-Homebox cannot run VMs on Linux hosts yet. Linux host support is in
-development. See [current host support](../SECURITY.md#security-model).
+Homebox runs Ubuntu development VMs on x86-64 Ubuntu hosts with KVM and
+Landlock ABI 6 or later. The supported stack uses Lima 2.3.0 and QEMU 10.2
+with Unix SLIRP forwarding. See [Linux host isolation](../SECURITY.md#the-vm-and-the-linux-host).
 
 ## Install host prerequisites
 
@@ -27,6 +28,25 @@ limactl --version
 qemu-system-x86_64 --version
 test -r /dev/kvm && test -w /dev/kvm
 ```
+
+## Run a VM
+
+After installing Go from the contributor setup below, build and run the CLI.
+
+```sh
+go build -o box ./cmd/box
+./box host init
+./box new main --cpus 2 --memory 4
+./box ssh main
+./box doctor main
+```
+
+Use `box stop`, `box start` and `box rm` to manage the VM. The process
+confinement is applied on each start. It uses Landlock and seccomp without
+modifying the host firewall. SSH and published TCP ports bind to loopback
+unless you enable `box host init --lan`. Install `xdg-open` to open
+published URLs from a graphical session. A headless host can use
+`box open --print` and `box desktop --no-open`.
 
 ## Install contributor tools
 
