@@ -80,6 +80,12 @@ The guest configuration ISO is read-only.
 and the router through both NICs. Lima can answer ICMP locally at its own
 virtual gateway, so the loopback canaries use TCP and UDP.
 
+The opt-in [iOS smoke test](smoke/ios/README.md) sends the Xcode application
+bundle and one locally installed Simulator runtime over pinned SSH. Host
+accounts, keychains and home directory contents are outside the transfer.
+macOS guests use a fresh installer because their
+[clone identity reset](docs/spikes/macos-guests.md#base-images) is still open.
+
 ### The VM and the Linux host
 
 - **Nested virtualization** widens the host-kernel KVM attack surface.
