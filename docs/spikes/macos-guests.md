@@ -135,13 +135,47 @@ copies a disk and VZ EFI variable store. A macOS VZ guest instead starts with
 the Mac hardware model, auxiliary storage and a Mac machine identifier.
 Lima 2.3's clone code clears the machine identifier, but copies the guest disk.
 The macOS guest agent enables SSH before boot scripts and skips account
-creation when the home directory exists. A clone of a provisioned disk
-therefore needs a separate way to remove source SSH keys and login credentials
-before any SSH listener can use them. The Linux image scripts also omit macOS
-account records and keychains. Retain the refusal until a macOS-specific
-preparation, scan and first-boot reset can be verified. See
+creation when the home directory exists. The source SSH host keys can
+therefore be available to the listener before a Homebox boot script runs.
+The copied home also includes Lima's mode-0400 `password` file, and the
+local directory service has a separate password verifier. Removing the
+file alone leaves the account password usable. The Linux image scripts
+also omit macOS account records and keychains. A saved macOS disk needs
+these credentials removed before cloning or a verified way to prevent
+them being used until replacement is complete. See
 [Lima's clone implementation](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/instance/clone.go)
 and its [macOS guest agent](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/guestagent/fakecloudinit/fakecloudinit_darwin.go).
+
+On 2026-11-28, a fresh confined macOS 15.6.1 guest with four vCPUs,
+8 GiB RAM and a 40 GiB disk provisioned in 488 seconds including the
+IPSW download. Its account had a mode-0400 password file, no history in
+the default shell history paths, and no files in its SSH directory other
+than authorized keys. A root `sysadminctl -resetPasswordFor` probe fed a
+generated password through stdin and observed no change in the local
+password verifier digest. The probe reported only whether the digest
+changed.
+
+A separate experiment copied the patched installer disk before its first
+boot. The clone with regenerated VZ auxiliary storage showed a running VZ
+process but had no SSH pins after 90 seconds, when the run was stopped.
+With the installer's original auxiliary storage and a new VZ identifier
+for each VM, a validation boot and two more boots from the same checkpoint
+provisioned in 21.3, 21.6 and 21.5 seconds. Each completed the guest
+bootstrap and passed doctor with 60 passes and one skip for Lima's local
+ICMP reply. All three boots had different SSH host-key fingerprints,
+password file digests, directory-service verifier digests, account GUIDs,
+hardware UUIDs and values for ComputerName, LocalHostName and HostName.
+Comparisons kept digests in memory and printed only whether they differed.
+The known-location credential check found no agent or GitHub CLI login
+files, extra SSH keys or non-login user keychains on those boots.
+
+The checkpoint experiment bypassed the image store. The Linux image
+format carries EFI variables. A Mac checkpoint needs the hardware
+model, installer auxiliary storage and a way to guarantee capture before
+any account is created. Until Homebox can create and validate such an
+artifact or safely reseal a provisioned Mac disk, `box image rebuild
+--profile macos` remains refused. See
+[Lima's Mac platform setup](https://github.com/lima-vm/lima/blob/v2.3.0/pkg/driver/vz/vm_darwin_arm64.go).
 
 ## Screen Sharing over pinned SSH
 

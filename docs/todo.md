@@ -17,8 +17,10 @@ Changes to the [approved design](plan.md) require the owner's approval.
   authenticated and reconnected but returned a black framebuffer.
 - Exercise pinned SSH to the macOS guest from a separate laptop on the LAN.
   Local lifecycle checks use a separate laptop key and exported pins over loopback.
-- Verify a [clone identity reset](spikes/macos-guests.md#base-images) before
-  enabling macOS profile base images.
+- Verify a [macOS image identity reset](spikes/macos-guests.md#base-images)
+  before enabling macOS profile base images. An installer checkpoint needs
+  a publication path that can prove the disk and Mac boot artifacts were
+  captured before guest credentials existed.
 - Review the [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
   The [parity audit](desktop-parity.md) tracks remaining desktop coverage,
   including a combined live resource view.

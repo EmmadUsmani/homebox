@@ -39,6 +39,14 @@ identifier reset leaves the source disk's account and key material in place.
 Ship the [iOS Simulator smoke check](../smoke/ios/README.md) independently of
 the [macOS base image work](spikes/macos-guests.md#base-images).
 
+**Keep refusing base images made from provisioned macOS guests** (2026-11-28,
+decided by the lead's worker overnight under the owner's autonomy grant).
+Stock Lima starts SSH before the guest can rotate a copied host key. The
+tested unattended GUI password reset left the account verifier unchanged.
+An installer checkpoint taken before first boot is a separate candidate.
+It needs its own Mac boot artifacts and a verified publication path.
+See the [checkpoint experiment](spikes/macos-guests.md#base-images).
+
 ### Linux host confinement
 
 **Use unprivileged launch-time confinement** (implementation agent,
