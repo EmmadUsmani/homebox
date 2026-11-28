@@ -5,8 +5,16 @@ then SSH from your laptop straight into an isolated VM. In the Ubuntu guest you 
 run coding agents such as Claude Code and Codex with full permissions, run any
 server, and render and screenshot UI.
 
-**Status:** The Mac host and the Linux CLI host are supported. See the
-[design document](docs/plan.md) for the Windows host plans.
+- **Hosts.** Apple silicon macOS (Lima/VZ) and supported x86-64 Ubuntu Linux
+  (Lima/QEMU/KVM), with a CLI and Wails desktop app on both.
+- **Guests.** Ubuntu development VMs on both hosts, and macOS Sequoia guests on
+  Apple silicon for Mac and iOS development.
+- **Access.** Pinned SSH and opt-in LAN publishing, with status, live logs,
+  a terminal, SFTP and an optional Ubuntu remote desktop.
+- **Repeatable development.** Local Ubuntu base and saved images, an optional
+  guest agent factory, and opt-in nested KVM for Android emulator work.
+
+Windows host support is planned.
 
 ## Quick start (on the Mac that hosts the VMs)
 
@@ -87,8 +95,7 @@ Restart an already running VM so it picks up those settings. Run
 ./box ssh-config --installer > homebox-ssh.sh
 ```
 
-The default hostname is the Mac's mDNS name. Add `--host ADDR` if the laptop
-needs a different address. Transfer `homebox-ssh.sh` to the laptop over a
+Use `--host ADDR` if the default hostname is unreachable from the laptop. Transfer `homebox-ssh.sh` to the laptop over a
 trusted channel such as AirDrop or USB, then run:
 
 ```sh
@@ -113,9 +120,9 @@ and run the installer again after adding or recreating a VM.
 ### After an intentional guest host-key change
 
 If start or provision reports changed SSH keys, leave the VM running and
-run `box repin NAME` on the Mac. Review the old and new SHA-256 fingerprints
+run `box repin NAME` on the VM host. Review the old and new SHA-256 fingerprints
 and confirm only if you intended the change. Use `box repin NAME --yes` for
-an intentional change in a non-interactive session. Box refreshes the Mac's
+an intentional change in a non-interactive session. Box refreshes the host's
 aliases, and you need to generate and run the laptop installer again.
 
 The command reads new keys over the driver's authenticated connection. If
@@ -127,9 +134,9 @@ running `box repin` so the driver can authenticate the guest.
 | Command | Does |
 |---|---|
 | `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
-| `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50] [--force-provision] [--nested-virt]` | Creates and starts a VM, using the profile base image when supported |
+| `box new NAME [--profile ubuntu\|macos] [--cpus 4] [--memory 8] [--disk 50] [--force-provision] [--nested-virt]` | Creates and starts a VM, using the profile base image when supported |
 | `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
-| `box image rebuild [--profile P]` | Rebuilds a signed-out profile base image locally |
+| `box image rebuild [--profile P]` | Rebuilds the signed-out Ubuntu profile base image locally |
 | `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |
 | `box image ls` / `box image rm IMAGE` | Lists or removes local images |
 | `box image copy IMAGE --from-home DIR` | Copies a saved image from a trusted local state directory |
@@ -165,7 +172,8 @@ readings come from SSH.
 On supported macOS and Linux hosts, `box new` builds a signed-out Ubuntu base
 image on first use. Later VMs boot a copy and update the installed packages
 and coding agents. Run `box image rebuild` to refresh the cache on demand,
-or use `box new NAME --force-provision` to provision directly from the cloud image.
+or use `box new NAME --force-provision` to bypass the cache and run full
+provisioning from the cloud image.
 
 To save your own VM, stop it and save its disk:
 
@@ -244,6 +252,15 @@ and Electron process sandboxes. Playwright callers can enable Chromium's
 sandbox with `chromiumSandbox: true`. To apply the guest setting to an existing
 VM such as `dev`, run `box provision NAME` or select **Re-run provisioning**
 in the app. See [the guest security model](SECURITY.md#browser-processes-inside-the-ubuntu-guest).
+
+### Optional Android emulator and agent factory
+
+On supported x86-64 Linux QEMU/KVM hosts, create an Ubuntu VM with
+`box new NAME --nested-virt` to expose hardware virtualization. The
+[Android smoke guide](smoke/android/README.md) covers the headless AOSP emulator.
+
+The optional [agent factory](factory/README.md) uses `node run.js` inside the
+guest to run bounded Codex turns and publish changes after project health checks.
 
 ## Stopping and starting
 
@@ -362,20 +379,21 @@ See the [spike report](docs/spikes/wails-desktop.md) for the build background an
 
 ## Testing
 
-Run the same command on either macOS host from a checkout with Lima, Go,
-Node.js and ShellCheck installed. Desktop checks also need the Xcode command
+Run the tiers locally on a supported macOS or Ubuntu host with Lima, Go,
+Node.js and ShellCheck installed. On macOS, desktop checks also need the Xcode command
 line tools and a signed-in macOS session with Accessibility and Screen
-Recording permissions. Close any running copy of the checkout’s desktop build
+Recording permissions. On macOS, close any running copy of the checkout’s desktop build
 before starting the suite. Keep the verifier window in front while it sends
 keyboard or mouse input. To run on the Mac mini, open the checkout there and
 run the command locally.
 
 - **Change**, before merging, targets ten minutes. Runs gofmt, Go vet and
-  unit tests, the offline agent factory tests, and ShellCheck. It selects smoke areas from changes since the
+  unit tests, the offline agent factory tests, relative Markdown link checks,
+  and ShellCheck. It selects smoke areas from changes since the
   merge base with `origin/main`, including staged, unstaged and untracked
   files. Guest changes select OS checks and two checks for provisioned
   runtimes. CLI and core changes select `box doctor`. Desktop changes build
-  the app and exercise native verifiers when Accessibility is available.
+  the app and run platform-native verifiers when their prerequisites are available.
 - **Batch**, every few merges, adds the real-VM Go tests, `box doctor` and every
   smoke area at quick level on a freshly provisioned guest. Targets 30–60
   minutes. The VM lifecycle test requires UDP DNS replies from at least two
@@ -383,11 +401,13 @@ run the command locally.
 - **Full**, run occasionally, includes every smoke area at full level, the
   remote desktop host checks, and native verification of Files, Settings,
   the Desktop tab and viewer isolation. News Digest
-  runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
+  runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout. The Android smoke
+  requires a nested-KVM Linux host and `SMOKE_ANDROID=1`.
 
 Run the same tiers on a supported x86-64 Linux host with KVM and Lima 2.3.0.
-Install [the Linux host and contributor tools](docs/host-setup-linux.md) and
-use an amd64 QEMU smoke image for saved-image runs.
+Install the Linux host and contributor tools linked below and use an amd64
+QEMU smoke image for saved-image runs. Linux uses its own native desktop
+verifiers with a disposable X11 display.
 
 ```sh
 scripts/test.sh change
@@ -485,7 +505,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
 - [Mac isolation review](docs/security-review-2026-11-28.md): controls, coverage and limits.
 - [Linux isolation review](docs/security-review-2026-11-28-linux.md) covers controls, checks and remaining limits.
-- [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
+- [Guest smoke tests](smoke/README.md): development checks with a host-side container image cache for repeat runs.
 - [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).
 - [Ubuntu host setup](docs/host-setup-linux.md): installing host prerequisites and contributor tools.
@@ -495,9 +515,18 @@ shellcheck --shell=sh guest/*/*.sh
 - [Agent factory](factory/README.md): running a bounded Codex build loop inside a guest.
 - [Observability and the desktop app](docs/observability.md): status, live logs and the desktop app.
 - [Desktop and CLI parity](docs/desktop-parity.md).
-- [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
+- [Desktop app design](docs/design/desktop-app.md) and mockups for
+  [Overview](docs/design/desktop-mockups/Main.html),
+  [Logs](docs/design/desktop-mockups/Logs.html),
+  [Files](docs/design/desktop-mockups/Files.html),
+  [Remote](docs/design/desktop-mockups/Remote.html) and
+  [Terminal](docs/design/desktop-mockups/Terminal.html).
 - [Remote desktop spike](docs/spikes/remote-desktop.md) compares display servers over SSH.
 - [macOS guest spike](docs/spikes/macos-guests.md) records the Lima boot and networking findings.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
+- [To do](docs/todo.md) tracks unfinished work and verified milestones.
+- [Initial Mac isolation spike](docs/spikes/phase0-macos.md) verifies Lima networking and confinement.
+- [macOS UDP and ICMP spike](docs/spikes/udp-macos.md) records the socket-backed gateway experiment.
+- [Agent login spike](docs/spikes/agent-logins.md) records the credential experiments.
 - [Instructions for agents](AGENTS.md)

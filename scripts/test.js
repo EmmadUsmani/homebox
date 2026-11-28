@@ -225,6 +225,7 @@ async function runSuite(options) {
         if (process.platform !== "win32" && fs.existsSync(path.join(root, "factory/run.test.js"))) {
             await run("factory", process.execPath, ["--test", "factory/run.test.js"]);
         }
+        await run("doc-links", process.execPath, ["scripts/check-doc-links.js"]);
         await step("shellcheck", async log => {
             const files = git("ls-files", "--cached", "--others", "--exclude-standard", "-z", "--", "*.sh")
                 .split("\0").filter(file => file && fs.existsSync(file));

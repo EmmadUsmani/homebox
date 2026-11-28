@@ -1,153 +1,101 @@
 # To do
 
-Work agreed in principle but not built yet, roughly in priority order. Each item
-says why it matters and the approach we lean towards; a spike settles the
-details. Anything that changes the design document waits for the owner.
+Changes to the [approved design](plan.md) require the owner's approval.
 
-## Observability and the desktop app (phase 1b)
+## Desktop and remote access
 
-Agreed by the owner on 2026-11-22; design in [observability.md](observability.md).
-Steps 1 and 2 were built on 2026-11-22: the CLI (`box status`, `box top`,
-`box logs`, a richer `box ls`, `--json`) and the macOS desktop app (local and
-remote VMs, overview, logs, terminal, files and editor).
+- Exercise creation, provisioning and deletion through the Linux desktop app.
+  The existing [Linux desktop smoke checks](host-setup-linux.md#install-desktop-build-dependencies)
+  use a pinned loopback alias for the VM-backed remote SSH path. Repeat the
+  desktop smoke from a second physical machine over the LAN.
+- Measure remote desktop latency, bandwidth and reconnect behavior over LAN
+  and Tailscale. Test SSH from outside the LAN via Tailscale. See the
+  [remote-desktop spike](spikes/remote-desktop.md).
+- Establish a supported way to grant screen capture and input permissions
+  before offering macOS Screen Sharing as a per-VM alternative to KasmVNC. The
+  [loopback RFB prototype](spikes/macos-guests.md#screen-sharing-over-pinned-ssh)
+  authenticated and reconnected but returned a black framebuffer.
+- Exercise pinned SSH to the macOS guest from a separate laptop on the LAN.
+  Local lifecycle checks use a separate laptop key and exported pins over loopback.
+- Verify a [clone identity reset](spikes/macos-guests.md#base-images) before
+  enabling macOS profile base images.
+- Review the [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
+  The [parity audit](desktop-parity.md) tracks remaining desktop coverage,
+  including a combined live resource view.
 
-3. Remote desktop, with phase 2's desktop in the VM. The
-   [display-server spike](spikes/remote-desktop.md) led to the owner's
-   selection of KasmVNC. Both `box desktop NAME` and the app's Desktop tab
-   are built and verified on a local Mac and VM.
+## Host and guest capabilities
 
-   The app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
+- Verify GPU passthrough on a Linux host and keep Windows host support on
+  the [design roadmap](plan.md#phases).
+- Implement [autostart](plan.md#box-the-command) and check whether the macOS
+  VM can start under a boot-time job before login. If it needs a user session,
+  test automatic login as the fallback. FileVault hosts remain outside the
+  design.
+- Track aggregate host storage quotas. The current
+  [10 GiB admission floor](architecture.md#host-state-volume-headroom) checks
+  free space before selected operations. Aggregate allocation enforcement
+  remains open.
+- Spike [sleep and resume](images-and-sleep.md) with live process state.
+- Evaluate a dedicated Android guest profile. The existing
+  [Android smoke area](../smoke/android/README.md) runs a headless AOSP emulator
+  inside Ubuntu with opt-in nested KVM.
+- Verify the factory's optional [systemd user unit](../factory/README.md)
+  on an Ubuntu guest. The Linux factory run verified the supervisor.
 
-- Extend the Ubuntu [desktop smoke checks](host-setup-linux.md#install-desktop-build-dependencies)
-  to a second physical host over the LAN. The Linux VM-backed smoke uses a
-  pinned loopback alias for the remote SSH path. Full creation, provisioning,
-  and deletion through the Linux GUI still need a dedicated run.
+## Isolation and recovery
 
-- The local Settings tab and About close the host settings and version gaps.
-  The [parity audit](desktop-parity.md) tracks remaining coverage, including a
-  combined live resource view.
+- Apply the [browser sandbox setting](../SECURITY.md#browser-processes-inside-the-ubuntu-guest)
+  to existing Ubuntu VMs such as `dev` with `box provision NAME` or
+  **Re-run provisioning** in the app. New Ubuntu VMs receive it during provisioning.
 
-- Measure end-to-end desktop latency, bandwidth and reconnect behavior over
-  LAN and Tailscale. See [the remote-desktop spike](spikes/remote-desktop.md).
+- Check the Files tab with unusual filenames in the macOS GUI. See the
+  [Mac isolation review](security-review-2026-11-28.md).
+- Run macOS VMs as a separate user so Unix permissions add another boundary.
+- Extend Linux confinement as newer Landlock pathname Unix-socket controls
+  become available. Recheck the QEMU launch contract when updating Lima.
+  See the [Linux isolation review](security-review-2026-11-28-linux.md).
+- Investigate live socket NIC recovery. Today a stop/start restores egress
+  after daemon failure. See the [gateway recovery decision](decisions.md#gateway-socket-recovery).
+- Report Lima 2.3.0's SSH forwarder CLOSE_WAIT behavior upstream with a
+  reproduction. Guest sshd keepalives clean up the connection within about
+  a minute.
+- **Accepted risk.** With NAT reflection enabled, a guest can reach a LAN
+  port forward through the router's public address. Box could deny that
+  address if it can learn it without an outside service. See the
+  [gateway limitations](architecture.md#networking-and-isolation-macos).
 
-- Optional second display server for macOS Screen Sharing (RFB), selectable
-  per VM alongside KasmVNC. Establish a supported way to grant screen
-  capture and input permissions. The [loopback RFB prototype](spikes/macos-guests.md#screen-sharing-over-pinned-ssh)
-  authenticated and reconnected, but its framebuffer was black.
+## Agent sign-in (deferred)
 
-- Review the desktop app's [local lifecycle controls](design/desktop-app.md#local-lifecycle-controls-pending-owner-sign-off).
+The owner deferred host-assisted sign-in on 2026-11-22. The longer-term
+credential proxy is still on the [design roadmap](plan.md#phases). The
+[agent login design](agent-logins.md) and [spike](spikes/agent-logins.md)
+record the proposal awaiting the owner: a host-stored Claude setup token
+copied into each new VM and a per-VM Codex device-code login.
 
-## Linux host follow-ups
+## Verified milestones
 
-The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
-The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
-cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
-and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
-workflow. Measuring LAN publishing from a second machine is done for
-Linux. See the [Mac laptop measurements](host-setup-linux.md#lan-publishing-verification).
-GPU and autostart remain open.
-
-Nested KVM is available by opt-in for Linux x86-64 guests. The
-[Android smoke area](../smoke/android/README.md) covers the headless AOSP
-emulator. An Android guest profile remains open.
-
-## macOS guests and the iOS Simulator
-
-The `macos` profile is described in the [security model](../SECURITY.md#macos-guest-profile).
-Measure a real laptop SSH connection over the LAN. The local lifecycle check
-uses a separate laptop key and the exported pins over loopback.
-The [iOS smoke area](../smoke/ios/README.md) automates the Simulator check.
-macOS profile bases still need [a clone identity reset](spikes/macos-guests.md#base-images).
-
-## Update existing Ubuntu VMs for browser sandboxing
-
-New VMs get the [browser sandbox setting](../SECURITY.md#browser-processes-inside-the-ubuntu-guest)
-during provisioning. Apply it to existing VMs such as `dev` with
-`box provision NAME` or **Re-run provisioning** in the app.
-
-## Tighten the host sandboxes further
-
-Both host processes now allow-list file reads and Mach service lookups. See
-[networking and isolation](architecture.md#networking-and-isolation-macos).
-Left to do:
-
-- Run the VMs as a separate macOS user, so Unix permissions protect the
-  owner's files even if a sandbox has a gap.
-
-## Follow up on the Mac isolation review
-
-The gateway now has controlled DNS answer, IPv4 reassembly and broadcast
-dispatch fixtures. A Files-tab check that renders unusual filenames in the
-Mac GUI remains open. The [review](security-review-2026-11-28.md) explains
-existing coverage and limits.
-
-## Harden the SSH relay
-
-Done. The relay verifies that the live host process owns the driver's SSH
-listener before dialing and checks that the same listener still belongs to
-that process before forwarding. `box doctor` records the ownership check.
-
-## Sign agents in once per host (deferred)
-
-Deferred by the owner on 2026-11-22 while other work goes first. The spike is
-done and a proposal waits for the owner: a Claude `setup-token` stored on the
-host and copied in by `box new`, and a per-VM Codex device-code login. See
-[agent-logins.md](agent-logins.md) and the
-[spike](spikes/agent-logins.md).
-
-## Smaller
-
-- Lima's SSH port forwarder leaves a connection in CLOSE_WAIT when the client
-  side closes and never closes the guest side (seen with Lima 2.3.0). The
-  guest's sshd keepalives clean these up within about a minute; report it
-  upstream with a reproduction.
-- Live socket NIC recovery remains open. The current Lima attachments require
-  a VM restart after a daemon failure. Box detects this and reports the
-  recovery commands. See [the gateway recovery decision](decisions.md#gateway-socket-recovery).
-- Extend Linux sandbox coverage as newer Landlock pathname Unix-socket
-  controls become available. Recheck the QEMU launch contract when updating Lima.
-- NAT reflection: if the router reflects connections to its own public address
-  into the LAN, the VM could reach a forwarded LAN port. Accepted; box could
-  also deny the host's public address if it learned it without an outside
-  service.
-
-## Base images (phase 2)
-
-The Mac VZ and Linux QEMU backends support automatic profile bases and manual refresh with
-`box image rebuild [--profile P]`. See the [Ubuntu recipe](../images/base-ubuntu/README.md).
-The [Linux verification](images-and-sleep.md#linux-verification) exercised
-base rebuild and reuse on Ubuntu with QEMU/KVM.
-
-## Start VMs again when the host boots
-
-The owner wants VMs back after a restart or power cut without logging in to the
-host (design: "Autostart" in [plan.md](plan.md); a later phase, not urgent).
-Approach: a mark in each box record, set by `box start` and cleared by `box
-stop`, and `box autostart on`, which installs a boot-time job (launchd on macOS)
-that runs box as the owner and starts every marked VM through box. Don't use
-`limactl autostart`: it skips box's isolation. FileVault hosts aren't supported
-(owner). The spike checks that a VM starts from a boot-time job with nobody
-logged in; automatic login is the fallback.
-
-## Add uv to the guest (done)
-
-The owner agreed on 2026-11-22 to add Astral's Python project tool. The guest
-installs [uv through mise](../guest/common/mise.sh).
-
-## Docker Hub pull limits in smoke runs
-
-Done on 2026-11-26. The [smoke runner](../smoke/README.md#container-image-cache)
-caches image archives on the VM host to avoid the Docker Hub anonymous pull limit
-(HTTP 429) on repeat runs. Cold fills still depend on registry availability
-and pull quotas.
-
-## Smoke image selection for the change tier
-
-Done on 2026-11-26. The [change tier](../README.md#testing) takes its saved
-image from the normal homebox store by default and can use another store
-or import an archive directly. The run history records the source and disk digest.
-
-## Agent factory
-
-Run the [guest factory smoke](../factory/README.md#one-turn-smoke-test) on
-the remote Ubuntu host and verify the user unit there.
+- **Host and desktop support.** The CLI and Wails desktop app run on macOS and
+  supported x86-64 Ubuntu. The Ubuntu remote desktop runs over pinned SSH
+  and supports one-shot plain-text clipboard transfers. See
+  [desktop observability](observability.md) and the
+  [native verifier results](test-runs.md).
+- **Ubuntu images and LAN access.** Both hosts support saved disks and
+  automatic base images with `box image rebuild`. See
+  [the Ubuntu base recipe](../images/base-ubuntu/README.md), the
+  [smoke image recipe](../images/homebox-smoke/README.md),
+  [Linux image verification](images-and-sleep.md#linux-verification) and
+  [Linux LAN publishing measurements](host-setup-linux.md#lan-publishing-verification).
+- **macOS guest and iOS Simulator.** The Sequoia profile boots with pinned SSH
+  and the homebox gateway. The [iOS smoke area](../smoke/ios/README.md)
+  automates the Simulator boot and sample app.
+- **Host confinement.** The isolation reviews above record the Mac and Linux
+  hardening and coverage, including SSH relay ownership and gateway fixtures.
+- **Guest factory.** The [verified factory runs](../factory/README.md#verified-guest-runs)
+  completed one turn on a Mac-hosted guest and ten turns on a Linux-hosted guest.
+- **Repeatable smoke tests.** The [smoke runner](../smoke/README.md#container-image-cache)
+  caches container images on the host. Cold cache fills still depend on Docker
+  Hub availability and anonymous pull quotas. The [change tier](../README.md#testing)
+  uses the normal homebox image store by default and also supports an alternate
+  store or archive. Its history records the source and disk digest. The VM
+  lifecycle test verifies Docker UDP DNS via multiple public resolvers.
+- **Guest tooling.** Ubuntu installs [uv through mise](../guest/common/mise.sh).

@@ -119,6 +119,8 @@ check also passed.
 | 2026-11-28T10:07:45.447Z | 085e17158d73 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 226.2s | fresh |
 | 2026-11-28T10:12:28.266Z | e2e2088f9f23 | no | Mac14,10 | 27.2.1 | change | default | android, doctor | PASS | 10/0/1 | 172.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T10:22:13.381Z | 8c1ea0760244 | no | Mac14,10 | 27.2.1 | full | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/1 | 2288.4s | fresh |
+| 2026-11-28T10:25:49.348Z | ec9a8620b89f | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.0s | — |
+| 2026-11-28T10:27:46.000Z | f553ddefbe2a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.0s | — |
 | 2026-11-28T10:26:30.628Z | 110f97d9014d | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 11.7s | — |
 | 2026-11-28T10:27:29.257Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 7.0s | — |
 | 2026-11-28T10:27:54.239Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 5/0/1 | 7.0s | — |
