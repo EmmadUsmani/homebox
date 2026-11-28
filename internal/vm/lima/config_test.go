@@ -96,3 +96,27 @@ func TestSocketNetworkDisablesBuiltInHostServices(t *testing.T) {
 		}
 	}
 }
+
+func TestMacOSConfig(t *testing.T) {
+	spec := sampleSpec()
+	spec.GuestOS = vm.DarwinGuest
+	spec.BootScript = "#!/bin/sh\necho ready"
+	spec.DNS = []string{"127.0.0.1"}
+	data, err := renderConfig(spec, "darwin")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, expected := range []string{"os: Darwin", "display: default", "plain: true", "mounts: []", "forwardAgent: false", "home: /Users/box", "mode: system", "echo ready", "homebox-network-ready", "hostLoopback: false"} {
+		if !bytes.Contains(data, []byte(expected)) {
+			t.Errorf("config missing %q:\n%s", expected, data)
+		}
+	}
+
+	if _, err := renderConfig(spec, "linux"); err == nil {
+		t.Fatal("macOS config accepted a Linux host")
+	}
+	spec.BootScript = ""
+	if _, err := renderConfig(spec, "darwin"); err == nil {
+		t.Fatal("macOS config accepted a missing bootstrap script")
+	}
+}

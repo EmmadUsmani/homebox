@@ -25,6 +25,9 @@ func (s *Service) SaveImage(ctx context.Context, name, image, version string) er
 		if err != nil {
 			return err
 		}
+		if instance.GuestOS == vm.DarwinGuest {
+			return fmt.Errorf("saving macOS guest images is unavailable")
+		}
 		if instance.Status != vm.StatusStopped {
 			return fmt.Errorf("VM %q must be stopped; run box stop %s first", name, name)
 		}

@@ -25,6 +25,7 @@ type instanceRecord struct {
 	Disk         int64  `json:"disk"`
 	SSHLocalPort int    `json:"sshLocalPort"`
 	Config       struct {
+		OS       string          `json:"os"`
 		Networks []networkConfig `json:"networks"`
 		User     struct {
 			Name string `json:"name"`
@@ -41,7 +42,7 @@ func (r instanceRecord) instance() vm.Instance {
 		status = vm.StatusStopped
 	}
 	instance := vm.Instance{
-		Name: r.Name, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
+		Name: r.Name, GuestOS: r.Config.OS, Status: status, RuntimeDir: r.Dir, HostAddress: hostAddress,
 		HostPIDFile: filepath.Join(r.Dir, "ha.pid"),
 	}
 	if runtime.GOOS == "linux" && r.VMType == "qemu" {

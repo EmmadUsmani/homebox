@@ -1,7 +1,7 @@
 # homebox
 
 An exe.dev-style development VM on your own hardware. Run homebox on a Mac or a supported Linux host,
-then SSH from your laptop straight into an isolated Linux VM. In the VM you can
+then SSH from your laptop straight into an isolated VM. In the Ubuntu guest you can
 run coding agents such as Claude Code and Codex with full permissions, run any
 server, and render and screenshot UI.
 
@@ -29,6 +29,23 @@ alias uses the VM driver's existing identity. To add the Include yourself,
 run `box ssh-config --include` and put its output at the top of
 `~/.ssh/config`. The opt-in installer saves a copy of an existing config
 before editing it.
+
+### macOS guests on Apple silicon
+
+With Lima 2.3.0 and its packaged Darwin guest agent installed, create a
+macOS Sequoia guest and connect over pinned SSH:
+
+```sh
+./box new mac --profile macos --disk 55
+./box ssh mac
+./box doctor mac
+```
+
+The first creation downloads Apple's roughly 16 GiB restore image. Start,
+stop and remove macOS guests through `box`. The profile provides a macOS
+admin environment with noninteractive sudo. The Ubuntu tooling,
+saved-image workflows and `box desktop --install` are Ubuntu features.
+See the [macOS guest security model](SECURITY.md#macos-guest-profile).
 
 ## Quick start on Ubuntu Linux
 
