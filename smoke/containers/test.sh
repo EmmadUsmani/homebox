@@ -17,7 +17,7 @@ cleanup() {
     timeout 45 docker compose -p "$prefix" -f "$fixtures/compose/compose.yaml" down -v --remove-orphans --rmi local >/dev/null 2>&1
     timeout 20 docker rm -f "$prefix-observe" "$prefix-memory" "$prefix-build-result" >/dev/null 2>&1
     timeout 20 docker volume rm "$prefix" >/dev/null 2>&1
-    timeout 25 docker image rm "$prefix:amd64" "$prefix:cache-write" "$prefix:cache-read" >/dev/null 2>&1
+    timeout 25 docker image rm "$prefix:foreign" "$prefix:cache-write" "$prefix:cache-read" >/dev/null 2>&1
     timeout 20 podman rmi "$prefix:podman" >/dev/null 2>&1
     timeout 45 env KUBECONFIG="$scratch/kubeconfig" kind delete cluster --name "$prefix" >/dev/null 2>&1
     timeout 35 bash -c '
@@ -38,10 +38,20 @@ check_case() {
 }
 
 distro() {
-    local platform=$1 image=$2 script=$3
-    timeout 360 docker run --rm --platform "$platform" "$image" sh -ec "$script"
+    local platform=$1 image=$2 script=$3 status=0
+    local name="$prefix-distro"
+    timeout -k 10 360 docker run --rm --name "$name" --platform "$platform" "$image" sh -ec "$script" || status=$?
+    if (( status != 0 )); then
+        timeout -k 5 15 docker rm -f "$name" >/dev/null 2>&1 || true
+    fi
+    return "$status"
 }
 architecture=$(dpkg --print-architecture) || exit 1
+case "$architecture" in
+    amd64) export foreign=linux/arm64 foreign_machine=aarch64 ;;
+    arm64) export foreign=linux/amd64 foreign_machine=x86_64 ;;
+    *) fail "Unsupported architecture for Docker platform checks: $architecture"; finish; exit 1 ;;
+esac
 export native="linux/$architecture"
 full_only check 'Debian apt installs and runs jq' distro "$native" debian:bookworm-slim \
     'apt-get update && apt-get install -y --no-install-recommends jq && test "$(jq -n 42)" = 42'
@@ -51,8 +61,16 @@ check 'Alpine apk installs and runs jq' distro "$native" "$alpine" \
     'apk add --no-cache jq && test "$(jq -n 42)" = 42'
 full_only check 'Fedora dnf installs and runs jq' distro "$native" fedora:44 \
     'dnf -y install jq && test "$(jq -n 42)" = 42'
-full_only check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 \
-    'dnf -y install jq && test "$(jq -n 42)" = 42'
+# Use Rocky's origin so the package check is independent of slow random mirrors.
+full_only check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 '
+    origin=https://dl.rockylinux.org/pub/rocky/9
+    arch=$(uname -m)
+    dnf -y --setopt=baseos.mirrorlist= --setopt=appstream.mirrorlist= --setopt=extras.mirrorlist= \
+        --setopt=baseos.baseurl="$origin/BaseOS/$arch/os/" \
+        --setopt=appstream.baseurl="$origin/AppStream/$arch/os/" \
+        --setopt=extras.baseurl="$origin/extras/$arch/os/" install jq
+    test "$(jq -n 42)" = 42
+'
 full_only check 'openSUSE zypper installs and runs jq' distro "$native" opensuse/tumbleweed:latest \
     'zypper --non-interactive install jq && test "$(jq -n 42)" = 42'
 pacman_flags=
@@ -66,7 +84,8 @@ full_only check 'BusyBox executes its awk applet' distro "$native" busybox:1.37 
 full_only check 'Distroless debug image runs as nonroot' timeout 90 docker run --rm \
     --entrypoint /busybox/sh gcr.io/distroless/static-debian12:debug-nonroot \
     -ec 'test "$(/busybox/id -u)" = 65532 && test ! -e /bin/sh'
-full_only check 'Docker runs an amd64 executable' distro linux/amd64 "$alpine" 'test "$(uname -m)" = x86_64'
+full_only check "Docker runs a foreign executable ($foreign)" distro "$foreign" "$alpine" \
+    'test "$(uname -m)" = '"$foreign_machine"
 
 build_cache() (
     set -e
@@ -80,17 +99,17 @@ build_cache() (
 )
 check_case 'Buildx builds multiple stages and reuses a BuildKit cache mount' build_cache
 
-build_amd64() (
+build_foreign() (
     set -e
-    timeout 240 docker buildx build --builder default --platform linux/amd64 \
-        --load -t "$prefix:amd64" "$fixtures/build"
-    test "$(timeout 15 docker image inspect --format '{{.Architecture}}' "$prefix:amd64")" = amd64
+    timeout 240 docker buildx build --builder default --platform "$foreign" \
+        --load -t "$prefix:foreign" "$fixtures/build"
+    test "$(timeout 15 docker image inspect --format '{{.Architecture}}' "$prefix:foreign")" = "${foreign#linux/}"
     timeout 20 docker rm -f "$prefix-build-result" >/dev/null 2>&1 || true
-    timeout 20 docker create --platform linux/amd64 --name "$prefix-build-result" "$prefix:amd64" /unused
-    timeout 20 docker cp "$prefix-build-result:/result" "$scratch/amd64-result"
-    grep -Fx 'amd64:x86_64' "$scratch/amd64-result"
+    timeout 20 docker create --platform "$foreign" --name "$prefix-build-result" "$prefix:foreign" /unused
+    timeout 20 docker cp "$prefix-build-result:/result" "$scratch/foreign-result"
+    grep -Fx "${foreign#linux/}:$foreign_machine" "$scratch/foreign-result"
 )
-full_only check_case 'Buildx executes an amd64 build stage and loads the resulting image' build_amd64
+full_only check_case "Buildx executes a foreign build stage and loads the resulting image ($foreign)" build_foreign
 
 build_multi_platform() (
     set -e

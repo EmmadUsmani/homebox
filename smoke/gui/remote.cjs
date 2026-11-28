@@ -50,8 +50,19 @@ async function run() {
         ]);
         if (!result || new URL(result).hostname !== "127.0.0.1") throw new Error("missing loopback URL");
 
+        stage = "starting the sandboxed host browser";
+        const executablePath = process.env.SMOKE_HOST_CHROMIUM || undefined;
+        try {
+            browser = await chromium.launch({ chromiumSandbox: true, executablePath });
+        } catch (error) {
+            if (process.platform === "linux" && !executablePath && /No usable sandbox!/.test(error.message)) {
+                console.log("SKIP host browser input and framebuffer checks: bundled Chromium cannot start its sandbox; install host Chromium or set SMOKE_HOST_CHROMIUM");
+                return;
+            }
+            throw error;
+        }
+
         stage = "connecting through the browser";
-        browser = await chromium.launch({ chromiumSandbox: true });
         const page = await browser.newPage({ viewport: { width, height } });
         page.setDefaultTimeout(12000);
         await page.goto(result);
@@ -82,7 +93,7 @@ async function run() {
             return image.data[pixel] < 40 && image.data[pixel + 1] > 170;
         });
         await canvas.screenshot({ path: path.join(artifacts, "remote-before-input.png") });
-        console.log("PASS Mac Playwright sees GUI pixels through the one-time desktop URL");
+        console.log("PASS Host Playwright sees GUI pixels through the one-time desktop URL");
 
         stage = "checking remote keyboard and mouse input";
         await click(x + 80, y + 44);

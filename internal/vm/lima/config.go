@@ -92,14 +92,20 @@ type portRule struct {
 	Ignore    bool   `yaml:"ignore,omitempty" json:"ignore,omitempty"`
 }
 
-func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
-	var vmType string
+func backend(goos string) string {
 	switch goos {
 	case "darwin":
-		vmType = "vz"
+		return "vz"
 	case "linux":
-		vmType = "qemu"
+		return "qemu"
 	default:
+		return ""
+	}
+}
+
+func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
+	vmType := backend(goos)
+	if vmType == "" {
 		return nil, fmt.Errorf("unsupported Lima host OS %q", goos)
 	}
 	settings := config{

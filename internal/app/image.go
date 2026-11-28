@@ -16,6 +16,7 @@ func (s *Service) SaveImage(ctx context.Context, name, image, version string) er
 	if !ok {
 		return fmt.Errorf("driver %q does not support saving images", s.Driver.Name())
 	}
+	backend := s.imageBackend()
 	return s.Store.WithLock(func() error {
 		box, err := s.load(name)
 		if err != nil {
@@ -28,7 +29,7 @@ func (s *Service) SaveImage(ctx context.Context, name, image, version string) er
 		if instance.Status != vm.StatusStopped {
 			return fmt.Errorf("VM %q must be stopped; run box stop %s first", name, name)
 		}
-		return s.Store.SaveImage(ctx, box, image, version, func(disk string) ([]byte, error) {
+		return s.Store.SaveImage(ctx, box, image, version, backend, func(disk string) ([]byte, error) {
 			return driver.SaveDisk(ctx, name, disk)
 		})
 	})
@@ -71,8 +72,8 @@ func (s *Service) resolveImageOptions(options *NewOptions) error {
 	if err != nil {
 		return fmt.Errorf("load image %q: %w", options.Image, err)
 	}
-	if image.Driver != s.Driver.Name() || image.Arch != runtime.GOARCH {
-		return fmt.Errorf("image %q needs driver %q and architecture %q", image.Name, image.Driver, image.Arch)
+	if err := s.checkImageCompatibility(image); err != nil {
+		return err
 	}
 	if options.Profile != "" && options.Profile != image.Profile {
 		return fmt.Errorf("image %q uses profile %q", image.Name, image.Profile)
@@ -82,5 +83,22 @@ func (s *Service) resolveImageOptions(options *NewOptions) error {
 	}
 	options.Profile = image.Profile
 	options.DiskGiB = sizeOrDefault(options.DiskGiB, image.DiskGiB)
+	return nil
+}
+
+func (s *Service) imageBackend() string {
+	if driver, ok := s.Driver.(interface{ ImageBackend() string }); ok {
+		return driver.ImageBackend()
+	}
+	return ""
+}
+
+func (s *Service) checkImageCompatibility(image state.Image) error {
+	backend := s.imageBackend()
+	if image.Driver != s.Driver.Name() || image.Arch != runtime.GOARCH ||
+		(backend != "" && image.EffectiveBackend() != backend) {
+		return fmt.Errorf("image %q needs driver %q, backend %q and guest architecture %q",
+			image.Name, image.Driver, image.EffectiveBackend(), image.Arch)
+	}
 	return nil
 }
