@@ -18,6 +18,8 @@ import (
 type Box struct {
 	Name            string           `json:"name"`
 	Image           string           `json:"image,omitempty"`
+	BaseImage       bool             `json:"base_image,omitempty"`
+	ImageBuild      bool             `json:"image_build,omitempty"`
 	Profile         string           `json:"profile"`
 	Driver          string           `json:"driver"`
 	Index           int              `json:"index"`

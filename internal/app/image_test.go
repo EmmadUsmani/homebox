@@ -2,12 +2,20 @@ package app
 
 import (
 	"context"
+	"encoding/binary"
+	"errors"
 	"os"
+	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
+	guestfs "github.com/EmmadUsmani/homebox/guest"
+	"github.com/EmmadUsmani/homebox/internal/doctor"
+	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/state"
+	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
 type imageDriver struct{ testDriver }
@@ -58,6 +66,147 @@ func TestNewFromImage(t *testing.T) {
 	}
 }
 
+type baseTestProfiles struct {
+	testProfiles
+	revision string
+}
+
+func (p baseTestProfiles) Get(name string) (guest.Profile, error) {
+	profile, err := p.testProfiles.Get(name)
+	profile.ImageUpdate = []guest.Step{{Name: "refresh", Script: "refresh.sh"}}
+	return profile, err
+}
+
+func (p baseTestProfiles) ReadScript(path string) ([]byte, error) {
+	return []byte(path + p.revision), nil
+}
+
+type baseTestDriver struct {
+	testDriver
+	backingFile bool
+}
+
+func (baseTestDriver) ImageBackend() string { return "qemu" }
+
+func (d baseTestDriver) SaveDisk(_ context.Context, _, path string) ([]byte, error) {
+	disk := make([]byte, 512)
+	copy(disk, "QFI\xfb")
+	binary.BigEndian.PutUint32(disk[4:], 3)
+	binary.BigEndian.PutUint32(disk[20:], 9)
+	binary.BigEndian.PutUint64(disk[24:], baseImageDiskGiB<<30)
+	binary.BigEndian.PutUint32(disk[100:], 104)
+	if d.backingFile {
+		binary.BigEndian.PutUint64(disk[8:], 120)
+	}
+	return nil, os.WriteFile(path, disk, 0600)
+}
+
+func TestQEMUProfileBaseLifecycle(t *testing.T) {
+	s, driver, ssh, _ := fixture(t)
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}}
+	s.Profiles = baseTestProfiles{}
+	s.DoctorHost = doctorHostFunc(func(_ context.Context, _ string, _ int, lan bool) ([]string, []doctor.Check, func()) {
+		if lan {
+			t.Error("base image build published on the LAN")
+		}
+		return nil, nil, func() {}
+	})
+	if err := s.Store.SaveHost(state.Host{LAN: true, AuthorizedKeys: []string{fixtureHostKey}}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	if err := s.New(ctx, NewOptions{Name: "first", DiskGiB: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Specs["first"].ImageDisk == "" {
+		t.Fatal("first VM did not use a rebuilt base")
+	}
+	count := 0
+	for _, call := range ssh.calls {
+		if call == "keys" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("authorized laptop keys %d times; want only the clone", count)
+	}
+	first, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || first.BaseDigest == "" || first.Backend != "qemu" || first.DiskFormat != "qcow2" {
+		t.Fatalf("missing base digest: %+v, %v", first, err)
+	}
+	boxes, err := s.Store.List()
+	if err != nil || len(boxes) != 1 || boxes[0].Name != "first" {
+		t.Fatalf("scratch VM was retained: %+v, %v", boxes, err)
+	}
+	ssh.calls = nil
+	if err := s.New(ctx, NewOptions{Name: "second"}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(ssh.calls, []string{"keys", "refresh.sh"}) {
+		t.Fatalf("current base ran guest steps %v", ssh.calls)
+	}
+	ssh.calls = nil
+	if err := s.New(ctx, NewOptions{Name: "full", ForceProvision: true}); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Specs["full"].ImageDisk != "" || !slices.Equal(ssh.calls, []string{"keys", "sudo base.sh", "tools.sh"}) {
+		t.Fatalf("force provision used image or unexpected steps: %v", ssh.calls)
+	}
+
+	s.Profiles = baseTestProfiles{revision: "2"}
+	ssh.fail = errors.New("simulated provision failure")
+	if err := s.RebuildImage(ctx, "", "failing"); err == nil {
+		t.Fatal("rebuild succeeded despite failing provision step")
+	}
+	old, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || old.BaseDigest != first.BaseDigest {
+		t.Fatalf("failed build replaced the previous base: %+v, %v", old, err)
+	}
+	ssh.fail = nil
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}, backingFile: true}
+	if err := s.RebuildImage(ctx, "ubuntu", "invalid"); err == nil || !strings.Contains(err.Error(), "backing files") {
+		t.Fatalf("rebuild accepted a qcow2 backing file: %v", err)
+	}
+	old, _, err = s.Store.LoadImage("base-ubuntu")
+	if err != nil || old.BaseDigest != first.BaseDigest {
+		t.Fatalf("rejected qcow2 replaced the previous base: %+v, %v", old, err)
+	}
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}}
+	if err := s.New(ctx, NewOptions{Name: "refreshed"}); err != nil {
+		t.Fatal(err)
+	}
+	refreshed, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || refreshed.BaseDigest == first.BaseDigest {
+		t.Fatalf("stale image was not rebuilt: %+v, %v", refreshed, err)
+	}
+}
+
+type socketLimitedBaseDriver struct {
+	baseTestDriver
+	root string
+}
+
+func (d socketLimitedBaseDriver) ValidateSocketPaths(name string) error {
+	return vm.ValidateUnixSocketPath(filepath.Join(d.root, name, "ssh.sock.1234567890123456"))
+}
+
+func TestRebuildImageRejectsLongSocketPathBeforeCreatingState(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("host does not validate Unix socket paths")
+	}
+	service, driver, _, _ := fixture(t)
+	service.Store.Root = filepath.Join(service.Store.Root, strings.Repeat("a", 108))
+	service.Driver = socketLimitedBaseDriver{baseTestDriver{testDriver: testDriver{driver}}, filepath.Join(service.Store.Root, "lima")}
+	service.Profiles = baseTestProfiles{}
+	err := service.RebuildImage(t.Context(), "", "test")
+	if err == nil || !strings.Contains(err.Error(), "shorter HOMEBOX_HOME") {
+		t.Fatalf("expected a socket path error, got %v", err)
+	}
+	if _, err := os.Stat(service.Store.Root); !errors.Is(err, os.ErrNotExist) || len(driver.Specs) != 0 {
+		t.Fatalf("rebuild created state or a VM: %v", err)
+	}
+}
+
 type qemuImageDriver struct{ imageDriver }
 
 func (qemuImageDriver) ImageBackend() string { return "qemu" }
@@ -76,5 +225,22 @@ func TestImageCompatibility(t *testing.T) {
 	image.Arch = "riscv64"
 	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "riscv64") {
 		t.Fatalf("foreign image architecture: %v", err)
+	}
+}
+
+func TestRebuildImageRefusesMacOSGuest(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	catalog, err := guest.NewCatalog(guestfs.FS)
+	if err != nil {
+		t.Fatal(err)
+	}
+	service.Profiles = catalog
+	service.Driver = baseTestDriver{testDriver: testDriver{driver}}
+	err = service.RebuildImage(t.Context(), "macos", "test")
+	if err == nil || !strings.Contains(err.Error(), "rebuilding macOS guest base images is unavailable") {
+		t.Fatalf("expected a macOS guest image refusal, got %v", err)
+	}
+	if len(driver.Specs) != 0 {
+		t.Fatal("rebuild created a macOS guest")
 	}
 }

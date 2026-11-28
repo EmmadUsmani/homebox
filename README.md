@@ -17,7 +17,7 @@ go build -o box ./cmd/box            # or: go install ./cmd/box
 # Once: add the generated local SSH aliases to the top of ~/.ssh/config.
 ./box host init --ssh-include
 
-# Create a VM (about 5 minutes the first time: image download + provisioning).
+# Create a VM. The first build downloads the image and provisions the profile.
 ./box new main
 
 ssh main
@@ -127,8 +127,9 @@ running `box repin` so the driver can authenticate the guest.
 | Command | Does |
 |---|---|
 | `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
-| `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50]` | Creates, starts and provisions a VM |
+| `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50] [--force-provision]` | Creates and starts a VM, using the profile base image when supported |
 | `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
+| `box image rebuild [--profile P]` | Rebuilds a signed-out profile base image locally |
 | `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |
 | `box image ls` / `box image rm IMAGE` | Lists or removes local images |
 | `box image copy IMAGE --from-home DIR` | Copies a saved image from a trusted local state directory |
@@ -161,7 +162,12 @@ readings come from SSH.
 
 ## Saved VM images
 
-On a supported macOS or Linux host, stop an Ubuntu VM and save its disk:
+On supported macOS and Linux hosts, `box new` builds a signed-out Ubuntu base
+image on first use. Later VMs boot a copy and update the installed packages
+and coding agents. Run `box image rebuild` to refresh the cache on demand,
+or use `box new NAME --force-provision` to provision directly from the cloud image.
+
+To save your own VM, stop it and save its disk:
 
 ```sh
 box stop main
