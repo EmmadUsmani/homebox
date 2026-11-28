@@ -4,7 +4,7 @@
 languages, coding agents and headless Chromium. The
 [profile manifest](../../guest/ubuntu/profile.yaml) defines its contents.
 
-On a macOS host with Lima VZ and an initialized `box`, run:
+With Lima VZ on macOS or Lima QEMU on Linux, initialize `box` and run:
 
 ```sh
 BOX=box images/base-ubuntu/build.sh

@@ -45,6 +45,8 @@ func New(opts Options) *Driver {
 // Name identifies the driver.
 func (*Driver) Name() string { return "lima" }
 
+func (*Driver) ImageBackend() string { return backend(runtime.GOOS) }
+
 // ValidateSocketPaths checks the longest Lima instance socket, including OpenSSH's suffix.
 func (d *Driver) ValidateSocketPaths(name string) error {
 	const longestSocket = "ssh.sock.1234567890123456"
@@ -55,9 +57,6 @@ func (d *Driver) ValidateSocketPaths(name string) error {
 func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {
 		return err
-	}
-	if spec.ImageDisk != "" && runtime.GOOS != "darwin" {
-		return errors.New("creating a VM from a saved image requires Lima with VZ on macOS")
 	}
 	data, err := renderConfig(spec, runtime.GOOS)
 	if err != nil {

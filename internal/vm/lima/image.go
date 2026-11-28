@@ -14,23 +14,29 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
-// SaveDisk copies the standalone disk of a stopped VZ guest.
+// SaveDisk copies the standalone disk of a stopped guest.
 func (d *Driver) SaveDisk(ctx context.Context, name, path string) ([]byte, error) {
-	if runtime.GOOS != "darwin" {
-		return nil, fmt.Errorf("saving images requires Lima with VZ on macOS")
-	}
 	record, err := d.find(ctx, name)
 	if err != nil {
 		return nil, err
 	}
-	if record.VMType != "vz" {
-		return nil, fmt.Errorf("VM %q uses %q; saving images requires VZ", name, record.VMType)
+	if record.VMType != d.ImageBackend() || d.ImageBackend() == "" {
+		return nil, fmt.Errorf("VM %q has unsupported image backend %q", name, record.VMType)
+	}
+	if record.Arch != limaArch(runtime.GOARCH) {
+		return nil, fmt.Errorf("VM %q has unsupported guest architecture %q", name, record.Arch)
 	}
 	instance := record.instance()
 	if instance.Status != vm.StatusStopped {
 		return nil, fmt.Errorf("VM %q must be stopped; run box stop %s first", name, name)
 	}
 	disk := filepath.Join(instance.RuntimeDir, "disk")
+	if record.VMType == "qemu" {
+		if _, err := diskcopy.StandaloneQCOW2(disk); err != nil {
+			return nil, err
+		}
+		return nil, diskcopy.File(ctx, disk, path)
+	}
 	if _, err := os.Stat(disk); os.IsNotExist(err) {
 		disk = filepath.Join(instance.RuntimeDir, "diffdisk")
 	}
@@ -41,10 +47,21 @@ func (d *Driver) SaveDisk(ctx context.Context, name, path string) ([]byte, error
 	return firmware, diskcopy.File(ctx, disk, path)
 }
 
+func limaArch(arch string) string {
+	switch arch {
+	case "amd64":
+		return "x86_64"
+	case "arm64":
+		return "aarch64"
+	default:
+		return arch
+	}
+}
+
 // Stage the disk before publishing the config. Lima's create command would
 // prepare a second disk even though start can initialize the VM from this one.
 func (d *Driver) createFromImage(ctx context.Context, spec vm.Spec, config []byte) error {
-	if len(spec.ImageFirmware) == 0 {
+	if d.ImageBackend() == "vz" && len(spec.ImageFirmware) == 0 {
 		return fmt.Errorf("saved image is missing its VZ EFI variables")
 	}
 	result, err := d.run(ctx, nil, "--version")
@@ -63,10 +80,15 @@ func (d *Driver) createFromImage(ctx context.Context, spec vm.Spec, config []byt
 		return err
 	}
 	defer os.RemoveAll(staged)
-	if err := diskcopy.File(ctx, spec.ImageDisk, filepath.Join(staged, "disk")); err != nil {
+	disk := filepath.Join(staged, "disk")
+	if err := diskcopy.File(ctx, spec.ImageDisk, disk); err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(staged, "vz-efi"), spec.ImageFirmware, 0600); err != nil {
+	if d.ImageBackend() == "qemu" {
+		if _, err := diskcopy.StandaloneQCOW2(disk); err != nil {
+			return err
+		}
+	} else if err := os.WriteFile(filepath.Join(staged, "vz-efi"), spec.ImageFirmware, 0600); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(staged, "lima.yaml"), config, 0600); err != nil {
@@ -136,6 +158,3 @@ ln -sf /etc/machine-id /var/lib/dbus/machine-id
 printf '%%s\n' "$identity" > "$marker"
 `, identity, user, user)
 }
-
-// SupportsBaseImages reports whether this host can save and restore a base disk.
-func (d *Driver) SupportsBaseImages() bool { return runtime.GOOS == "darwin" }

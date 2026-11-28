@@ -27,7 +27,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$image" =~ ^[a-z][a-z0-9-]{0,30}$ ]] || die 'Invalid image name (use 1–31 lowercase letters, digits or hyphens, starting with a letter)'
-[[ $(uname -s) == Darwin && $(uname -m) == arm64 ]] || die 'This image requires an Apple silicon Mac.'
+host=$(uname -s)
+case "$host/$(uname -m)" in
+    Darwin/arm64|Linux/x86_64) ;;
+    *) die 'This image requires Apple silicon macOS or x86-64 Linux.' ;;
+esac
 if [[ -n "$archive" ]]; then
     [[ "$archive" = /* ]] || archive="$PWD/$archive"
     [[ ! -e "$archive" && ! -L "$archive" ]] || die "Export path already exists: $archive"
@@ -87,7 +91,11 @@ export BOX="$box"
 phase='select a free port index'
 # Match the per-index port assignments in internal/state/ports.go.
 # Check both TCP and UDP listeners and reserve against other recipe runs.
-ports=$( (lsof -nP -i -Fn || [[ $? -eq 1 ]]) | sed -nE 's/^n[^>]*:([0-9]+)$/\1/p' | sort -u)
+if [[ "$host" == Linux ]]; then
+    ports=$(ss -H -lntu | awk '{sub(/^.*:/, "", $5); print $5}' | sort -u)
+else
+    ports=$( (lsof -nP -i -Fn || [[ $? -eq 1 ]]) | sed -nE 's/^n[^>]*:([0-9]+)$/\1/p' | sort -u)
+fi
 for ((index = 99; index >= 1; index--)); do
     if awk -v i="$index" '
         $1 == 2200+i || $1 == 32200+i || $1 == 23000+i || $1 == 23100+i ||
@@ -128,8 +136,13 @@ phase='save the image'
 if [[ -n "$archive" ]]; then
     phase='export the image'
     "$box" image export "$image" "$archive"
-    archive_size=$(stat -f %z "$archive")
-    archive_digest=$(shasum -a 256 < "$archive")
+    if [[ "$host" == Linux ]]; then
+        archive_size=$(stat -c %s "$archive")
+        archive_digest=$(sha256sum < "$archive")
+    else
+        archive_size=$(stat -f %z "$archive")
+        archive_digest=$(shasum -a 256 < "$archive")
+    fi
     printf 'Export: %s (%s bytes)\nArchive SHA-256: %s\n' "$archive" "$archive_size" "${archive_digest%% *}"
 fi
 phase='read saved image metadata'

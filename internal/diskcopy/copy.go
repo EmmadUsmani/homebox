@@ -1,4 +1,4 @@
-// Package diskcopy copies raw disks while preserving sparse regions.
+// Package diskcopy copies VM disks while preserving sparse regions.
 package diskcopy
 
 import (

@@ -147,24 +147,24 @@ go_cross() {
 full_only check 'Go fetches a pinned module through the module proxy' go_download
 check 'Go tests call C through cgo' go_check test -count=1 ./...
 full_only check 'Go race runtime with cgo' go_check test -race -count=1 ./...
-full_only check 'Go cross-compiles a Linux amd64 ELF' go_cross linux amd64 'ELF.*x86-64'
+case $(uname -m) in
+    aarch64) foreign_arch=amd64; foreign_machine=x86_64; foreign_elf='ELF.*x86-64' ;;
+    x86_64) foreign_arch=arm64; foreign_machine=aarch64; foreign_elf='ELF.*ARM aarch64' ;;
+    *) fail 'Unsupported architecture for foreign Linux executable'; finish; exit 1 ;;
+esac
+full_only check "Go cross-compiles a Linux $foreign_arch ELF" go_cross linux "$foreign_arch" "$foreign_elf"
 full_only check 'Go cross-compiles a Darwin arm64 Mach-O' go_cross darwin arm64 'Mach-O.*arm64'
 
-run_amd64() {
-    [[ -x ./go-linux-amd64 ]] || go_cross linux amd64 'ELF.*x86-64' || return
-    [[ $(timeout 30 "$@" ./go-linux-amd64) == 00000000-0000-0000-0000-000000000000 ]]
+run_foreign() {
+    local binary="./go-linux-$foreign_arch"
+    [[ -x "$binary" ]] || go_cross linux "$foreign_arch" "$foreign_elf" || return
+    [[ $(timeout 30 "$@" "$binary") == 00000000-0000-0000-0000-000000000000 ]]
 }
 binfmt_check() {
-    grep -qx enabled /proc/sys/fs/binfmt_misc/qemu-x86_64 && run_amd64 env
+    grep -qx enabled "/proc/sys/fs/binfmt_misc/qemu-$foreign_machine" && run_foreign env
 }
-full_only check 'QEMU interprets the Linux amd64 executable' run_amd64 qemu-x86_64
-if [[ ${SMOKE_LEVEL:-full} == full ]]; then
-    if [[ $(uname -m) == aarch64 ]]; then
-        check 'binfmt transparently dispatches Linux amd64 to QEMU' binfmt_check
-    elif smoke_matches 'binfmt transparently dispatches Linux amd64 to QEMU'; then
-        skip 'binfmt dispatch requires a non-amd64 guest'
-    fi
-fi
+full_only check "QEMU interprets the Linux $foreign_arch executable" run_foreign "qemu-$foreign_machine"
+full_only check "binfmt transparently dispatches Linux $foreign_arch to QEMU" binfmt_check
 
 cargo_check() {
     (cd rust && timeout 300 cargo +1.92.0 "$@")

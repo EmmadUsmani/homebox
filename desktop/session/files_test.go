@@ -126,6 +126,10 @@ func TestFilesSFTP(t *testing.T) {
 		if err := os.WriteFile(name, []byte(content), 0640); err != nil {
 			t.Fatal(err)
 		}
+		// Set the mode explicitly so the runner's umask cannot change the fixture.
+		if err := os.Chmod(name, 0640); err != nil {
+			t.Fatal(err)
+		}
 	}
 	write(target, "initial")
 	before, err := files.Read(two.ID, target)

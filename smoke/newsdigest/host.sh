@@ -20,9 +20,9 @@ if [ -z "$port" ]; then
 fi
 origin="http://127.0.0.1:$port"
 artifacts=$(cd "$SMOKE_ARTIFACTS" && pwd)
-check 'Mac curl reaches published News Digest API health' \
+check 'Host curl reaches published News Digest API health' \
     curl -fsS --max-time 10 "$origin/healthz"
-check 'Mac curl reaches published News Digest HTML' \
+check 'Host curl reaches published News Digest HTML' \
     curl -fsS --max-time 10 "$origin/"
 
 collect() {
@@ -35,9 +35,9 @@ check 'Copy guest browser screenshots and suite logs to the run output directory
 host_browser() {
     npm install --prefix "$work" --no-audit --no-fund --fetch-timeout=30000 --fetch-retries=1 playwright@1.64.1 &&
         PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=30000 "$work/node_modules/.bin/playwright" install chromium &&
-        node "$here/browser.cjs" "$work/node_modules/playwright" "$origin" "$artifacts/newsdigest-mac"
+        node "$here/browser.cjs" "$work/node_modules/playwright" "$origin" "$artifacts/newsdigest-host"
 }
-full_only check 'Mac Chromium renders persisted edition through the published port' host_browser
+full_only check 'Host Chromium renders persisted edition through the published port' host_browser
 
 check 'Stop the guest API and remove its disposable Compose data' cleanup
 trap 'rm -rf "$work"' EXIT

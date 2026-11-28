@@ -22,7 +22,7 @@ import (
 const baseImageDiskGiB = 20
 
 type baseImageDriver interface {
-	SupportsBaseImages() bool
+	ImageBackend() string
 	SaveDisk(context.Context, string, string) ([]byte, error)
 }
 
@@ -64,7 +64,7 @@ func (s *Service) baseDigest(profile guest.Profile) (string, error) {
 // RebuildImage verifies and publishes a fresh signed-out profile base.
 func (s *Service) RebuildImage(ctx context.Context, profileName, version string) error {
 	driver, ok := s.Driver.(baseImageDriver)
-	if !ok || !driver.SupportsBaseImages() {
+	if !ok || driver.ImageBackend() == "" {
 		return fmt.Errorf("driver %q does not support rebuilding base images on this host", s.Driver.Name())
 	}
 	options := NewOptions{Profile: profileName, Version: version}
@@ -93,7 +93,7 @@ func (s *Service) RebuildImage(ctx context.Context, profileName, version string)
 
 func (s *Service) profileBase(ctx context.Context, options NewOptions, profile guest.Profile, user string) (string, error) {
 	driver, ok := s.Driver.(baseImageDriver)
-	if !ok || !driver.SupportsBaseImages() || len(profile.ImageUpdate) == 0 || options.DiskGiB < baseImageDiskGiB {
+	if !ok || driver.ImageBackend() == "" || len(profile.ImageUpdate) == 0 || options.DiskGiB < baseImageDiskGiB {
 		return "", nil
 	}
 	name := "base-" + profile.Name
@@ -107,7 +107,7 @@ func (s *Service) profileBase(ctx context.Context, options NewOptions, profile g
 		if err != nil {
 			return "", err
 		}
-		if image.BaseDigest == digest && image.BaseUser == user && image.BaseOS == runtime.GOOS && image.Driver == s.Driver.Name() && image.Arch == runtime.GOARCH {
+		if image.BaseDigest == digest && image.BaseUser == user && image.BaseOS == runtime.GOOS && s.checkImageCompatibility(image) == nil {
 			s.progress("Using profile base image %s", name)
 			return name, nil
 		}
@@ -209,7 +209,7 @@ func (s *Service) rebuildBase(ctx context.Context, driver baseImageDriver, profi
 	if _, err := s.stopForProvision(ctx, box.Name); err != nil {
 		return err
 	}
-	if err := s.Store.SaveBaseImage(ctx, box, name, options.Version, digest, func(path string) ([]byte, error) {
+	if err := s.Store.SaveBaseImage(ctx, box, name, options.Version, driver.ImageBackend(), digest, func(path string) ([]byte, error) {
 		return driver.SaveDisk(ctx, box.Name, path)
 	}); err != nil {
 		return err

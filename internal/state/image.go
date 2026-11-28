@@ -28,6 +28,8 @@ type Image struct {
 	Name           string    `json:"name"`
 	Profile        string    `json:"profile"`
 	Driver         string    `json:"driver"`
+	Backend        string    `json:"backend,omitempty"`
+	DiskFormat     string    `json:"disk_format,omitempty"`
 	Arch           string    `json:"arch"`
 	CPUs           int       `json:"cpus"`
 	MemoryGiB      int       `json:"memory_gib"`
@@ -48,12 +50,56 @@ func (image Image) validate() error {
 	if image.Format != imageFormat || ValidateName(image.Name) != nil ||
 		ValidateName(image.Profile) != nil || image.Driver == "" || image.Arch == "" ||
 		image.CPUs <= 0 || image.MemoryGiB <= 0 || image.DiskGiB <= 0 ||
-		image.DiskBytes <= 0 || (image.DiskBytes-1)/bytesPerGiB+1 > int64(image.DiskGiB) ||
+		image.DiskBytes <= 0 || (image.DiskFormat != "qcow2" && !image.fitsDisk(image.DiskBytes)) ||
 		image.CreatedAt.IsZero() || err != nil || len(digest) != sha256.Size {
 		return fmt.Errorf("invalid image metadata")
 	}
 	if len(image.Firmware) > maxFirmwareBytes || image.FirmwareSHA256 != firmwareDigest(image.Firmware) {
 		return fmt.Errorf("invalid image EFI variables or SHA-256 digest")
+	}
+	switch {
+	case image.Backend == "" && image.DiskFormat == "": // Legacy VZ images.
+	case image.Backend == "vz" && image.DiskFormat == "raw" && len(image.Firmware) > 0:
+	case image.Backend == "qemu" && image.DiskFormat == "qcow2" && len(image.Firmware) == 0:
+	default:
+		return fmt.Errorf("invalid image backend, disk format or EFI variables")
+	}
+	return nil
+}
+
+func (image Image) EffectiveBackend() string {
+	if image.Backend == "" {
+		return "vz"
+	}
+	return image.Backend
+}
+
+func (image Image) fitsDisk(size int64) bool {
+	return size > 0 && (size-1)/bytesPerGiB+1 <= int64(image.DiskGiB)
+}
+
+func (image Image) validateDisk(path string) error {
+	if image.DiskFormat != "qcow2" {
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		var magic [4]byte
+		if _, err := io.ReadFull(file, magic[:]); err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
+			return err
+		}
+		if string(magic[:]) == "QFI\xfb" {
+			return fmt.Errorf("qcow2 image disk is labeled as raw")
+		}
+		return nil
+	}
+	size, err := diskcopy.StandaloneQCOW2(path)
+	if err != nil {
+		return err
+	}
+	if !image.fitsDisk(size) {
+		return fmt.Errorf("qcow2 virtual size exceeds the recorded image disk size")
 	}
 	return nil
 }
@@ -115,19 +161,26 @@ func (s *Store) RemoveImage(name string) error {
 }
 
 // SaveImage copies a stopped disk into an unpublished directory before hashing it.
-func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, copyDisk func(string) ([]byte, error)) error {
-	return s.saveImage(ctx, box, name, version, "", copyDisk)
+func (s *Store) SaveImage(ctx context.Context, box Box, name, version, backend string, copyDisk func(string) ([]byte, error)) error {
+	return s.saveImage(ctx, box, name, version, backend, "", copyDisk)
 }
 
 // SaveBaseImage replaces an older managed base only after staging the new disk.
-func (s *Store) SaveBaseImage(ctx context.Context, box Box, name, version, digest string, copyDisk func(string) ([]byte, error)) error {
-	return s.saveImage(ctx, box, name, version, digest, copyDisk)
+func (s *Store) SaveBaseImage(ctx context.Context, box Box, name, version, backend, digest string, copyDisk func(string) ([]byte, error)) error {
+	return s.saveImage(ctx, box, name, version, backend, digest, copyDisk)
 }
 
-func (s *Store) saveImage(ctx context.Context, box Box, name, version, digest string, copyDisk func(string) ([]byte, error)) error {
+func (s *Store) saveImage(ctx context.Context, box Box, name, version, backend, digest string, copyDisk func(string) ([]byte, error)) error {
 	image := Image{
 		Format: imageFormat, Name: name, Profile: box.Profile, Driver: box.Driver, Arch: runtime.GOARCH,
 		CPUs: box.CPUs, MemoryGiB: box.MemoryGiB, DiskGiB: box.DiskGiB, CreatedAt: time.Now().UTC(), BoxVersion: version,
+	}
+	image.Backend = backend
+	switch backend {
+	case "vz":
+		image.DiskFormat = "raw"
+	case "qemu":
+		image.DiskFormat = "qcow2"
 	}
 	publish := os.Rename
 	replace := false
@@ -209,10 +262,14 @@ func (s *Store) stageImage(image *Image, replace bool, publish func(string, stri
 		return err
 	}
 	defer os.RemoveAll(staged)
-	if err := stageDisk(filepath.Join(staged, "disk")); err != nil {
+	disk := filepath.Join(staged, "disk")
+	if err := stageDisk(disk); err != nil {
 		return err
 	}
 	if err := image.validate(); err != nil {
+		return err
+	}
+	if err := image.validateDisk(disk); err != nil {
 		return err
 	}
 	if err := writeJSON(filepath.Join(staged, "image.json"), image); err != nil {

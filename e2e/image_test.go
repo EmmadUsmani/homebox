@@ -36,6 +36,20 @@ func checkImage(t *testing.T, name, binary string, store *state.Store, box func(
 	if out := box(time.Minute, "image", "ls"); !strings.Contains(out, image) {
 		t.Fatalf("saved image absent from list: %s", out)
 	}
+	saved, _, err := store.LoadImage(image)
+	if err != nil {
+		t.Fatal(err)
+	}
+	copyStore := &state.Store{Root: filepath.Join(filepath.Dir(store.Root), "image-copy")}
+	if out, err := run(4*time.Minute, "env", "HOMEBOX_HOME="+copyStore.Root, binary,
+		"image", "copy", image, "--from-home", store.Root); err != nil {
+		t.Fatalf("copy saved image: %v\n%s", err, out)
+	}
+	copied, _, err := copyStore.LoadImage(image)
+	if err != nil || copied.SHA256 != saved.SHA256 || copied.Backend != saved.Backend ||
+		copied.DiskFormat != saved.DiskFormat || copied.Arch != saved.Arch {
+		t.Fatalf("copied image metadata changed: %v", err)
+	}
 	archive := filepath.Join(t.TempDir(), "image.hbimg.gz")
 	box(6*time.Minute, "image", "export", image, archive)
 	box(time.Minute, "image", "rm", image)

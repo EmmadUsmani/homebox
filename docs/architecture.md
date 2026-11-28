@@ -112,7 +112,7 @@ original if it exists.
   ssh/config           local OpenSSH aliases (opt in via an Include)
   ssh/known_hosts      public host keys indexed by the aliases
   boxes/NAME/...        per-VM runtime files (sandbox profile, gateway socket, daemon PID and log)
-  images/IMAGE/         raw disk and metadata with VZ EFI variables and optional profile fingerprint
+  images/IMAGE/         raw or qcow2 disk and metadata with an optional profile fingerprint
   lima/                 LIMA_HOME for the Lima driver, separate from any
                         Lima VMs the user runs themselves
 ```

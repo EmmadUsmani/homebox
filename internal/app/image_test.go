@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"os"
 	"path/filepath"
@@ -79,13 +80,29 @@ func (p baseTestProfiles) ReadScript(path string) ([]byte, error) {
 	return []byte(path + p.revision), nil
 }
 
-type baseTestDriver struct{ imageDriver }
+type baseTestDriver struct {
+	testDriver
+	backingFile bool
+}
 
-func (baseTestDriver) SupportsBaseImages() bool { return true }
+func (baseTestDriver) ImageBackend() string { return "qemu" }
 
-func TestProfileBaseLifecycle(t *testing.T) {
+func (d baseTestDriver) SaveDisk(_ context.Context, _, path string) ([]byte, error) {
+	disk := make([]byte, 512)
+	copy(disk, "QFI\xfb")
+	binary.BigEndian.PutUint32(disk[4:], 3)
+	binary.BigEndian.PutUint32(disk[20:], 9)
+	binary.BigEndian.PutUint64(disk[24:], baseImageDiskGiB<<30)
+	binary.BigEndian.PutUint32(disk[100:], 104)
+	if d.backingFile {
+		binary.BigEndian.PutUint64(disk[8:], 120)
+	}
+	return nil, os.WriteFile(path, disk, 0600)
+}
+
+func TestQEMUProfileBaseLifecycle(t *testing.T) {
 	s, driver, ssh, _ := fixture(t)
-	s.Driver = baseTestDriver{imageDriver{testDriver{driver}}}
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}}
 	s.Profiles = baseTestProfiles{}
 	s.DoctorHost = doctorHostFunc(func(_ context.Context, _ string, _ int, lan bool) ([]string, []doctor.Check, func()) {
 		if lan {
@@ -113,7 +130,7 @@ func TestProfileBaseLifecycle(t *testing.T) {
 		t.Errorf("authorized laptop keys %d times; want only the clone", count)
 	}
 	first, _, err := s.Store.LoadImage("base-ubuntu")
-	if err != nil || first.BaseDigest == "" {
+	if err != nil || first.BaseDigest == "" || first.Backend != "qemu" || first.DiskFormat != "qcow2" {
 		t.Fatalf("missing base digest: %+v, %v", first, err)
 	}
 	boxes, err := s.Store.List()
@@ -145,6 +162,15 @@ func TestProfileBaseLifecycle(t *testing.T) {
 		t.Fatalf("failed build replaced the previous base: %+v, %v", old, err)
 	}
 	ssh.fail = nil
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}, backingFile: true}
+	if err := s.RebuildImage(ctx, "ubuntu", "invalid"); err == nil || !strings.Contains(err.Error(), "backing files") {
+		t.Fatalf("rebuild accepted a qcow2 backing file: %v", err)
+	}
+	old, _, err = s.Store.LoadImage("base-ubuntu")
+	if err != nil || old.BaseDigest != first.BaseDigest {
+		t.Fatalf("rejected qcow2 replaced the previous base: %+v, %v", old, err)
+	}
+	s.Driver = baseTestDriver{testDriver: testDriver{driver}}
 	if err := s.New(ctx, NewOptions{Name: "refreshed"}); err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +195,7 @@ func TestRebuildImageRejectsLongSocketPathBeforeCreatingState(t *testing.T) {
 	}
 	service, driver, _, _ := fixture(t)
 	service.Store.Root = filepath.Join(service.Store.Root, strings.Repeat("a", 108))
-	service.Driver = socketLimitedBaseDriver{baseTestDriver{imageDriver{testDriver{driver}}}, filepath.Join(service.Store.Root, "lima")}
+	service.Driver = socketLimitedBaseDriver{baseTestDriver{testDriver: testDriver{driver}}, filepath.Join(service.Store.Root, "lima")}
 	service.Profiles = baseTestProfiles{}
 	err := service.RebuildImage(t.Context(), "", "test")
 	if err == nil || !strings.Contains(err.Error(), "shorter HOMEBOX_HOME") {
@@ -177,5 +203,26 @@ func TestRebuildImageRejectsLongSocketPathBeforeCreatingState(t *testing.T) {
 	}
 	if _, err := os.Stat(service.Store.Root); !errors.Is(err, os.ErrNotExist) || len(driver.Specs) != 0 {
 		t.Fatalf("rebuild created state or a VM: %v", err)
+	}
+}
+
+type qemuImageDriver struct{ imageDriver }
+
+func (qemuImageDriver) ImageBackend() string { return "qemu" }
+
+func TestImageCompatibility(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	service.Driver = qemuImageDriver{imageDriver{testDriver{driver}}}
+	image := state.Image{Name: "cached", Driver: driver.Name(), Arch: runtime.GOARCH}
+	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "vz") {
+		t.Fatalf("legacy VZ image on QEMU: %v", err)
+	}
+	image.Backend = "qemu"
+	if err := service.checkImageCompatibility(image); err != nil {
+		t.Fatal(err)
+	}
+	image.Arch = "riscv64"
+	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "riscv64") {
+		t.Fatalf("foreign image architecture: %v", err)
 	}
 }

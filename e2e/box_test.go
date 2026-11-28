@@ -216,14 +216,7 @@ import urllib.request
 
 with urllib.request.urlopen("https://example.com", timeout=8) as response:
     assert response.status == 200
-for resolver in ("1.1.1.1", "8.8.8.8"):
-    try:
-        subprocess.run(["nslookup", "example.com", resolver], timeout=8, check=True)
-        break
-    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
-        pass
-else:
-    raise RuntimeError("direct DNS from Docker failed against both public resolvers")
+subprocess.run(["nslookup", "example.com", "9.9.9.9"], timeout=8, check=True)
 for target in sys.argv[1:]:
     host, port = target.split(":")
     for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
@@ -308,9 +301,7 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 	t.Log("SSH rejected the tampered host key")
 	checkResize(t, name, binary, box, run)
 	t.Log(box(2*time.Minute, "doctor", name))
-	if runtime.GOOS == "darwin" {
-		checkImage(t, name, binary, store, box, run, cleanupVM)
-	}
+	checkImage(t, name, binary, store, box, run, cleanupVM)
 	box(2*time.Minute, "rm", "-f", name)
 	if output := box(time.Minute, "ls"); strings.Contains(output, name) {
 		t.Fatalf("removed VM still in listing:\n%s", output)

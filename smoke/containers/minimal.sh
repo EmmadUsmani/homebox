@@ -72,8 +72,8 @@ minimal_program() {
 
 export -f minimal_build minimal_no_shell minimal_cleanup
 platforms=("$native")
-if [[ ${SMOKE_LEVEL:-full} == full && "$native" != linux/amd64 ]]; then
-    platforms+=(linux/amd64)
+if [[ ${SMOKE_LEVEL:-full} == full ]]; then
+    platforms+=("$foreign")
 fi
 for platform in "${platforms[@]}"; do
     node_label="Distroless Node serves HTTP using node_modules"

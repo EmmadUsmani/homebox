@@ -2,7 +2,7 @@
 
 Every project-maintained VM image has a recipe in `images/NAME/`:
 
-- `build.sh` builds the image end to end on a compatible Mac using `box`.
+- `build.sh` builds the image end to end on a compatible Homebox host using `box`.
 - `README.md` describes the contents, prerequisites, expected duration and
   size, and how to build, load, and check the result.
 
