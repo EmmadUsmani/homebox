@@ -51,8 +51,7 @@ go build -o box ./cmd/box
 SSH and published TCP ports bind to loopback by default. For laptop access,
 use the LAN setup below. Use `box open --print main` to print a service URL
 in a session without a browser. Start and stop through `box` so each boot
-loads the Linux confinement policy. Saved VM disks and restoring from images
-require macOS with VZ.
+loads the Linux confinement policy. Save and restore use standalone QEMU disks on Linux.
 
 ## SSH from a laptop
 
@@ -142,7 +141,7 @@ readings come from SSH.
 
 ## Saved VM images
 
-On a Mac with Lima's VZ driver, stop an Ubuntu VM and save its disk:
+On a supported macOS or Linux host, stop an Ubuntu VM and save its disk:
 
 ```sh
 box stop main
@@ -156,7 +155,7 @@ image's disk size and accepts a larger `--disk`. CPU and memory follow the norma
 `box new` defaults. Save and export warn because images carry everything on
 the guest disk, including any agent logins and tokens.
 
-To move an image to a compatible Mac, run `box image export dev-tools dev-tools.hbimg.gz`,
+To move an image to a host with the same backend and guest architecture, run `box image export dev-tools dev-tools.hbimg.gz`,
 copy the archive by hand, then run `box image import dev-tools.hbimg.gz` there.
 Import verifies the disk's SHA-256 and preserves the original image name.
 See [image storage and compatibility](docs/images-and-sleep.md#images).

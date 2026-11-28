@@ -3,12 +3,16 @@ package state
 import (
 	"bytes"
 	"compress/gzip"
+	"crypto/sha256"
+	"encoding/binary"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestImageArchive(t *testing.T) {
@@ -17,7 +21,7 @@ func TestImageArchive(t *testing.T) {
 	disk := []byte("test disk data")
 	box := Box{Profile: "ubuntu", Driver: "lima", CPUs: 2, MemoryGiB: 4, DiskGiB: 20}
 	save := func() error {
-		return source.SaveImage(t.Context(), box, "test-image", "dev", func(path string) ([]byte, error) {
+		return source.SaveImage(t.Context(), box, "test-image", "dev", "", func(path string) ([]byte, error) {
 			return []byte("EFI fixture"), os.WriteFile(path, disk, 0600)
 		})
 	}
@@ -123,7 +127,7 @@ func TestCopyImage(t *testing.T) {
 	destination := &Store{Root: t.TempDir()}
 	const name = "test-image"
 	box := Box{Profile: "ubuntu", Driver: "lima", CPUs: 2, MemoryGiB: 4, DiskGiB: 20}
-	if err := source.SaveImage(t.Context(), box, name, "dev", func(path string) ([]byte, error) {
+	if err := source.SaveImage(t.Context(), box, name, "dev", "", func(path string) ([]byte, error) {
 		return []byte("EFI fixture"), os.WriteFile(path, []byte("original"), 0600)
 	}); err != nil {
 		t.Fatal(err)
@@ -169,5 +173,67 @@ func TestCopyImage(t *testing.T) {
 	entries, err := os.ReadDir(destination.imagesDir())
 	if err != nil || len(entries) != 0 {
 		t.Fatalf("failed copy left entries: %v, %v", entries, err)
+	}
+}
+
+func TestImportQCOW2(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		edit func([]byte)
+		want string
+	}{
+		{name: "standalone", edit: func([]byte) {}},
+		{name: "backing", edit: func(disk []byte) { disk[15] = 120 }, want: "backing files"},
+		{name: "external-feature", edit: func(disk []byte) { disk[79] = 4 }, want: "external data files"},
+		{name: "external-extension", edit: func(disk []byte) { copy(disk[104:], "DATA") }, want: "external data files"},
+		{name: "oversized", edit: func(disk []byte) { binary.BigEndian.PutUint64(disk[24:], 3<<30) }, want: "virtual size"},
+		{name: "raw", edit: func(disk []byte) { clear(disk[:4]) }, want: "invalid magic"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			disk := make([]byte, 512)
+			copy(disk, "QFI\xfb")
+			binary.BigEndian.PutUint32(disk[4:], 3)
+			binary.BigEndian.PutUint32(disk[20:], 9)
+			binary.BigEndian.PutUint64(disk[24:], 2<<30)
+			binary.BigEndian.PutUint32(disk[100:], 104)
+			tc.edit(disk)
+			image := Image{
+				Format: imageFormat, Name: "test", Profile: "ubuntu", Driver: "lima",
+				Backend: "qemu", DiskFormat: "qcow2", Arch: "amd64",
+				CPUs: 2, MemoryGiB: 4, DiskGiB: 2, DiskBytes: int64(len(disk)),
+				CreatedAt: time.Now(), SHA256: fmt.Sprintf("%x", sha256.Sum256(disk)),
+			}
+			var archive bytes.Buffer
+			writer := gzip.NewWriter(&archive)
+			if err := json.NewEncoder(writer).Encode(image); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := writer.Write(disk); err != nil {
+				t.Fatal(err)
+			}
+			if err := writer.Close(); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(dir, "disk.hbimg")
+			if err := os.WriteFile(path, archive.Bytes(), 0600); err != nil {
+				t.Fatal(err)
+			}
+			store := &Store{Root: dir}
+			_, err := store.ImportImage(t.Context(), path, "")
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err == nil || !strings.Contains(err.Error(), tc.want) {
+					t.Fatalf("import: %v, want %q", err, tc.want)
+				}
+				images, err := store.ListImages()
+				if err != nil || len(images) != 0 {
+					t.Fatalf("images after rejected import: %v, %v", images, err)
+				}
+			}
+		})
 	}
 }

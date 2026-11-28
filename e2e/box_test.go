@@ -297,9 +297,7 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 	t.Log("SSH rejected the tampered host key")
 	checkResize(t, name, binary, box, run)
 	t.Log(box(2*time.Minute, "doctor", name))
-	if runtime.GOOS == "darwin" {
-		checkImage(t, name, binary, store, box, run, cleanupVM)
-	}
+	checkImage(t, name, binary, store, box, run, cleanupVM)
 	box(2*time.Minute, "rm", "-f", name)
 	if output := box(time.Minute, "ls"); strings.Contains(output, name) {
 		t.Fatalf("removed VM still in listing:\n%s", output)

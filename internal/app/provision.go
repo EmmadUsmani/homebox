@@ -253,6 +253,9 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 			if err != nil {
 				return err
 			}
+			if err := s.checkImageCompatibility(image); err != nil {
+				return err
+			}
 			imageDisk, imageFirmware = path, image.Firmware
 		}
 		s.progress("Creating %s", box.Name)

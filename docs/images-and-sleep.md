@@ -1,12 +1,13 @@
 # Images, sleep and resume: how they work underneath
 
-Saved images are available on the macOS host with Lima's VZ driver. Sleep and
+Saved images use Lima VZ on macOS and Lima QEMU on x86-64 Linux. Sleep and
 resume are future work in [plan.md](plan.md).
 
 ## What a running VM is made of
 
 1. **Disk:** a file on the host. With Lima's `vz` driver, a standalone sparse raw disk file (`disk`, or
-   `diffdisk` in older instances). It contains files, packages and logins.
+   `diffdisk` in older instances). Lima 2.3.0 QEMU uses a standalone qcow2
+   `disk` for the Ubuntu cloud image. It contains files, packages and logins.
 2. **RAM:** the guest's memory, held by the VM's host process. Every running
    process, the kernel, the file cache, open sockets.
 3. **CPU registers:** what each virtual CPU was doing at that instant.
@@ -29,13 +30,15 @@ the other is everything else.
 VM disks locally from source.
 
 - **Saving:** stop a VM and run `box image save NAME IMAGE`. Box
-  archives the standalone disk and the VZ EFI variables used to boot it.
+  archives the standalone disk and the VZ EFI variables when applicable.
+  QEMU boots with read-only host OVMF and has no instance EFI variable file
+  to include.
   APFS shares blocks through `clonefile`. Other filesystems fall back to a
   sparse copy. Computing the disk digest takes a
-  full read of the logical disk even when APFS clones the data.
+  full read of the disk file even when APFS clones the data.
 - **Using:** `box new NAME --image IMAGE` builds a fresh Lima instance with the
   usual user, index, ports and isolation settings. The driver stages the disk
-  and EFI variables before the first start to skip Lima's disk preparation. It
+  and any saved EFI variables before the first start to skip Lima's disk preparation. It
   boots the saved disk without running the full profile scripts. Its disk is
   at least as large as the source allocation. The copied files keep their original ownership and
   paths, including any older accounts and home directories.
@@ -45,12 +48,13 @@ VM disks locally from source.
   machine ID, then pins the new SSH keys. Later starts keep that identity.
   Lima uses a per-boot cloud-init instance ID.
 - **Export and import:** an archive contains a versioned JSON record and the
-  raw disk, compressed as a single gzip file. The record includes the profile,
-  sizes, time, box version, host architecture, EFI variables, and separate
-  SHA-256 digests for the raw disk and EFI variables. Import verifies the
-  disk length and both digests before publishing the image locally. Use
-  `--name NAME` on import to choose a different local name.
-  Use a Mac with the same CPU architecture. Only import images you trust.
+  disk file, compressed as a single gzip file. The record includes the profile,
+  sizes, time, box version, backend, disk format, guest architecture, SHA-256
+  disk digest, and any VZ EFI variables and their digest. Older metadata
+  without a backend or disk format is read as VZ/raw. Import verifies the
+  length, digests and qcow2 self-containment before publishing. Use
+  `--name NAME` on import to choose a different local name. Restoring requires
+  the same backend and guest architecture. Only import images you trust.
 - **Local store copies:** `box image copy IMAGE --from-home DIR` stages an
   independent disk in the active store and publishes it with the original
   metadata. On the same APFS volume it uses a copy-on-write clone. If cloning

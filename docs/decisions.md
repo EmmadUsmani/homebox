@@ -297,3 +297,11 @@ The owner approved a Mac-side cache after the containers smoke runs hit Docker
 Hub's anonymous pull quota. The [smoke runner](../smoke/README.md#container-image-cache)
 stores archives on the Mac and transfers them over pinned SSH initiated by the
 Mac, keeping the cache outside guest reach.
+
+## Linux saved VM disks (2026-11-27)
+
+The Linux smoke implementation uses Lima 2.3.0's standalone qcow2 disk
+directly. Explicit backend and guest architecture metadata keep boot checks
+specific to the hypervisor and CPU. The existing VZ archive layout stays
+readable. Import and restore reject qcow2 references to other files so a
+saved disk needs only the documented host firmware and its own contents.
