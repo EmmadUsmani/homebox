@@ -19,8 +19,12 @@ collect_guest_evidence() {
 }
 check 'Collect guest GUI evidence' collect_guest_evidence
 
+if [ "$(uname -s)" = Linux ] && [ -z "${SMOKE_HOST_CHROMIUM:-}" ]; then
+    SMOKE_HOST_CHROMIUM=$(command -v chromium || command -v chromium-browser || command -v google-chrome || true)
+fi
+export SMOKE_HOST_CHROMIUM
 if npm ci --prefix "$scratch" --no-audit --no-fund &&
-    "$scratch/node_modules/.bin/playwright" install chromium; then
+    { [ -n "${SMOKE_HOST_CHROMIUM:-}" ] || "$scratch/node_modules/.bin/playwright" install chromium; }; then
     node "$here/remote.cjs" "$scratch/node_modules" "$BOX" "$SMOKE_VM" "$artifacts" \
         >"$scratch/remote.log" 2>&1 || smoke_failures=$((smoke_failures + 1))
     cat "$scratch/remote.log"

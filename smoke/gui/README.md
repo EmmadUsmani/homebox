@@ -59,6 +59,12 @@ outside this suite. The native viewer has separate verification scripts in
 
 The Ubuntu profile allows unprivileged user namespaces for Chromium and
 Electron. The Playwright Chromium fixture sets `chromiumSandbox: true`.
+On Ubuntu hosts, the browser fixture prefers installed Chromium or Chrome
+because AppArmor can deny user namespaces to the Playwright download.
+Use `SMOKE_HOST_CHROMIUM` to specify a sandbox-capable executable. If the
+bundled browser reports that its sandbox is unavailable, the host
+framebuffer and input checks report a skip. The guest GUI checks, gallery
+and SSH X11 refusal check still run.
 Both browser fixtures verify seccomp filtering and a nested PID namespace in
 their renderers. Electron's package manifest allows only its pinned package
 to run the npm install hook that fetches its binary.
