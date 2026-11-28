@@ -329,6 +329,7 @@ def verify_create_delete(pid, output, binary, vm):
     cli("ssh", vm, "--", 'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"')
     verify_vm(pid, output, vm, binary, created=True)
 
+    enabled(window, "More", timeout=60)
     press(window, "More")
     press(window, "Re-run provisioning")
     visible_text(window, "Provisioning VM…")
@@ -359,6 +360,7 @@ def verify_create_delete(pid, output, binary, vm):
     visible_text(window, f"Guest 9000 → 127.0.0.1:{host_port}")
     capture("port-published")
     press(window, "Overview", "page tab")
+    enabled(window, "Start", timeout=60)
     press(window, "Start")
     named(window, vm + r".*\brunning", "button", 180)
 
@@ -372,6 +374,8 @@ def verify_create_delete(pid, output, binary, vm):
     wait_for(ssh_ready, "SSH after restarting the guest", 120)
     capture("restarted")
 
+    # Inventory and guest SSH can recover before the Start action resolves.
+    enabled(window, "More", timeout=120)
     press(window, "More")
     press(window, "Delete VM…")
     confirmation = f"Type {vm} to confirm"
