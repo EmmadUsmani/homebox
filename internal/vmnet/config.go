@@ -10,6 +10,17 @@ import (
 	"strconv"
 )
 
+const (
+	GatewayIP = "10.114.0.1"
+	Subnet    = "10.114.0.0/24"
+	guestMAC  = "\x52\x55\x0a\x72\x00\x15"
+)
+
+// GuestMAC returns the MAC configured on the VM's socket NIC.
+func GuestMAC() string {
+	return net.HardwareAddr(guestMAC).String()
+}
+
 // Endpoint is the published SSH address.
 type Endpoint struct {
 	IP   string

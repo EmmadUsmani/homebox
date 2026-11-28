@@ -17,6 +17,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/untrusted"
 	"github.com/EmmadUsmani/homebox/internal/vm"
+	"github.com/EmmadUsmani/homebox/internal/vmnet"
 )
 
 var (
@@ -309,7 +310,11 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
 		return err
 	}
-	env := map[string]string{"HOMEBOX_USER": box.User}
+	env := map[string]string{
+		"HOMEBOX_USER":           box.User,
+		"HOMEBOX_SOCKET_MAC":     vmnet.GuestMAC(),
+		"HOMEBOX_GATEWAY_SUBNET": vmnet.Subnet,
+	}
 	steps := profile.Steps
 	if restoringImage {
 		steps = nil

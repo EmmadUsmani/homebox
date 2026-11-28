@@ -32,10 +32,8 @@ import (
 )
 
 const (
-	gatewayIP   = "10.114.0.1"
 	guestIP     = "10.114.0.21"
 	gatewayMAC  = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x01")
-	guestMAC    = tcpip.LinkAddress("\x52\x55\x0a\x72\x00\x15")
 	networkNIC  = 1
 	ethernetMTU = 1500
 	frameMax    = ethernetMTU + header.EthernetMinimumSize
@@ -44,8 +42,8 @@ const (
 )
 
 var (
-	subnet         = netip.MustParsePrefix("10.114.0.0/24")
-	gatewayAddress = stackAddress(gatewayIP)
+	subnet         = netip.MustParsePrefix(Subnet)
+	gatewayAddress = stackAddress(GatewayIP)
 	guestAddress   = stackAddress(guestIP)
 )
 
@@ -268,7 +266,7 @@ func serveDHCP(conn *gonet.UDPConn) {
 		default:
 			continue
 		}
-		gateway := net.ParseIP(gatewayIP).To4()
+		gateway := net.ParseIP(GatewayIP).To4()
 		reply, err := dhcpv4.NewReplyFromRequest(request,
 			dhcpv4.WithMessageType(response),
 			dhcpv4.WithYourIP(net.ParseIP(guestIP).To4()),

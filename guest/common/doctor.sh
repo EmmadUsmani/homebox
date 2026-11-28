@@ -92,7 +92,8 @@ def blocked(protocol, target, device=None):
 builtin = os.getenv("HOMEBOX_BUILTIN_GATEWAY", "192.168.5.2")
 targets = os.getenv("HOMEBOX_DENY_TARGETS", "").split()
 loopback_ports = [target.split(":")[1] for target in targets if target.startswith(builtin + ":")]
-targets += [f"10.114.0.1:{port}" for port in loopback_ports or ["80"]]
+gateway = os.environ["HOMEBOX_GATEWAY_IP"]
+targets += [f"{gateway}:{port}" for port in loopback_ports or ["80"]]
 targets += ["10.100.50.1:80", "172.30.250.1:80", "192.168.250.1:80",
             "100.64.3.1:80", "169.254.169.254:80"]
 def route_to(address):

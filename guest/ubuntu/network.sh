@@ -2,7 +2,8 @@
 set -eu
 
 stub=169.254.53.53
-mac=52:55:0a:72:00:15
+mac=${HOMEBOX_SOCKET_MAC:?missing socket NIC MAC}
+subnet=${HOMEBOX_GATEWAY_SUBNET:?missing gateway subnet}
 device=
 for address in /sys/class/net/*/address; do
     if [ "$(cat "$address")" = "$mac" ]; then
@@ -123,10 +124,11 @@ else
 fi
 
 for _attempt in 1 2 3 4 5 6 7 8 9 10; do
-    if ip -4 route get 9.9.9.9 | grep -Fq " dev $device "; then
+    if ip -4 route get 9.9.9.9 | grep -Fq " dev $device " &&
+        ip -4 -o address show dev "$device" to "$subnet" | grep -q " inet "; then
         exit 0
     fi
     sleep 1
 done
-echo 'Socket NIC did not become the IPv4 default route' >&2
+echo 'Socket NIC did not obtain an IPv4 address in the gateway subnet and become the default route' >&2
 exit 1
