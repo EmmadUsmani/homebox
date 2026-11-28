@@ -144,3 +144,5 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:56:31.221Z | d3f825cf7061 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.6s | — |
 | 2026-11-28T11:02:20.571Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 176.1s | fresh |
 | 2026-11-28T11:04:31.179Z | be400e61c8ff | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 130.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T11:06:32.675Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 9.8s | — |
+| 2026-11-28T11:13:14.096Z | 1c7868e74d0a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.4s | — |
