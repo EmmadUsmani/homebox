@@ -34,7 +34,7 @@ describe it are true, in the same commit or the one right after.
 | [docs/architecture.md](docs/architecture.md) | Packages, dependencies, host state or known limitations change |
 | [docs/decisions.md](docs/decisions.md) | A decision is made or reversed: record why, the date and who made it |
 | [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |
-| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) and [macOS guests](docs/spikes/macos-guests.md) |
+| [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) [macOS guests](docs/spikes/macos-guests.md) and [Linux GPU passthrough](docs/spikes/gpu-passthrough.md) |
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
 | [docs/host-setup-linux.md](docs/host-setup-linux.md) | Linux host prerequisites or contributor tools change |
 | [images/README.md](images/README.md) | A project-maintained image gets a local build recipe |

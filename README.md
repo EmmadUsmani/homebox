@@ -522,6 +522,7 @@ shellcheck --shell=sh guest/*/*.sh
   [Remote](docs/design/desktop-mockups/Remote.html) and
   [Terminal](docs/design/desktop-mockups/Terminal.html).
 - [Remote desktop spike](docs/spikes/remote-desktop.md) compares display servers over SSH.
+- [Linux GPU passthrough spike](docs/spikes/gpu-passthrough.md) records host readiness and the proposed VFIO validation.
 - [macOS guest spike](docs/spikes/macos-guests.md) records the Lima boot and networking findings.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
