@@ -69,9 +69,10 @@ and the [to-do list](docs/todo.md) for remaining work.
 ## Testing before merging
 
 The owner agreed this on 2026-11-26. All tiers run with
-[`scripts/test.sh`](scripts/test.sh) on either Mac or the supported Ubuntu host
-(see [Testing](README.md#testing)). GitHub CI is informative, not the gate: a
-change must pass on one of those hosts.
+[`scripts/test.sh`](scripts/test.sh) on this laptop or the Mac mini (see the
+README's "Testing" section). GitHub CI is informative, not the gate: a change
+must pass on one of the Macs. Linux-host changes are also checked on the
+Ubuntu host (see [Linux host setup](docs/host-setup-linux.md)).
 
 - **Before every merge:** `scripts/test.sh change` passes. Paste its summary
   line (commit, machine, result, duration) into the pull request, and commit
