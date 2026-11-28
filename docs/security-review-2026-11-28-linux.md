@@ -1,9 +1,10 @@
 # Linux isolation review · 2026-11-28
 
-Scope includes the x86-64 Ubuntu 26.04 host with Linux 7.0, Lima 2.3.0,
-QEMU/KVM, the host gateway and the CLI and desktop paths that consume guest
-data. The confinement probes use installed rules and local canaries.
-Guest-side checks assume an honest SSH endpoint and a known test image.
+Scope includes the x86-64 Ubuntu 26.04 host with Linux 7.0 and Landlock ABI 8,
+Lima 2.3.0, QEMU 10.2.1/KVM, the host gateway and the CLI and desktop paths
+that consume guest data. The confinement probes apply each launch policy in
+a disposable process and check it against local canaries. Guest-side checks
+assume an honest SSH endpoint and a known test image.
 
 | Control | Automated check | Gap, severity and status |
 |---|---|---|
@@ -19,3 +20,11 @@ Guest-side checks assume an honest SSH endpoint and a known test image.
 | Gateway flows, logs and disk | [Flow limits](../internal/vmnet/flows_test.go), [daemon log rotation](../internal/egress/daemon_log_test.go), [disk resize](../e2e/resize_test.go) | Per-VM flow limits, gateway log rotation and per-disk virtual capacity have checks. Aggregate physical use by disks, images and Lima logs remains an operational limit. |
 | Saved Linux images | [Image handling](../internal/state/image_test.go), [real restore](../e2e/image_test.go) | Imports reject qcow2 external references. A user must trust imported disk contents and protect any credentials they carry. |
 | Nested virtualization | [Opt-in nested KVM change](https://github.com/EmmadUsmani/homebox/pull/38) | Pending. PR #38 was open at review time and unavailable on the reviewed base. VMX/SVM masking still needs verification on an ordinary VM after it lands. |
+
+## Host verification
+
+The fresh 2-vCPU, 4 GiB scratch VM passed doctor after a restart under the
+tightened rules. Doctor reported 13 TCP, 13 UDP and 12 ICMP denial checks
+through SLIRP. The native GTK viewer fixture passed in a disposable X11
+session. The [test history](test-runs.md) records the change and scoped
+OS, doctor and end-to-end batch runs.
