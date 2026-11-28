@@ -10,7 +10,7 @@ From a homebox checkout on the host, install the harness over box's pinned SSH.
 
 ```sh
 box new factory --cpus 4 --memory 6
-tar -C factory -cf - run.js ITERATION.md MISSION.example.md homebox-factory.service |
+COPYFILE_DISABLE=1 tar --no-xattrs -C factory -cf - run.js ITERATION.md MISSION.example.md homebox-factory.service |
   box ssh factory -- 'umask 077 && mkdir -p ~/agent-factory && tar -xf - -C ~/agent-factory'
 box ssh factory
 ```
