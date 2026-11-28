@@ -47,6 +47,10 @@ workflow. Measuring LAN publishing from a second machine is done for
 Linux. See the [Mac laptop measurements](host-setup-linux.md#lan-publishing-verification).
 GPU and autostart remain open.
 
+Nested KVM is available by opt-in for Linux x86-64 guests. The
+[Android smoke area](../smoke/android/README.md) covers the headless AOSP
+emulator. An Android guest profile remains open.
+
 ## macOS guests and the iOS Simulator
 
 The `macos` profile is described in the [security model](../SECURITY.md#macos-guest-profile).

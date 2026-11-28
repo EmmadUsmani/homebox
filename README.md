@@ -127,7 +127,7 @@ running `box repin` so the driver can authenticate the guest.
 | Command | Does |
 |---|---|
 | `box host init [--lan/--no-lan] [--authorized-key FILE] [--ssh-include]` | Checks Lima, sets LAN publishing, adds laptop keys or installs the local SSH Include |
-| `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50] [--force-provision]` | Creates and starts a VM, using the profile base image when supported |
+| `box new NAME [--profile ubuntu] [--cpus 4] [--memory 8] [--disk 50] [--force-provision] [--nested-virt]` | Creates and starts a VM, using the profile base image when supported |
 | `box new NAME --image IMAGE [--cpus N] [--memory GiB] [--disk GiB]` | Creates a VM from a saved disk with fresh identity and ports |
 | `box image rebuild [--profile P]` | Rebuilds a signed-out profile base image locally |
 | `box image save NAME IMAGE` | Saves a stopped VM's disk as a local image |

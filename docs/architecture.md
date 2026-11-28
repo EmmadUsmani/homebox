@@ -166,6 +166,9 @@ closes that descriptor and can accept again only if it owns a listening
 descriptor. The VZ attachment also remains bound to its original connection.
 Recreating the socket path does not reconnect either device. Box reports a
 dead daemon and a stop/start creates a fresh attachment.
+On Ubuntu 26.04 with Lima 2.3.0 and QEMU 10.2.1, a killed gateway daemon
+was reported by both status and doctor. Restarting the VM restored public
+egress and doctor passed.
 
 1. Box starts `box _vmnet NAME` under its own Seatbelt profile. The daemon
    binds an owner-only Unix socket in the VM's run directory and accepts
@@ -280,6 +283,12 @@ operation dials loopback. Landlock's TCP rule applies to any IPv4
 destination on that port. The daemon needs IPv4 sockets to enforce the
 gateway's destination policy. These are process-confinement limits if a
 host helper is compromised. The QEMU process cannot initiate connections.
+
+The Linux x86-64 Lima driver uses the host CPU model with VMX and SVM
+masked by default. For a VM created with `--nested-virt`, the box record
+allows the native host CPU features. Box reconciles the CPU model before
+starting stopped QEMU instances, including records written before the flag
+existed. See the [Android smoke area](../smoke/android/README.md).
 
 Linux CLI host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
 with Unix SLIRP forwarding. Linux supports saved qcow2 disks and a native

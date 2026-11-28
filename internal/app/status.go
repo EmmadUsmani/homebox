@@ -16,6 +16,7 @@ import (
 
 type VMStatus struct {
 	Name          string              `json:"name"`
+	NestedVirt    bool                `json:"nested_virt"`
 	State         string              `json:"state"`
 	Profile       string              `json:"profile,omitempty"`
 	SSHPort       int                 `json:"ssh_port,omitempty"`
@@ -165,7 +166,7 @@ func (s *Service) Top(ctx context.Context, name string) (TopSnapshot, error) {
 		probes.Go(func() {
 			probeCtx, cancel := context.WithTimeout(ctx, 1800*time.Millisecond)
 			defer cancel()
-			status := VMStatus{Name: box.Name, State: string(box.Status)}
+			status := VMStatus{Name: box.Name, NestedVirt: box.NestedVirt, State: string(box.Status)}
 			s.probeGuest(probeCtx, &status, false)
 			snapshot.VMs[index] = status
 		})
@@ -180,7 +181,7 @@ func (s *Service) Top(ctx context.Context, name string) (TopSnapshot, error) {
 
 func (s *Service) localStatus(box Listing) VMStatus {
 	status := VMStatus{
-		Name: box.Name, State: string(box.Status), Profile: box.Profile,
+		Name: box.Name, NestedVirt: box.NestedVirt, State: string(box.Status), Profile: box.Profile,
 		SSHPort: box.SSHPort, Forwards: box.Forwards,
 	}
 	run, recorded, err := s.Store.LoadProvisionRun(box.Name)

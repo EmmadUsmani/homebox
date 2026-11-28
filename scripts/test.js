@@ -91,8 +91,12 @@ function selection(options) {
 async function runSuite(options) {
     const selected = selection(options);
     const { tier, match, keep } = options;
-    const disk = tier !== "change" && options.areas.length === 0 ? "80" : "30";
-    const vmSize = ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
+    const nestedAndroid = process.platform === "linux" && selected.smoke.includes("android") &&
+        process.env.SMOKE_ANDROID === "1";
+    const disk = nestedAndroid ? "50" : tier !== "change" && options.areas.length === 0 ? "80" : "30";
+    const androidMemory = process.env.SMOKE_ANDROID_MEMORY_GIB || "8";
+    const vmSize = nestedAndroid ? ["--cpus", "4", "--memory", androidMemory, "--nested-virt"]
+        : ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
     const freshVM = [...vmSize, "--disk", disk, "--force-provision"];
     const explicitImage = Boolean(options.image || options.imageHome || options.imageFile);
     const level = tier === "full" ? "full" : "quick";
@@ -284,6 +288,10 @@ async function runSuite(options) {
                     report(area, "SKIP", "0.0s", "VM unavailable");
                 }
             } else {
+                if (nestedAndroid) {
+                    await box("android-kvm", "ssh", vm, "--",
+                        'if test -c /dev/kvm; then sudo -n usermod -aG kvm "$(id -un)"; fi');
+                }
                 if (selected.doctor) await box("doctor", "doctor", vm);
                 for (const area of selected.smoke) {
                     await step(area, log => command("smoke/run.sh", [vm, area], {

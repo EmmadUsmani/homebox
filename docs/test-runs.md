@@ -75,8 +75,11 @@ check also passed.
 | 2026-11-28T07:54:37.303Z | 96fac58983b3 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | FAIL | 12/1/0 | 745.7s | fresh |
 | 2026-11-28T08:03:37.754Z | 6bc4a86c50a3 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | services, doctor, e2e, desktop | PASS | 18/0/1 | 864.5s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T08:07:47.348Z | 0626d22750ea | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 1132.2s | fresh |
+| 2026-11-28T08:11:37.512Z | b71e70296e5a | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 9.0s | — |
 | 2026-11-28T08:11:49.895Z | a58cd1797020 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1029.5s | fresh |
+| 2026-11-28T08:12:23.986Z | 07beebbe9a32 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 4.9s | — |
 | 2026-11-28T08:12:56.338Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 731.7s | — |
+| 2026-11-28T08:13:33.508Z | bdc9b295b125 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 5.0s | — |
 | 2026-11-28T08:17:54.136Z | 7d2dc7f252c8 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 585.4s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:18:12.309Z | cd361fc2635c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | FAIL | 19/1/1 | 766.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:28:08.552Z | 8106457ae66a | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 788.2s | — |
@@ -87,10 +90,14 @@ check also passed.
 | 2026-11-28T09:14:26.827Z | 5be7c55faf1f | no | MS-7D31 | Ubuntu 26.04.1 LTS | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 675.9s | fresh |
 | 2026-11-28T08:18:31.301Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 334.8s | fresh |
 | 2026-11-28T08:24:55.875Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 318.8s | fresh |
+| 2026-11-28T08:26:43.713Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 338.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T08:33:19.976Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 394.1s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T08:33:24.392Z | db5e415ffab2 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 916.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:36:58.200Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 217.0s | fresh |
 | 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
 | 2026-11-28T08:38:23.727Z | 295bcad96c9e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1071.5s | fresh |
 | 2026-11-28T08:49:16.914Z | 6e10b577bd50 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 910.1s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:50:36.032Z | 5bf68adbcf20 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 622.2s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T08:52:27.995Z | 9aba63bdcca5 | no | Mac14,10 | 27.2.1 | change | partial | doctor | PASS | 10/0/0 | 170.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:57:08.583Z | de40f5fd8483 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1016.1s | fresh |
 | 2026-11-28T09:16:30.655Z | 86dcbcb53521 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1112.0s | fresh |
@@ -99,9 +106,15 @@ check also passed.
 | 2026-11-28T09:31:00.832Z | 413d9227ac10 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 908.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T09:31:45.427Z | 354ab6f29d92 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | FAIL | 4/1/0 | 25.2s | — |
 | 2026-11-28T09:32:50.784Z | 354ab6f29d92 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 18.3s | — |
+| 2026-11-28T09:33:59.415Z | 3a0f788ac4d6 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | FAIL | 10/1/0 | 900.3s | fresh |
 | 2026-11-28T09:40:51.520Z | 6e64762860b9 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 9.2s | — |
+| 2026-11-28T09:41:54.614Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | FAIL | 6/1/2 | 30.3s | — |
 | 2026-11-28T09:42:47.708Z | cc2f6ffa0589 | no | Mac14,10 | 27.2.1 | change | default | e2e | PASS | 6/0/0 | 723.3s | — |
+| 2026-11-28T09:48:50.623Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 402.3s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T10:03:09.008Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | FAIL | 10/1/0 | 828.3s | fresh |
 | 2026-11-28T10:05:30.437Z | e005109290d6 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.8s | — |
 | 2026-11-28T10:07:24.546Z | 7336928b968a | yes | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.4s | — |
 | 2026-11-28T10:03:28.243Z | 6a31e8a16723 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 12.0s | — |
 | 2026-11-28T10:08:32.165Z | 6a31e8a16723 | no | Mac14,10 | 27.2.1 | change | partial | gui, doctor | PASS | 10/0/0 | 303.8s | fresh |
+| 2026-11-28T10:07:45.447Z | 085e17158d73 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 226.2s | fresh |
+| 2026-11-28T10:12:28.266Z | e2e2088f9f23 | no | Mac14,10 | 27.2.1 | change | default | android, doctor | PASS | 10/0/1 | 172.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

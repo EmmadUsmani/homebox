@@ -25,6 +25,7 @@ type Box struct {
 	Index           int              `json:"index"`
 	CPUs            int              `json:"cpus"`
 	MemoryGiB       int              `json:"memory_gib"`
+	NestedVirt      bool             `json:"nested_virt,omitempty"`
 	DiskGiB         int              `json:"disk_gib"`
 	PendingResize   *vm.Size         `json:"pending_resize,omitempty"`
 	User            string           `json:"user"`

@@ -36,6 +36,7 @@ type NewOptions struct {
 	CPUs           int
 	MemoryGiB      int
 	DiskGiB        int
+	NestedVirt     bool
 }
 
 // NewDefaults returns the defaults used when creating a VM on this host.
@@ -100,6 +101,15 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
 		return errors.New("CPU, memory and disk sizes must be positive")
 	}
+	if options.NestedVirt {
+		driver, ok := s.Driver.(interface{ CheckNestedVirt() error })
+		if !ok {
+			return errors.New("--nested-virt is unsupported by this VM driver")
+		}
+		if err := driver.CheckNestedVirt(); err != nil {
+			return err
+		}
+	}
 	username, err := defaultUser()
 	if err != nil {
 		return err
@@ -156,7 +166,7 @@ func (s *Service) newBox(ctx context.Context, options NewOptions, profile guest.
 	}
 	box := state.Box{
 		Name: options.Name, Image: options.Image, BaseImage: baseImage, ImageBuild: build, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
-		CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
+		CPUs: options.CPUs, MemoryGiB: options.MemoryGiB, NestedVirt: options.NestedVirt,
 		DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
 		Forwards: state.DefaultForwards(index, host.LAN && !build), CreatedAt: time.Now().UTC(),
 	}
@@ -312,7 +322,7 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 			}
 		}
 		if err := s.Driver.Create(ctx, vm.Spec{
-			Name: box.Name, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
+			Name: box.Name, NestedVirt: box.NestedVirt, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
 			GuestOS: profile.OS, BootScript: string(bootScript), BootParameters: bootParameters,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,

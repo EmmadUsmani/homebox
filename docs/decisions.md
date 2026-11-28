@@ -417,3 +417,16 @@ agent screen capture and input permissions while the RFB listener stays on
 loopback. The [scratch guest test](spikes/macos-guests.md#screen-sharing-over-pinned-ssh)
 authenticated through the existing proxy and received a black framebuffer.
 The built-in backend needs a permission setup that works on fresh guests.
+
+## 2026-11-28 · Nested KVM and Android Emulator
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Expose host virtualization CPU features only when requested in the VM's
+creation options. Mask VMX and SVM on the next start of existing Linux
+x86-64 VMs to make the default effective even on Lima versions that choose
+the host CPU automatically. The guest administrator grants KVM device
+access to the guest user.
+
+Use an opt-in headless Android smoke area with the AOSP x86-64 image,
+software graphics and an SDK-built fixture APK. Keep the SDK and license
+acceptance out of default provisioning.

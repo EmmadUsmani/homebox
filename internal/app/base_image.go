@@ -131,6 +131,7 @@ func (s *Service) profileBase(ctx context.Context, options NewOptions, profile g
 func (s *Service) baseBuildOptions(options NewOptions) (NewOptions, error) {
 	options.Name = "b" + strings.ToLower(rand.Text()[:4])
 	options.Image, options.ForceProvision = "", true
+	options.NestedVirt = false
 	options.CPUs, options.MemoryGiB, options.DiskGiB = min(options.CPUs, 4), min(options.MemoryGiB, 6), baseImageDiskGiB
 	return options, s.validateSocketPaths(options.Name)
 }

@@ -65,6 +65,7 @@ type Spec struct {
 	SSHPort        int           // host loopback port the driver binds for the guest's sshd
 	Forwards       []PortForward // published ports other than SSH
 	Socket         SocketAttachment
+	NestedVirt     bool
 
 	ImageDisk     string // a local, driver-native disk to copy into the new VM
 	ImageFirmware []byte // EFI boot variables saved with ImageDisk
@@ -115,6 +116,7 @@ type Instance struct {
 
 // StartOptions controls how the VM's host-side process is launched.
 type StartOptions struct {
+	NestedVirt bool
 	// Wrap, when non-empty, is a command prefix the driver runs its start
 	// command under, e.g. ["sandbox-exec", "-f", profile]. Host confinement
 	// uses it so the VM's network process inherits the host's egress rules.

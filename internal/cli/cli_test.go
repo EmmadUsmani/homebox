@@ -153,8 +153,8 @@ func execute(t *testing.T, service *stubApp, terminal bool, input string, args .
 
 func TestNewAndHostFlags(t *testing.T) {
 	service := &stubApp{}
-	_, _, err := execute(t, service, false, "", "new", "main", "--profile", "ubuntu", "--cpus", "2", "--memory", "3", "--disk", "20", "--force-provision")
-	want := app.NewOptions{ForceProvision: true, Version: "v0.0.1-test", Name: "main", Profile: "ubuntu", CPUs: 2, MemoryGiB: 3, DiskGiB: 20}
+	_, _, err := execute(t, service, false, "", "new", "main", "--profile", "ubuntu", "--cpus", "2", "--memory", "3", "--disk", "20", "--force-provision", "--nested-virt")
+	want := app.NewOptions{ForceProvision: true, NestedVirt: true, Version: "v0.0.1-test", Name: "main", Profile: "ubuntu", CPUs: 2, MemoryGiB: 3, DiskGiB: 20}
 	if err != nil || service.newOptions != want {
 		t.Fatalf("new options = %+v, %v", service.newOptions, err)
 	}

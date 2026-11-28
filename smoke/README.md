@@ -41,6 +41,9 @@ or run GUI without a filter to collect the full gallery.
 Logs go to `.smoke-results/` (ignored by git). To add an area, see [CONTRIBUTING.md](CONTRIBUTING.md).
 To load or reproduce the full smoke VM, see [the combined image](IMAGE.md).
 
+The [Android area](android/README.md) runs on an opt-in Linux QEMU/KVM
+guest with nested virtualization and requires `SMOKE_ANDROID=1`.
+
 ## From another machine on the LAN
 
 Configure a pinned SSH alias for a running VM with LAN publishing, then run

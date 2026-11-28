@@ -123,6 +123,7 @@ func newBoxCommand(service Application, version string) *cobra.Command {
 		return service.New(ctx, options)
 	})
 	cmd.Flags().BoolVar(&options.ForceProvision, "force-provision", false, "Run full provisioning and bypass the profile base image")
+	cmd.Flags().BoolVar(&options.NestedVirt, "nested-virt", false, "Expose hardware virtualization to the guest (Linux QEMU/KVM only)")
 	cmd.Flags().StringVar(&options.Image, "image", "", "Create from a saved image")
 	cmd.Flags().StringVar(&options.Profile, "profile", "", "Guest profile (default ubuntu)")
 	cmd.Flags().IntVar(&options.CPUs, "cpus", 0, "Number of CPUs (defaults to the host CPU count, capped at 4)")

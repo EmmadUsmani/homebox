@@ -82,6 +82,11 @@ virtual gateway, so the loopback canaries use TCP and UDP.
 
 ### The VM and the Linux host
 
+- **Nested virtualization** widens the host-kernel KVM attack surface.
+  It is opt-in per VM with `box new NAME --nested-virt` on x86-64 Linux.
+  Box masks VMX and SVM by default and applies the configured CPU on the
+  next start for existing VMs. The flag does not change the Landlock,
+  seccomp, or gateway rules.
 - **QEMU/KVM** runs the VM through Lima. The SSH NIC uses SLIRP with
   `restrict=on` and `ipv6=off`. QEMU receives the separate gateway
   connection as an inherited Unix socket. A seccomp filter denies QEMU
