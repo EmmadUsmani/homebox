@@ -26,8 +26,10 @@ Changes to the [approved design](plan.md) require the owner's approval.
 
 ## Host and guest capabilities
 
-- Verify GPU passthrough on a Linux host and keep Windows host support on
-  the [design roadmap](plan.md#phases).
+- Prototype confined VFIO and verify CUDA and repeated GPU resets in an
+  owner-attended Linux session. The [GPU passthrough spike](spikes/gpu-passthrough.md)
+  records the host inventory and manual steps.
+- Keep Windows host support on the [design roadmap](plan.md#phases).
 - Implement [autostart](plan.md#box-the-command) and check whether the macOS
   VM can start under a boot-time job before login. If it needs a user session,
   test automatic login as the fallback. FileVault hosts remain outside the

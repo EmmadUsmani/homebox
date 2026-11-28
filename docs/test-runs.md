@@ -147,3 +147,5 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T11:04:49.408Z | 442abe519242 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 487.0s | — |
 | 2026-11-28T11:06:36.460Z | a4ed96863389 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 106.8s | — |
 | 2026-11-28T11:13:53.823Z | eff5d0c5e702 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | PASS | 10/0/0 | 436.4s | GUI profile base |
+| 2026-11-28T11:18:18.492Z | 08b929525a4c | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | FAIL | 5/1/0 | 9.0s | — |
+| 2026-11-28T11:18:36.621Z | 80762d67a7a4 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 6/0/0 | 8.3s | — |
