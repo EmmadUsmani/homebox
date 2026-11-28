@@ -299,6 +299,11 @@ journal without running the log reader as root.
 Anything in the VM is readable by the agents in it, including the agents' own
 logins.
 
+The optional [agent factory](factory/README.md) runs Codex with full guest
+permissions. Its owner-file checks guard the supervisor's normal publication
+path. The guest user can bypass them. Use a dedicated VM and scope its Git
+and provider credentials to the work you intend to authorize.
+
 - Log Claude Code and Codex in yourself, inside the VM. Those logins live there.
 - Give the VM a fine-grained GitHub token scoped to the repositories it needs,
   never a personal token with full access.

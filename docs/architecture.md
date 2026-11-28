@@ -291,3 +291,11 @@ the current saved and detected fingerprints inside the shared re-pin lock.
 - CI runs ShellCheck on guest scripts. The [local test runner](../README.md#testing)
   checks shell scripts across the checkout, selects smoke areas by changed
   path, and keeps VM state and test logs separate from the regular box store.
+
+## Guest agent factory
+
+The optional [agent factory](../factory/README.md) runs in a Linux guest as
+the SSH user. It uses the guest's Node.js, Git and Codex CLI. The supervisor
+publishes to the project's existing origin and writes local status files that
+the operator can read over SSH. The Ubuntu systemd user unit is an optional
+launcher.
