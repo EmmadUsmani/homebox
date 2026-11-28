@@ -257,6 +257,9 @@ func (s *Store) stageImage(image *Image, replace bool, publish func(string, stri
 	if err := os.MkdirAll(s.imagesDir(), 0700); err != nil {
 		return err
 	}
+	if err := s.RequireFreeSpace(); err != nil {
+		return err
+	}
 	staged, err := os.MkdirTemp(s.imagesDir(), ".image-")
 	if err != nil {
 		return err

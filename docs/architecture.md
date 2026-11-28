@@ -129,6 +129,14 @@ operation's output in memory and reads step names from the provision record.
 The [smoke runner's image archives](../smoke/README.md#container-image-cache)
 live in the host's user cache, separate from box state and VM lifecycles.
 
+### Host state volume headroom
+
+The [state store's free-space check](../internal/state/space_policy.go) measures
+the default volume for VM disks and saved images. VM creation and startup
+check it before creating or launching the instance. Image saves, imports and
+copies check it before staging the destination disk. See the
+[storage limits](../SECURITY.md#not-covered).
+
 ## Ports
 
 Each VM gets a small index `n` (1–99) when created. All its host ports derive

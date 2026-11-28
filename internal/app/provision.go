@@ -163,6 +163,9 @@ func (s *Service) newBox(ctx context.Context, options NewOptions, profile guest.
 	if err := s.validatePorts(box); err != nil {
 		return err
 	}
+	if err := s.Store.RequireFreeSpace(); err != nil {
+		return err
+	}
 	if err := s.Store.Save(box); err != nil {
 		return err
 	}

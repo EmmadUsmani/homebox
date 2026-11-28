@@ -375,3 +375,25 @@ transports. A failed guest doctor check now makes the command fail even
 when SSH returns zero.
 The [Mac isolation review](security-review-2026-11-28.md) records the checks
 and residual limits.
+
+
+## 2026-11-28 · Host resource admission and Mac isolation coverage
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Require 10 GiB available on the homebox state volume before accepting new VM
+creation, a stopped VM start, or an image save, import or copy. A fixed
+headroom floor leaves room for host writes without treating sparse virtual
+disk sizes as physical allocations. Report available bytes in status and
+show the floor in doctor. This is an admission check, so ongoing writes
+can still use the remaining space.
+
+Cap the SSH relay at 128 concurrent connections per VM and 64 admissions
+per second with a burst of 128. Bound ownership checks, dials and copy
+workers without terminating established sessions solely because of another
+client's arrival. Keep Lima plain mode and the static forwarding config.
+Test that replacing a published service leaves the published host endpoint
+working and that an unpublished listener remains unavailable on the host.
+
+The Docker e2e check requires a successful public DNS reply from inside the
+container. Try independent resolvers so a single timed-out public endpoint
+does not prevent exercising the local isolation assertions.

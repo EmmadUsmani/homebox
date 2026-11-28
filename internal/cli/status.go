@@ -50,6 +50,9 @@ func printStatus(out io.Writer, status app.VMStatus) error {
 			}
 		}
 	}
+	if status.HostFreeBytes != nil {
+		fmt.Fprintf(table, "Host state volume\t%.1f GiB available\n", float64(*status.HostFreeBytes)/(1<<30))
+	}
 	if status.Host != nil {
 		cpu, memory := hostUsage(status.Host)
 		fmt.Fprintf(table, "Host (%s)\t%s CPU, %s footprint\n", hostSource(status), cpu, memory)
