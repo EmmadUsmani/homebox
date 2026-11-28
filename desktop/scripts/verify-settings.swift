@@ -26,6 +26,11 @@ func descendants(_ element: AXUIElement) -> [AXUIElement] {
     return [element] + children.flatMap(descendants)
 }
 
+func windowArea(_ window: [String: Any]) -> CGFloat {
+    guard let bounds = window[kCGWindowBounds as String] as? [String: CGFloat] else { return 0 }
+    return (bounds["Width"] ?? 0) * (bounds["Height"] ?? 0)
+}
+
 func command(_ path: String, _ arguments: [String], environment: [String: String]? = nil) throws -> (Int32, String) {
     let process = Process()
     process.executableURL = URL(fileURLWithPath: path)
@@ -44,10 +49,8 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     let url = URL(fileURLWithPath: bundle).resolvingSymlinksInPath()
     let environment = ProcessInfo.processInfo.environment
     let path = environment["PATH"] ?? "/usr/bin:/bin:/usr/sbin:/sbin"
-    func running() -> NSRunningApplication? {
-        NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").first {
-            $0.bundleURL?.resolvingSymlinksInPath() == url
-        }
+    let alreadyRunning = NSRunningApplication.runningApplications(withBundleIdentifier: "dev.homebox.desktop").contains {
+        $0.bundleURL?.resolvingSymlinksInPath() == url
     }
     func ssh(_ script: String) throws -> String {
         let (status, output) = try command(bundle + "/Contents/MacOS/box", ["ssh", name, "--", script],
@@ -55,22 +58,55 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         guard status == 0 else { throw Failure(message: "Guest check failed (\(status)): \(script)") }
         return output
     }
-    guard running() == nil else { throw Failure(message: "This app copy is already running") }
+    guard !alreadyRunning else { throw Failure(message: "This app copy is already running") }
     try FileManager.default.createDirectory(atPath: screenshots, withIntermediateDirectories: true)
     let config = screenshots + "/ssh-config"
     let knownHosts = screenshots + "/known-hosts"
     try "".write(toFile: config, atomically: true, encoding: .utf8)
     try "".write(toFile: knownHosts, atomically: true, encoding: .utf8)
-    let (launched, _) = try command("/usr/bin/open", ["-n", "--env", "HOMEBOX_HOME=\(state)", "--env", "PATH=\(path)",
-        "--env", "HOMEBOX_DESKTOP_SSH_CONFIG=\(config)", "--env", "HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS=\(knownHosts)",
-        "--env", "HOMEBOX_DESKTOP_SETTINGS=\(screenshots)/settings.json", url.path])
-    guard launched == 0 else { throw Failure(message: "Could not open the app") }
-    let app = try waitFor("app launch") { running() }
-    defer { app.terminate() }
-    app.activate()
+    let launchConfig = NSWorkspace.OpenConfiguration()
+    launchConfig.environment = [
+        "HOMEBOX_HOME": state,
+        "PATH": path,
+        "HOMEBOX_DESKTOP_SSH_CONFIG": config,
+        "HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS": knownHosts,
+        "HOMEBOX_DESKTOP_SETTINGS": "\(screenshots)/settings.json",
+    ]
+    launchConfig.createsNewApplicationInstance = true
+    var launch: Result<NSRunningApplication, Error>?
+    NSWorkspace.shared.openApplication(at: url, configuration: launchConfig) { app, error in
+        launch = app.map { .success($0) } ?? .failure(error ?? Failure(message: "Could not open the app"))
+    }
+    while launch == nil { RunLoop.current.run(until: Date().addingTimeInterval(0.1)) }
+    let app = try launch!.get()
+    defer {
+        func exited() -> Bool? {
+            kill(app.processIdentifier, 0) == -1 && errno == ESRCH ? true : nil
+        }
+        app.terminate()
+        if (try? waitFor("app exit", seconds: 3, exited)) == nil {
+            kill(app.processIdentifier, SIGKILL)
+            _ = try? waitFor("app exit after force quit", seconds: 3, exited)
+        }
+    }
     let pid = app.processIdentifier
     let root = AXUIElementCreateApplication(pid)
     let window: AXUIElement = try waitFor("AX window") { (attribute(root, kAXWindowsAttribute) as [AXUIElement]?)?.first }
+
+    func raiseWindow() throws {
+        _ = app.activate()
+        _ = AXUIElementSetAttributeValue(root, kAXFrontmostAttribute as CFString, kCFBooleanTrue)
+        _ = AXUIElementPerformAction(window, kAXRaiseAction as CFString)
+        do {
+            _ = try waitFor("frontmost app window", seconds: 3) {
+                let focused: AXUIElement? = attribute(root, kAXFocusedWindowAttribute)
+                return NSWorkspace.shared.frontmostApplication?.processIdentifier == pid &&
+                    focused.map { CFEqual($0, window) } == true ? true : nil
+            }
+        } catch {
+            throw Failure(message: "App focus lost while raising the verifier window")
+        }
+    }
 
     func labels(_ element: AXUIElement) -> [String] {
         [kAXTitleAttribute, kAXDescriptionAttribute, kAXValueAttribute].compactMap { attribute(element, $0) }
@@ -78,7 +114,10 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
 
     func find(_ label: String, in container: AXUIElement, roles: [String], prefix: Bool = false) throws -> AXUIElement {
         try waitFor(label) {
-            descendants(container).first { element in
+            let windows: [AXUIElement] = attribute(container, kAXWindowsAttribute) ?? []
+            let focused: AXUIElement? = attribute(container, kAXFocusedWindowAttribute)
+            let visible = (focused.map { [$0] } ?? []) + windows
+            return (visible.flatMap(descendants) + descendants(container)).first { element in
                 let role: String = attribute(element, kAXRoleAttribute) ?? ""
                 let enabled: Bool = attribute(element, kAXEnabledAttribute) ?? true
                 return enabled && roles.contains(role) && labels(element).contains {
@@ -103,28 +142,32 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         }
     }
 
-    func key(_ code: CGKeyCode, flags: CGEventFlags = []) {
+    func key(_ code: CGKeyCode) {
         for down in [true, false] {
             let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
-            event?.flags = flags
             event?.postToPid(pid)
         }
     }
 
-    func fill(_ label: String, _ value: String) throws {
+    func fill(_ label: String, _ value: String, from previous: Int? = nil) throws {
+        try raiseWindow()
         let field = try find(label, in: window, roles: ["AXTextField"])
         guard AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success else {
             throw Failure(message: "Could not focus \(label)")
         }
-        Thread.sleep(forTimeInterval: 0.15)
-        key(0, flags: .maskCommand)
-        for character in value {
-            let text = Array(String(character).utf16)
+        _ = try waitFor("keyboard focus in \(label)", seconds: 3) {
+            let focused: Bool? = attribute(field, kAXFocusedAttribute)
+            return focused == true ? true : nil
+        }
+        if let previous, let target = Int(value) {
+            for _ in 0..<abs(target - previous) {
+                key(target > previous ? 126 : 125)
+            }
+        } else {
             let digitKeys: [CGKeyCode] = [29, 18, 19, 20, 21, 23, 22, 26, 28, 25]
-            for down in [true, false] {
-                let event = CGEvent(keyboardEventSource: nil, virtualKey: digitKeys[character.wholeNumberValue!], keyDown: down)
-                event?.keyboardSetUnicodeString(stringLength: text.count, unicodeString: text)
-                event?.postToPid(pid)
+            for character in value {
+                key(digitKeys[character.wholeNumberValue!])
+                Thread.sleep(forTimeInterval: 0.1)
             }
         }
         do {
@@ -140,13 +183,15 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     }
 
     func screenshot(_ filename: String, dialog: Bool = false) throws {
+        if !dialog { try raiseWindow() }
         let windowID = try waitFor("window ID") {
-            let windows = CGWindowListCopyWindowInfo(.optionOnScreenOnly, kCGNullWindowID) as? [[String: Any]] ?? []
+            let windows = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
             let candidates = windows.filter {
                 $0[kCGWindowOwnerPID as String] as? pid_t == pid &&
                     (dialog || $0[kCGWindowLayer as String] as? Int == 0)
             }
-            let selected = dialog ? candidates.first : candidates.last
+            let selected = dialog ? candidates.first(where: { windowArea($0) > 10000 }) :
+                candidates.max { windowArea($0) < windowArea($1) }
             return selected?[kCGWindowNumber as String] as? Int
         }
         let (status, _) = try command("/usr/sbin/screencapture", ["-x", "-o", "-l", String(windowID), screenshots + "/" + filename])
@@ -192,9 +237,9 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
     let cpus = oldCPUs == 1 ? 2 : 1
     let memory = oldMemory == 3 ? 4 : 3
     let disk = oldDisk + 1
-    try fill("CPUs", String(cpus))
-    try fill("Memory (GiB)", String(memory))
-    try fill("Disk (GiB)", String(disk))
+    try fill("CPUs", String(cpus), from: oldCPUs)
+    try fill("Memory (GiB)", String(memory), from: oldMemory)
+    try fill("Disk (GiB)", String(disk), from: oldDisk)
     try press("Save VM size")
     try press("Grow disk", in: root)
     try see("VM size saved")
@@ -214,7 +259,7 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         let count = try ssh("grep -c 'GET / HTTP/' /tmp/homebox-settings-http.log || true")
         return (Int(count.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0) >= 2 ? true : nil
     }
-    app.activate()
+    try raiseWindow()
     try stop()
     try press("Unpublish port \(guestPort)")
     try press("Unpublish", in: root)

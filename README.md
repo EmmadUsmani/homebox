@@ -328,7 +328,9 @@ See the [spike report](docs/spikes/wails-desktop.md) for the build background an
 Run the same command on either macOS host from a checkout with Lima, Go,
 Node.js and ShellCheck installed. Desktop checks also need the Xcode command
 line tools and a signed-in macOS session with Accessibility and Screen
-Recording permissions. To run on the Mac mini, open the checkout there and
+Recording permissions. Close any running copy of the checkout’s desktop build
+before starting the suite. Keep the verifier window in front while it sends
+keyboard or mouse input. To run on the Mac mini, open the checkout there and
 run the command locally.
 
 - **Change**, before merging, targets ten minutes. Runs gofmt, Go vet and
