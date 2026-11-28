@@ -57,3 +57,6 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T07:28:26.166Z | 3ad5cea4d641 | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor | PASS | 11/0/0 | 333.9s | fresh |
 | 2026-11-28T07:30:33.488Z | 49c67f72ebf9 | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 16/0/0 | 413.3s | fresh |
 | 2026-11-28T07:34:28.701Z | 92fe09f48cdd | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 12/0/0 | 203.6s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:11:37.512Z | b71e70296e5a | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 9.0s | — |
+| 2026-11-28T08:12:23.986Z | 07beebbe9a32 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 4.9s | — |
+| 2026-11-28T08:13:33.508Z | bdc9b295b125 | no | x64 | n/a | change | default | android, doctor | FAIL | 5/1/0 | 5.0s | — |
