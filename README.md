@@ -445,6 +445,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Desktop and CLI parity](docs/desktop-parity.md).
 - [Desktop app look](docs/design/desktop-app.md): the approved screens and visual tokens.
 - [Remote desktop spike](docs/spikes/remote-desktop.md) compares display servers over SSH.
+- [macOS guest spike](docs/spikes/macos-guests.md) records the Lima boot and networking findings.
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)

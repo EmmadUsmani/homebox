@@ -184,6 +184,8 @@ The second NIC connects to box's IPv4 gateway over a Unix socket.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
+- The Mac host runs Ubuntu guests through `box`. A macOS guest needs its
+  own verified SSH and isolation path. See the [macOS guest spike](spikes/macos-guests.md).
 - Public egress supports IPv4 TCP, UDP and ICMP echo. IPv6 and other IP
   protocols are outside this gateway's scope.
 - A router with NAT reflection can reflect connections to its public IP

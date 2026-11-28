@@ -35,6 +35,10 @@ confinement enforce the VM-to-Mac boundary independently. See the
 
 ### The VM and the macOS host
 
+These controls apply to homebox's Ubuntu guests. Lima's experimental macOS
+guest templates have a separate networking and bootstrap path.
+See the [macOS guest spike](docs/spikes/macos-guests.md).
+
 - **A full VM.** Each VM is its own Linux kernel and disk under Apple's
   Virtualization framework, through Lima's `vz` driver. It's not a container.
 - **Nothing shared.** No mounts of host folders, no SSH agent forwarding and no
