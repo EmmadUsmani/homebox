@@ -27,6 +27,7 @@ async function main() {
             <div id="selection" contenteditable>Desktop isolation fixture</div>
             <script>
             document.querySelector("#probe").onclick = async () => {
+                window.probeStarted = true;
                 const failures = [];
                 if (!navigator.userActivation.isActive) failures.push("missing user gesture");
                 try { window.wails.Call.ByName("main.Local.ListStatus"); failures.push("binding"); } catch {}
