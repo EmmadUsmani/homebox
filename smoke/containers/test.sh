@@ -38,8 +38,13 @@ check_case() {
 }
 
 distro() {
-    local platform=$1 image=$2 script=$3
-    timeout 360 docker run --rm --platform "$platform" "$image" sh -ec "$script"
+    local platform=$1 image=$2 script=$3 status=0
+    local name="$prefix-distro"
+    timeout -k 10 360 docker run --rm --name "$name" --platform "$platform" "$image" sh -ec "$script" || status=$?
+    if (( status != 0 )); then
+        timeout -k 5 15 docker rm -f "$name" >/dev/null 2>&1 || true
+    fi
+    return "$status"
 }
 architecture=$(dpkg --print-architecture) || exit 1
 case "$architecture" in
@@ -56,8 +61,16 @@ check 'Alpine apk installs and runs jq' distro "$native" "$alpine" \
     'apk add --no-cache jq && test "$(jq -n 42)" = 42'
 full_only check 'Fedora dnf installs and runs jq' distro "$native" fedora:44 \
     'dnf -y install jq && test "$(jq -n 42)" = 42'
-full_only check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 \
-    'dnf -y install jq && test "$(jq -n 42)" = 42'
+# Use Rocky's origin so the package check is independent of slow random mirrors.
+full_only check 'Rocky Linux dnf installs and runs jq' distro "$native" rockylinux:9 '
+    origin=https://dl.rockylinux.org/pub/rocky/9
+    arch=$(uname -m)
+    dnf -y --setopt=baseos.mirrorlist= --setopt=appstream.mirrorlist= --setopt=extras.mirrorlist= \
+        --setopt=baseos.baseurl="$origin/BaseOS/$arch/os/" \
+        --setopt=appstream.baseurl="$origin/AppStream/$arch/os/" \
+        --setopt=extras.baseurl="$origin/extras/$arch/os/" install jq
+    test "$(jq -n 42)" = 42
+'
 full_only check 'openSUSE zypper installs and runs jq' distro "$native" opensuse/tumbleweed:latest \
     'zypper --non-interactive install jq && test "$(jq -n 42)" = 42'
 pacman_flags=
