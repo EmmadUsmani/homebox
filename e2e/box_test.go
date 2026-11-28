@@ -167,7 +167,7 @@ func TestBoxLifecycle(t *testing.T) {
 		}
 	}
 	if runtime.GOOS == "linux" {
-		for _, check := range []string{"sandbox-hostagent", "sandbox-qemu", "sandbox-vmnet", "slirp-deny-tcp-", "slirp-deny-udp-", "slirp-deny-icmp-"} {
+		for _, check := range []string{"qemu-slirp-restricted", "ssh-driver-target-owner", "sandbox-hostagent", "sandbox-qemu", "sandbox-vmnet", "slirp-deny-tcp-", "slirp-deny-udp-", "slirp-deny-icmp-"} {
 			if !strings.Contains(diagnostics, "PASS "+check) {
 				t.Fatalf("doctor did not pass %s", check)
 			}

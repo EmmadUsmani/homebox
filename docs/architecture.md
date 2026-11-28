@@ -264,7 +264,9 @@ Lima connects the gateway socket and passes its descriptor to QEMU. QEMU
 can consequently deny `connect(2)` and datagram sockets in its own seccomp
 profile. The gateway daemon verifies QEMU's Unix peer with `SO_PEERPIDFD`,
 using the pidfs identity written at QEMU launch. It monitors that same
-process with a pidfd. This avoids granting the daemon read access to other
+process with a pidfd. Doctor checks the same recorded identity and inspects
+the running QEMU command line and its connected gateway descriptor. This
+avoids granting the daemon read access to other
 processes' files in `/proc`. OpenSSH static forward sockets use the configured
 loopback or LAN binding.
 
@@ -280,8 +282,8 @@ gateway's destination policy. These are process-confinement limits if a
 host helper is compromised. The QEMU process cannot initiate connections.
 
 Linux CLI host support currently targets x86-64 Ubuntu, KVM, and QEMU 10.2
-with Unix SLIRP forwarding. Saved disks, autostart, GPU passthrough and the
-native desktop host application are separate work. The gateway's IPv4,
+with Unix SLIRP forwarding. Linux supports saved qcow2 disks and a native
+GTK desktop viewer. Autostart and GPU passthrough are separate work. The gateway's IPv4,
 NAT reflection and existing-flow limits apply here as well.
 
 ## Status on the host

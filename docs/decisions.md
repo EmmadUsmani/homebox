@@ -376,6 +376,17 @@ when SSH returns zero.
 The [Mac isolation review](security-review-2026-11-28.md) records the checks
 and residual limits.
 
+## 2026-11-28 · Linux isolation review
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Use the recorded QEMU launch pidfd identity in doctor, as the SSH relay
+already does. Verify QEMU's restricted SLIRP configuration and connected
+gateway descriptor after launch as well as checking the descriptor's peer
+before exec. Restrict direct exec of library-tree files to the required ELF
+loader, and deny process tracing and cross-process memory access in each
+Linux confinement profile. Keep the hostagent and gateway's pathname Unix
+sockets for current features and record the Landlock limit in SECURITY.md.
+See the [Linux isolation review](security-review-2026-11-28-linux.md).
 
 ## 2026-11-28 · Host resource admission and Mac isolation coverage
 
