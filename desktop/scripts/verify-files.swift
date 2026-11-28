@@ -159,9 +159,13 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         print("AX read: \(marker)")
     }
 
+    var retryThroughWindowServer = false
+
     func expectEffect<T>(_ description: String, perform: () throws -> Void, read: () -> T?) throws -> T {
         try perform()
         if let result = try? waitFor(description, seconds: 2, read) { return result }
+        retryThroughWindowServer = true
+        defer { retryThroughWindowServer = false }
         try perform()
         return try waitFor(description, read)
     }
@@ -174,8 +178,8 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         for down in [true, false] {
             let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
             event?.flags = flags
-            if filePicker {
-                // The system file panel handles shortcuts through the WindowServer.
+            if filePicker || retryThroughWindowServer {
+                // The file panel and a missed shortcut use normal WindowServer routing.
                 event?.post(tap: .cghidEventTap)
             } else {
                 event?.postToPid(pid)
@@ -223,6 +227,20 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         }
     }
 
+    func goToTemporaryFolder() throws {
+        _ = try expectEffect("VM folder path entered", perform: {
+            try focus("VM folder path", role: "AXTextField")
+            try key(0, .maskCommand)
+            try paste("/tmp")
+        }) {
+            descendants(web).first {
+                attribute($0, kAXRoleAttribute) == "AXTextField" && labels($0).contains("VM folder path") &&
+                    attribute($0, kAXValueAttribute) == "/tmp"
+            }
+        }
+        try button("Go")
+    }
+
     func capture(_ name: String) throws {
         try raiseWindow()
         Thread.sleep(forTimeInterval: 0.35)
@@ -243,7 +261,7 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try activate()
         let previous: AXUIElement? = attribute(root, kAXFocusedUIElementAttribute)
         try key(5, [.maskCommand, .maskShift], filePicker: true)
-        _ = try waitFor("Go to Folder text field", seconds: 4) {
+        let field = try waitFor("Go to Folder text field", seconds: 4) {
             guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
                 throw Failure(message: "File picker focus lost while opening Go to Folder")
             }
@@ -254,8 +272,24 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
             return field
         }
         try paste(folder, filePicker: true)
+        _ = try waitFor("requested folder in file picker", seconds: 4) {
+            let actual: String? = attribute(field, kAXValueAttribute)
+            return actual == folder || actual == folder + "/" ? true : nil
+        }
+        let leaf = (folder as NSString).lastPathComponent
+        _ = try waitFor("file picker path suggestion", seconds: 4) {
+            guard let picker: AXUIElement = attribute(root, kAXFocusedWindowAttribute) else { return nil as Bool? }
+            return descendants(picker).contains { element in
+                !CFEqual(element, field) && labels(element).contains { $0.hasSuffix(leaf) || $0.hasSuffix(leaf + "/") }
+            } ? true : nil
+        }
         try key(36, filePicker: true)
+        _ = try waitFor("Go to Folder dismissed", seconds: 4) {
+            let focused: AXUIElement? = attribute(root, kAXFocusedUIElementAttribute)
+            return focused.map { !CFEqual($0, field) } ?? true ? true : nil
+        }
     }
+
 
     let box = url.appendingPathComponent("Contents/MacOS/box").path
     for scenario in scenarios {
@@ -294,10 +328,7 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
         try button("Show hidden files")
         try capture(kind + "-home")
 
-        try focus("VM folder path", role: "AXTextField")
-        try key(0, .maskCommand)
-        try paste("/tmp")
-        try key(36)
+        try goToTemporaryFolder()
         try button("hb-files-test.txt")
         try see("original")
         try capture(kind + "-editor")
@@ -365,15 +396,20 @@ func verify(bundle: String, state: String, screenshots: String, empty: Bool, sce
             throw error
         }
 
-        try focus("VM folder path", role: "AXTextField")
-        try key(0, .maskCommand)
-        try paste("/tmp")
-        try key(36)
+        try goToTemporaryFolder()
         try button("Upload")
         _ = try waitFor("upload picker") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
-        try chooseFolder(input.path)
-        let openSheet = try waitFor("open sheet") { descendants(window).first { attribute($0, kAXRoleAttribute) == "AXSheet" } }
-        try button("Open", in: openSheet)
+        let openButton = try expectEffect("upload picker ready to open the fixture", perform: {
+            try chooseFolder(input.resolvingSymlinksInPath().path)
+        }) {
+            descendants(window).first {
+                attribute($0, kAXRoleAttribute) == "AXButton" &&
+                    (attribute($0, kAXEnabledAttribute) as Bool? ?? true) && labels($0).contains("Open")
+            }
+        }
+        guard AXUIElementPerformAction(openButton, kAXPressAction as CFString) == .success else {
+            throw Failure(message: "Could not open the fixture in the upload picker")
+        }
         try button(filename)
         try see("transfer fixture")
         try focus("File editor", role: "AXTextArea")
