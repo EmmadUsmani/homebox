@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os/exec"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -82,6 +83,18 @@ func setAboutMenu(desktop *application.App) {
 	if about := menu.FindByRole(application.About); about != nil {
 		// Use the Wails callback so the dialog can display both versions.
 		about.SetRole(application.NoRole)
+	}
+	if runtime.GOOS == "linux" {
+		// GTK otherwise consumes editing keys before the editor or SSH terminal
+		// sees them. Keep the menu actions available by click.
+		for _, role := range []application.Role{
+			application.Undo, application.Redo, application.Cut, application.Copy,
+			application.Paste, application.Delete, application.SelectAll,
+		} {
+			if item := menu.FindByRole(role); item != nil {
+				item.RemoveAccelerator()
+			}
+		}
 	}
 	desktop.Menu.Set(menu)
 }

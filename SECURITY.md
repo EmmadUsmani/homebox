@@ -231,7 +231,8 @@ context, user content manager, and ephemeral network session with its own
 nonpersistent website data manager. It has no Wails asset scheme, runtime
 scripts or message handlers. Native policy accepts navigation requests and
 displayable main-frame responses on the exact loopback proxy origin,
-including after redirects. The proxy CSP disallows frames and cross-origin
+including after redirects. The viewer connects directly to the loopback
+listener. The proxy CSP disallows frames and cross-origin
 resources. WebKitGTK's navigation action API does not expose an explicit
 main-frame flag, so the frame restriction starts at the proxy CSP and is
 also checked at the native response stage. Popups, downloads, file pickers,

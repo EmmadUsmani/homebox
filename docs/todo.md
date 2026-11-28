@@ -18,10 +18,10 @@ remote VMs, overview, logs, terminal, files and editor).
 
    The app also supports [one-shot plain-text clipboard transfers](observability.md#remote-desktop-phase-2).
 
-- Verify the Ubuntu desktop build with local, confined Linux VMs when the host
-  core is available. Cover lifecycle and doctor, live VM status and logs,
-  native upload/download dialogs, terminal and editor, pinned SSH from another
-  host, and Xfce input, reconnect and one-shot clipboard transfer.
+- Extend the Ubuntu [desktop smoke checks](host-setup-linux.md#install-desktop-build-dependencies)
+  to a second physical host over the LAN. The Linux VM-backed smoke uses a
+  pinned loopback alias for the remote SSH path. Full creation, provisioning,
+  and deletion through the Linux GUI still need a dedicated run.
 
 - The local Settings tab and About close the host settings and version gaps.
   The [parity audit](desktop-parity.md) tracks remaining coverage, including a

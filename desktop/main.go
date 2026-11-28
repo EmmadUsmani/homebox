@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/EmmadUsmani/homebox/desktop/session"
 	"github.com/EmmadUsmani/homebox/internal/wiring"
@@ -60,10 +61,18 @@ func main() {
 	})
 	desktop.RegisterService(application.NewService(session.NewFiles(sshPool,
 		func() (string, error) {
-			return desktop.Dialog.OpenFile().AttachToWindow(window).PromptForSingleSelection()
+			dialog := desktop.Dialog.OpenFile().AttachToWindow(window)
+			if runtime.GOOS == "linux" {
+				dialog.SetTitle("Upload file to VM")
+			}
+			return dialog.PromptForSingleSelection()
 		},
 		func(name string) (string, error) {
-			return desktop.Dialog.SaveFile().AttachToWindow(window).SetFilename(name).PromptForSingleSelection()
+			dialog := desktop.Dialog.SaveFile()
+			if runtime.GOOS == "linux" {
+				dialog.SetOptions(&application.SaveFileDialogOptions{Title: "Download file from VM"})
+			}
+			return dialog.AttachToWindow(window).SetFilename(name).PromptForSingleSelection()
 		},
 	)))
 	registerDesktop(desktop, window, service, sshPool)

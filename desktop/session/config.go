@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -235,6 +236,9 @@ func agentSocket(ctx context.Context, getenv func(string) string, launchd func(c
 }
 
 func launchdSocket(ctx context.Context) string {
+	if runtime.GOOS != "darwin" {
+		return ""
+	}
 	data, _ := exec.CommandContext(ctx, "/bin/launchctl", "getenv", "SSH_AUTH_SOCK").Output()
 	return string(data)
 }

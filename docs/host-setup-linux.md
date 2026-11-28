@@ -107,3 +107,20 @@ xvfb-run -a node desktop/scripts/verify-desktop-isolation-linux.js PATH_TO_EVIDE
 
 The fixture uses `xvfb`, `xauth` and `libxtst6` in addition to the desktop
 build dependencies.
+
+For VM-backed GUI verification, use a disposable running VM and an Xvfb
+display for reliable keyboard events. Pass the app executable and the VM name. The runner replaces
+`homebox-linux-fixture.txt` in the guest's home directory.
+
+```sh
+box ssh NAME -- 'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"'
+box desktop NAME --install
+HOMEBOX_HOME=PATH_TO_TEST_STATE xvfb-run -a node desktop/scripts/verify-linux.js \
+  PATH_TO_EVIDENCE desktop/dist/homebox-linux/homebox NAME
+```
+
+Set `HOMEBOX_VERIFY_LIFECYCLE=1` to stop and start the disposable VM.
+Set `HOMEBOX_VERIFY_CLIPBOARD=1` on the disposable display to check clipboard
+transfer in both directions. Use `GDK_DEBUG=no-portals` with
+`HOMEBOX_VERIFY_NATIVE_DIALOGS=1` to exercise in-process GTK file choosers
+instead of presenting a chooser on the host's live desktop.

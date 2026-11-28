@@ -100,7 +100,8 @@ static gboolean position_view(GtkOverlay *overlay, GtkWidget *child, GdkRectangl
     if (child != GTK_WIDGET(desktop->view)) return FALSE;
     GdkRectangle viewport = {0, 0, gtk_widget_get_width(GTK_WIDGET(overlay)),
                                  gtk_widget_get_height(GTK_WIDGET(overlay))};
-    gdk_rectangle_intersect(&viewport, &desktop->bounds, allocation);
+    if (!gdk_rectangle_intersect(&viewport, &desktop->bounds, allocation))
+        *allocation = (GdkRectangle){0};
     return TRUE;
 }
 
@@ -115,6 +116,8 @@ void *desktopViewOpen(void *window, const char *address) {
     if (!overlay) return NULL;
 
     WebKitNetworkSession *session = webkit_network_session_new_ephemeral();
+    // The viewer's one-time URL should always go directly to loopback.
+    webkit_network_session_set_proxy_settings(session, WEBKIT_NETWORK_PROXY_MODE_NO_PROXY, NULL);
     g_signal_connect(session, "download-started", G_CALLBACK(cancel_download), NULL);
     WebKitWebContext *context = webkit_web_context_new();
     WebKitUserContentManager *content = webkit_user_content_manager_new();
