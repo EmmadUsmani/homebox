@@ -18,6 +18,7 @@ active `HOMEBOX_HOME` store. It creates a throwaway VM, checks isolation and
 scans for credentials before saving, and removes the build VM. The disk has
 a 20 GiB logical size and uses sparse storage. Budget time for a complete
 provisioning run and a read of the logical disk to compute its SHA-256.
+See the [Mac timings](../../docs/images-and-sleep.md#macos-verification).
 
 An ordinary `box new` builds this image on first use and rebuilds it after
 changes to the profile's build inputs. Use `box image rebuild` to refresh

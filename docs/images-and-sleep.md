@@ -76,12 +76,20 @@ VM disks locally from source.
 
 ### macOS verification
 
-On 2026-11-27 (macOS 27.2.1, Lima 2.3.0), the base rebuild and forced full
-provisioning both stalled during the initial VZ boot before SSH. An
-unmodified `main` build at `b0ce3cf` reached the same stall. The change
-tier passed its static and unit checks. Its VM checks could not complete.
-Successful rebuild and clone timings, and `box doctor` on the clone,
-remain unverified on a real VM.
+On 2026-11-27, a Mac running macOS 27.2.1 and Lima 2.3.0 built and used the
+Ubuntu base in a short, isolated state directory. Both `box new` runs used
+2 CPUs, 4 GiB of memory, and a 20 GiB disk.
+
+| Command | Elapsed |
+|---|---:|
+| `box image rebuild --profile ubuntu` | 306.8 s |
+| `box new clone` from the current base | 207.0 s |
+| `box new full --force-provision` | 296.0 s |
+
+The clone was ready 89 seconds sooner. Its provisioning log showed the OS and
+agent update steps after the identity reset. `box doctor` passed on the build
+VM, clone, and fully provisioned VM. Both agents reported signed out on the
+build VM and the credential scan passed before saving.
 
 ## Sleep and resume
 
