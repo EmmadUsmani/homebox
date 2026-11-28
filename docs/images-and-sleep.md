@@ -97,6 +97,21 @@ agent update steps after the identity reset. `box doctor` passed on the build
 VM, clone, and fully provisioned VM. Both agents reported signed out on the
 build VM and the credential scan passed before saving.
 
+### Linux verification
+
+On 2026-11-28, an x86-64 Ubuntu 26.04.1 LTS host running Lima 2.3.0
+and QEMU 10.2.1 booted the Ubuntu build guest and started provisioning.
+Another VM was active throughout both attempts.
+
+| Command | Elapsed | Result |
+|---|---:|---|
+| `box image rebuild --profile ubuntu` | 167.1 s | Interrupted during base package installation |
+| `box new clone --cpus 2 --memory 4 --disk 20` with an empty cache | 359.2 s | Automatic base build stopped during base package installation |
+
+Both attempts were stopped after sustained host disk I/O stalls. Neither
+completed a base image. Cache-hit and forced-provisioning timings, clone
+identity checks, and doctor on a base clone remain pending.
+
 ## Sleep and resume
 
 Apple's Virtualization framework has this since macOS 14:
