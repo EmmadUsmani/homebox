@@ -54,29 +54,24 @@ describe it are true, in the same commit or the one right after.
 
 ## Current status
 
-The owner said to start building on 2026-11-21. Phases 0 and 1 (the Mac host)
-are built and pass `HOMEBOX_E2E=1 go test ./e2e/...` on an M2 Mac, including
-same-machine use, pinned laptop SSH, file-confined host processes and UDP/ICMP
-egress. On 2026-11-22 a second Mac (an 8 GiB M2 Mac mini on macOS 27) hosted a
-VM that passed `box doctor`, and a laptop on the LAN reached it with pinned SSH
-and its published HTTP port, and the owner signed Claude Code and Codex in
-inside that VM. Phase 1b's first two steps are built: the observability CLI
-(`box status`, `box top`, `box logs`, `--json`, in the e2e test) and the macOS
-desktop app in `desktop/` (verified by driving the built app through
-Accessibility with the scripts in `desktop/scripts/`). The remote desktop
-uses the same pinned SSH proxy in the CLI and the app. The Desktop tab was
-verified on a local VM, including the native viewer isolation fixture.
-LAN and Tailscale measurement remains open.
-[docs/todo.md](docs/todo.md) lists the agreed follow-ups.
-[docs/architecture.md](docs/architecture.md) holds the code layout, dependency
-rules and known limitations; follow it.
+The CLI and Wails desktop app run on [macOS](docs/host-setup-macos.md) and
+[supported Ubuntu Linux hosts](docs/host-setup-linux.md). Ubuntu guests support
+[saved and base images](docs/images-and-sleep.md#images) and
+[KasmVNC over pinned SSH](docs/observability.md#remote-desktop-phase-2).
+Apple silicon also runs the [macOS guest profile](docs/spikes/macos-guests.md),
+including a verified iOS Simulator run. Supported Linux x86-64 hosts can opt in
+to nested KVM for the [Android emulator](smoke/android/README.md).
+
+The [test history](docs/test-runs.md) records local verification. See the
+[architecture](docs/architecture.md) for package boundaries and known limits,
+and the [to-do list](docs/todo.md) for remaining work.
 
 ## Testing before merging
 
 The owner agreed this on 2026-11-26. All tiers run with
-[`scripts/test.sh`](scripts/test.sh) on this laptop or the Mac mini (see the
-README's "Testing" section). GitHub CI is informative, not the gate: a change
-must pass on one of the Macs.
+[`scripts/test.sh`](scripts/test.sh) on either Mac or the supported Ubuntu host
+(see [Testing](README.md#testing)). GitHub CI is informative, not the gate: a
+change must pass on one of those hosts.
 
 - **Before every merge:** `scripts/test.sh change` passes. Paste its summary
   line (commit, machine, result, duration) into the pull request, and commit

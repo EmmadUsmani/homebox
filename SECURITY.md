@@ -2,7 +2,18 @@
 
 homebox exists so coding agents can run with full permissions on a machine that
 also holds personal accounts, a browser, email and banking. This page says what
-homebox protects, how, and what it doesn't try to protect. It describes the controls on macOS and Linux.
+homebox protects and where the boundaries are. The current host implementations
+run on Apple silicon macOS and supported x86-64 Ubuntu Linux. Windows host
+support is planned.
+
+| Host | Guest | Isolation controls |
+| --- | --- | --- |
+| Apple silicon macOS | Ubuntu | [Seatbelt and VZ](#the-vm-and-the-macos-host), [Ubuntu browser processes](#browser-processes-inside-the-ubuntu-guest) |
+| Apple silicon macOS | macOS Sequoia | [Seatbelt and VZ](#the-vm-and-the-macos-host), [macOS profile bootstrap and egress](#macos-guest-profile) |
+| x86-64 Ubuntu Linux | Ubuntu | [Landlock, seccomp and QEMU/KVM](#the-vm-and-the-linux-host), [Ubuntu browser processes](#browser-processes-inside-the-ubuntu-guest) |
+
+The [network boundary](#the-vm-and-the-network) and [pinned laptop SSH](#your-laptop-and-the-vm)
+apply across these combinations.
 
 ## Reporting a vulnerability
 
