@@ -307,3 +307,17 @@ WebKitGTK viewer inside the existing layout. This keeps the viewer on the
 same platform toolkit as the application while preserving the display proxy
 and pinned SSH path. [Linux viewer isolation](../SECURITY.md#linux-guest-viewer)
 records the WebKitGTK clipboard and navigation limits.
+
+## 2026-11-28 · Guest agent factory smoke run
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+The supervisor runs in the guest with a separate health check and owns the
+commit and push. This gives it a chance to check the owner files and app
+before publication. The smoke project uses a bare origin in the disposable
+guest, so it needs no GitHub credentials.
+
+For this one smoke run, transfer the existing Codex login over pinned SSH
+into the disposable guest with mode 0600. Use a minimal guest configuration.
+Remove the guest credential and delete the VM afterward. Do not save an
+image of it. The [agent login design](agent-logins.md) covers the proposed
+long-term flow.
