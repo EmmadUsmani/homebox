@@ -8,6 +8,7 @@ exercises the local VM workflow in the full tier.
 
 | CLI command or flag | App equivalent | Status |
 |---|---|---|
+| `autostart on/off/status/run` | CLI | Host boot job setup and status are CLI-only. Local Create, Start and Stop use the shared VM marks. |
 | `desktop NAME` | Desktop tab | Done |
 | `desktop --install` | Install desktop, then Connect | Done |
 | `desktop --no-open` | Native viewer connects over a private SSH tunnel | CLI-only output for opening a browser manually |

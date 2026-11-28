@@ -122,3 +122,36 @@ Review the log output for host paths and addresses before sharing it.
     "$binary" doctor "$vm"
 )
 ```
+
+## Start VMs at host boot
+
+FileVault hosts are outside the boot-time autostart design. On a supported
+host, run `box autostart on` as the VM owner from a stable installation of
+`box`, with Lima on your `PATH`. Review the generated plist in your box
+state directory and run the printed `sudo /usr/bin/install …` command.
+The root-owned plist puts the job in `/Library/LaunchDaemons`. Its
+`UserName` runs Box as the owner.
+
+```sh
+box autostart status
+```
+
+The job runs at the next boot. To load a newly installed job in the current
+session and check its log:
+
+```sh
+sudo /bin/launchctl bootstrap system "/Library/LaunchDaemons/com.homebox.autostart.$(id -u).plist"
+cat "${HOMEBOX_HOME:-$HOME/.homebox}/autostart.log"
+box ls
+```
+
+`box autostart off` prints the commands to unload and remove the daemon.
+Use the same state directory when configuring or removing the job.
+Re-run enable and reinstall the plist after moving Box or its tools.
+
+Whether Virtualization.framework starts the VMs before login still needs
+a Mac test. If it requires a graphical session, remove the LaunchDaemon
+and run `box autostart on --login` as the owner. That installs a LaunchAgent
+without sudo for the next graphical login. Check or remove it with
+`box autostart status --login` or `box autostart off --login`.
+Testing this fallback at host boot also requires automatic login.

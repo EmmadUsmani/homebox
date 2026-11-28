@@ -144,6 +144,7 @@ running `box repin` so the driver can authenticate the guest.
 | `box ls [--json]` | Lists VMs, published ports, last doctor health and host-side resource use |
 | `box status NAME [--json]` | Shows VM health, usage, listeners, containers, coding agents and recent egress denials |
 | `box top [NAME] [--json]` | Refreshes resource use for running VMs every two seconds. Redirected output and `--json` use JSON Lines |
+| `box autostart on\|off\|status\|run` | Configure the boot job, inspect its installation, or start marked VMs now |
 | `box start` / `stop` / `rm [-f]` NAME | Lifecycle |
 | `box resize NAME [--cpus N] [--memory GiB] [--disk GiB]` | Shows the current size or resizes a stopped VM. The disk can only grow |
 | `box ssh NAME [-- cmd...]` | A shell or a command in the VM |
@@ -282,9 +283,13 @@ run `box resize NAME` without flags to reconcile and display the recorded size.
   To bring back your own server, run it as a systemd service or in such a
   container.
 
-VMs don't start again on their own after the host restarts yet; run
-`box start NAME`. Setting up an always-on host is in
-[host setup](docs/host-setup-macos.md).
+Enable `box autostart on` to start marked VMs after the host boots.
+`box new NAME` and `box start NAME` mark a VM, and `box stop NAME` clears
+its mark. Existing records start unmarked. Run `box autostart status`
+to check the installation or `box autostart off` to disable future runs.
+See [Ubuntu setup](docs/host-setup-linux.md#start-vms-at-host-boot)
+and [macOS setup](docs/host-setup-macos.md#start-vms-at-host-boot) for
+installation and logs.
 
 If the network daemon stops while a VM is running, `box status` and
 `box doctor` report the failure. Save any work you can still access, then run

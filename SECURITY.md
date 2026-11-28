@@ -166,6 +166,14 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
 If the per-VM gateway daemon exits, egress stays blocked. Stop and start
 the VM through box to establish a fresh confined gateway connection.
 
+### Autostart
+
+The boot job runs as the box owner. On Ubuntu, the owner's systemd user
+manager starts it. On macOS, the installed LaunchDaemon names the owner in
+`UserName`; the optional LaunchAgent uses the login account. Box constructs
+the usual per-VM confinement and egress policy before each start. Use
+`box autostart` so the boot job follows this path.
+
 ### Checking it
 
 `box doctor NAME` tests the boundary from inside a running VM. It checks that

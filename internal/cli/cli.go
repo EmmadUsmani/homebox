@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
+	"github.com/EmmadUsmani/homebox/internal/autostart"
 	"github.com/EmmadUsmani/homebox/internal/state"
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"github.com/spf13/cobra"
@@ -32,6 +33,7 @@ type Application interface {
 	ImportImage(context.Context, string, string) (string, error)
 	Provision(context.Context, string) error
 	Logs(context.Context, string, app.LogOptions, func(app.LogLine) error) error
+	AutostartRun(context.Context) error
 	Start(context.Context, string) error
 	Stop(context.Context, string) error
 	Resize(context.Context, string, vm.Size) (vm.Size, error)
@@ -79,6 +81,7 @@ func newCommand(service Application, version string, isTerminal func(io.Reader) 
 		imageCommand(service, version),
 		resizeCommand(service),
 		hostCommand(service),
+		autostartCommand(service),
 		portsCommand(service),
 		removeCommand(service, isTerminal),
 		repinCommand(service, isTerminal),
@@ -236,5 +239,25 @@ func portsCommand(service Application) *cobra.Command {
 	cmd.Flags().StringSliceVar(&options.Set, "set", nil, "Replace all forwards with GUEST:HOST mappings (repeatable)")
 	cmd.Flags().StringSliceVar(&options.Add, "add", nil, "Add GUEST:HOST mappings (repeatable)")
 	cmd.Flags().StringSliceVar(&options.Remove, "rm", nil, "Remove forwards by guest port (repeatable)")
+	return cmd
+}
+
+func autostartCommand(service Application) *cobra.Command {
+	cmd := &cobra.Command{Use: "autostart", Short: "Manage the boot job for marked VMs"}
+	for _, action := range []string{"on", "off", "status"} {
+		var login bool
+		actionCommand := &cobra.Command{Use: action, Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+			root, err := state.DefaultRoot()
+			if err != nil {
+				return err
+			}
+			return autostart.Configure(cmd.Context(), action, root, login, cmd.OutOrStdout())
+		}}
+		actionCommand.Flags().BoolVar(&login, "login", false, "Manage the macOS graphical-login job instead of the boot job")
+		cmd.AddCommand(actionCommand)
+	}
+	cmd.AddCommand(&cobra.Command{Use: "run", Short: "Start marked VMs (boot job entry point)", Args: cobra.NoArgs, RunE: func(cmd *cobra.Command, _ []string) error {
+		return service.AutostartRun(cmd.Context())
+	}})
 	return cmd
 }

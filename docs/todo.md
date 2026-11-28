@@ -30,10 +30,12 @@ Changes to the [approved design](plan.md) require the owner's approval.
   owner-attended Linux session. The [GPU passthrough spike](spikes/gpu-passthrough.md)
   records the host inventory and manual steps.
 - Keep Windows host support on the [design roadmap](plan.md#phases).
-- Implement [autostart](plan.md#box-the-command) and check whether the macOS
-  VM can start under a boot-time job before login. If it needs a user session,
-  test automatic login as the fallback. FileVault hosts remain outside the
-  design.
+- Check [autostart on Ubuntu](host-setup-linux.md#start-vms-at-host-boot)
+  after an owner-attended reboot, before login.
+- Check [autostart on macOS](host-setup-macos.md#start-vms-at-host-boot)
+  under launchd before login. If Virtualization.framework needs a user session,
+  test the LaunchAgent with automatic login. FileVault hosts remain outside
+  the design.
 - Track aggregate host storage quotas. The current
   [10 GiB admission floor](architecture.md#host-state-volume-headroom) checks
   free space before selected operations. Aggregate allocation enforcement

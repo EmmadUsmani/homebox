@@ -19,6 +19,7 @@ type Box struct {
 	Name            string           `json:"name"`
 	Image           string           `json:"image,omitempty"`
 	BaseImage       bool             `json:"base_image,omitempty"`
+	Autostart       bool             `json:"autostart,omitempty"`
 	ImageBuild      bool             `json:"image_build,omitempty"`
 	Profile         string           `json:"profile"`
 	Driver          string           `json:"driver"`
@@ -121,8 +122,8 @@ func (s *Store) Delete(name string) error {
 	return err
 }
 
-// List returns records in name order.
-func (s *Store) List() ([]Box, error) {
+// BoxNames returns box state directory names in name order.
+func (s *Store) BoxNames() ([]string, error) {
 	entries, err := os.ReadDir(s.boxesDir())
 	if errors.Is(err, os.ErrNotExist) {
 		return nil, nil
@@ -130,18 +131,31 @@ func (s *Store) List() ([]Box, error) {
 	if err != nil {
 		return nil, err
 	}
-	var boxes []Box
+	var names []string
 	for _, entry := range entries {
 		if entry.IsDir() {
-			box, err := s.Load(entry.Name())
-			if errors.Is(err, os.ErrNotExist) {
-				continue
-			}
-			if err != nil {
-				return nil, err
-			}
-			boxes = append(boxes, box)
+			names = append(names, entry.Name())
 		}
+	}
+	return names, nil
+}
+
+// List returns records in name order.
+func (s *Store) List() ([]Box, error) {
+	names, err := s.BoxNames()
+	if err != nil {
+		return nil, err
+	}
+	var boxes []Box
+	for _, name := range names {
+		box, err := s.Load(name)
+		if errors.Is(err, os.ErrNotExist) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		boxes = append(boxes, box)
 	}
 	return boxes, nil
 }

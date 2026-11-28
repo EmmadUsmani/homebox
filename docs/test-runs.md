@@ -151,5 +151,10 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T11:13:53.823Z | eff5d0c5e702 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | PASS | 10/0/0 | 436.4s | GUI profile base |
 | 2026-11-28T11:18:18.492Z | 08b929525a4c | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | FAIL | 5/1/0 | 9.0s | — |
 | 2026-11-28T11:18:36.621Z | 80762d67a7a4 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 6/0/0 | 8.3s | — |
+<<<<<<< HEAD
+| 2026-11-28T11:36:27.903Z | 508d2b804471 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | doctor | PASS | 11/0/0 | 621.2s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+=======
 | 2026-11-28T11:20:56.870Z | 4d9097a3b66d | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 16/1/0 | 383.1s | fresh |
 | 2026-11-28T11:25:45.521Z | c59324f85391 | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 17/0/0 | 276.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+>>>>>>> origin/main
+| 2026-11-28T11:42:58.947Z | 76c1387e8742 | yes | Mac14,10 | 27.2.1 | change | default | doctor, desktop | PASS | 14/0/0 | 218.2s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

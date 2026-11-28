@@ -252,3 +252,38 @@ HOMEBOX_FIRST_INDEX=86 dbus-run-session -- xvfb-run -a node desktop/scripts/veri
 Choose an unused index when running alongside other VMs. The full tier runs
 this verifier when it selects the desktop area, including for
 `scripts/test.sh full --area desktop`.
+
+## Start VMs at host boot
+
+Run as the account that owns the VMs, using a `box` binary at a stable path.
+
+```sh
+box autostart on
+box autostart status
+```
+
+Box enables `~/.config/systemd/user/homebox-autostart.service` under the user
+manager's `default.target`. The unit records the selected `HOMEBOX_HOME` and
+the absolute tool directories on your current `PATH`. Re-run `box autostart on`
+if you move the binary or tools. One state directory can own the job at a time.
+
+The user manager requires lingering to start at boot before login. If Box
+cannot enable it through logind, run the `sudo loginctl enable-linger`
+command it prints and re-run `box autostart on`. The user manager starts before
+its jobs. The unit orders itself after `network-online.target` in that
+manager when a user-level target is available. Ubuntu's system-wide target
+belongs to a separate manager. VMs may boot before the host has internet access.
+
+To exercise the installed job in the current session and view its logs:
+
+```sh
+systemctl --user start homebox-autostart.service
+journalctl --user -u homebox-autostart.service -b
+box ls
+```
+
+Use `systemctl --user restart homebox-autostart.service` to run an
+already-completed job again, or `box autostart run` to restore marked VMs
+directly. `box autostart off` disables starts on future boots. It leaves
+account-wide lingering settings in place for other services. A reboot with
+nobody logged in still needs an owner-attended check.
