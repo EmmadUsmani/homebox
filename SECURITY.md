@@ -35,15 +35,12 @@ confinement enforce the VM-to-Mac boundary independently. See the
 
 ### The VM and the macOS host
 
-These controls apply to homebox's Ubuntu guests. Lima's experimental macOS
-guest templates have a separate networking and bootstrap path.
-See the [macOS guest spike](docs/spikes/macos-guests.md).
-
-- **A full VM.** Each VM is its own Linux kernel and disk under Apple's
+- **A full VM.** Each VM is its own kernel and disk under Apple's
   Virtualization framework, through Lima's `vz` driver. It's not a container.
 - **Nothing shared.** No mounts of host folders, no SSH agent forwarding and no
-  X11 forwarding: the guest's sshd refuses both, whatever the client asks for
-  ([`guest/ubuntu/base.sh`](guest/ubuntu/base.sh)).
+  X11 forwarding. The guest's default sshd configuration refuses both even if
+  the client requests them. See [Ubuntu provisioning](guest/ubuntu/base.sh) and
+  [macOS boot provisioning](guest/macos/boot.sh).
 - **No host loopback, no host DNS.** Lima's host-loopback access and host
   resolver are turned off, so the VM can't reach services listening on the
   Mac's `localhost`.
@@ -63,6 +60,25 @@ See the [macOS guest spike](docs/spikes/macos-guests.md).
 When restoring an image into a fresh state directory, `box` generates the
 dedicated Lima login key before launching the confined host agent.
 Image restores use the same host-agent file, process and network permissions.
+
+### macOS guest profile
+
+The confined user-mode NIC carries inbound SSH. A separate file-handle NIC
+connects to the IPv4 gateway. The guest bootstrap identifies that NIC by
+its MAC, gives the SSH NIC an address without a default route, and uses
+public DNS on the gateway NIC. The host policy enforces the boundary even
+if guest root changes those settings.
+
+Lima reads its packaged Darwin agent to generate the guest configuration ISO.
+Its Seatbelt profile allows the individually named agent files and
+`/usr/bin/hdiutil` under the same filesystem and network restrictions.
+ISO generation needs metadata access to the APFS Data mount point itself.
+The profile keeps directory contents and Mach service restrictions in place.
+The guest configuration ISO is read-only.
+
+`box doctor` checks public IPv4 access and probes host canaries, LAN addresses
+and the router through both NICs. Lima can answer ICMP locally at its own
+virtual gateway, so the loopback canaries use TCP and UDP.
 
 ### The VM and the Linux host
 
@@ -111,14 +127,19 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
   is alive. Before it dials the driver's loopback listener and again before
   it forwards traffic, box checks the listener and host process identities.
   Unverified ownership closes the connection and produces a rate-limited daemon
-  warning. The VM's sshd drops a client that stops answering (within about
+  warning. Each relay admits up to 128 active connections and 64 new
+  connections per second, with a burst of 128. The VM's sshd drops a client that stops answering (within about
   two minutes), so a laptop that sleeps, leaves or crashes doesn't leave
   sessions open in the VM. Lima's port forwarder doesn't pass a closed
   connection on to the guest, so without this they would stay open forever.
 - Laptops pin each VM's SSH host keys, so an impostor on the port fails the
   host-key check. `box repin` changes pins only after you review them.
 - Ports are published only on the Mac's loopback unless you turn on LAN
-  publishing (`box host init --lan`), per host.
+  publishing (`box host init --lan`), per host. Lima plain mode disables
+  the Linux guest agent daemon and dynamic port discovery. A configured
+  static forward remains bound to the same host address and port when
+  the guest replaces the service at its published port.
+  [Lima plain mode](https://lima-vm.io/docs/config/plain/)
 
 If the per-VM gateway daemon exits, egress stays blocked. Stop and start
 the VM through box to establish a fresh confined gateway connection.
@@ -365,8 +386,17 @@ connections but not open them) before turning it on.
   in the [architecture](docs/architecture.md#networking-and-isolation-macos)
   and tracked in the [to-do list](docs/todo.md).
 - **Aggregate storage use.** Each VM has a configured virtual disk size.
-  homebox does not enforce an aggregate host storage quota for VM disks,
-  images or Lima logs.
+  VM creation, starts of stopped VMs, and image saves, imports and copies
+  require 10 GiB available on the state volume at admission. Doctor and status
+  report that volume's available space. Running guests, writes admitted before
+  the threshold, Lima logs, and other host processes can still exhaust the
+  volume. There is no aggregate allocation or quota enforcement.
+- **Inbound availability.** The SSH relay's per-VM limits bound its workers.
+  A client with access to the published listener can fill the available slots,
+  and Lima manages the resources used by static TCP forwards separately.
+- **Lima and virtualization transports.** Plain mode disables the normal
+  guest agent daemon. The hypervisor's device interfaces and the confined
+  hostagent remain trusted components.
 - **Guest-reported health.** Doctor, status and logs rely on guest-controlled
   output for guest checks. See the [Mac isolation review](docs/security-review-2026-11-28.md)
   for coverage and remaining checks.

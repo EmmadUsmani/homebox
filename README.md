@@ -1,7 +1,7 @@
 # homebox
 
 An exe.dev-style development VM on your own hardware. Run homebox on a Mac or a supported Linux host,
-then SSH from your laptop straight into an isolated Linux VM. In the VM you can
+then SSH from your laptop straight into an isolated VM. In the Ubuntu guest you can
 run coding agents such as Claude Code and Codex with full permissions, run any
 server, and render and screenshot UI.
 
@@ -29,6 +29,26 @@ alias uses the VM driver's existing identity. To add the Include yourself,
 run `box ssh-config --include` and put its output at the top of
 `~/.ssh/config`. The opt-in installer saves a copy of an existing config
 before editing it.
+
+### macOS guests on Apple silicon
+
+With Lima 2.3.0 and its packaged Darwin guest agent installed, create a
+macOS Sequoia guest and connect over pinned SSH:
+
+```sh
+./box new mac --profile macos --disk 55
+./box ssh mac
+./box doctor mac
+```
+
+The first creation downloads Apple's roughly 16 GiB restore image. Start,
+stop and remove macOS guests through `box`. The profile provides a macOS
+admin environment with noninteractive sudo. The Ubuntu tooling,
+saved-image workflows and `box desktop --install` are Ubuntu features.
+See the [macOS guest security model](SECURITY.md#macos-guest-profile).
+
+For iOS development, the [simulator spike](docs/spikes/macos-guests.md#ios-simulator)
+used Xcode 16.2 and an 80 GiB guest disk.
 
 ## Quick start on Ubuntu Linux
 
@@ -159,6 +179,14 @@ To move an image to a host with the same backend and guest architecture, run `bo
 copy the archive by hand, then run `box image import dev-tools.hbimg.gz` there.
 Import verifies the disk's SHA-256 and preserves the original image name.
 See [image storage and compatibility](docs/images-and-sleep.md#images).
+
+### Host storage headroom
+
+Keep at least 10 GiB available on the volume that holds homebox state.
+`box new`, starting a stopped VM, and `box image save`, `import` and `copy`
+check this before admitting the operation. `box doctor` and `box status NAME`
+report available space on that volume. For status JSON, see `host_free_bytes`.
+See [aggregate storage limits](SECURITY.md#not-covered) for what can still grow.
 
 ## Remote desktop
 

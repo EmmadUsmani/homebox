@@ -28,6 +28,7 @@ type Rules struct {
 	LimaHome        string
 	Executable      string
 	executableAlias string
+	DarwinGuest     bool
 	Daemon          bool
 	GatewaySocket   string
 	HostPIDFile     string
@@ -210,6 +211,30 @@ func writeFilesAndProcesses(profile *strings.Builder, rules Rules, runtimeDir st
 		}
 		fmt.Fprintf(profile, "(allow file-read* (literal %s))\n", alias)
 		allowParents(profile, path.Dir(rules.executableAlias))
+	}
+	if rules.DarwinGuest {
+		// Lima uses hdiutil to write the Joliet configuration disk in the
+		// instance directory. It inherits the same file, network and IPC limits.
+		profile.WriteString("(allow file-read* (literal \"/usr/bin/hdiutil\"))\n(allow process-exec (literal \"/usr/bin/hdiutil\"))\n")
+		profile.WriteString("(allow file-read-metadata (literal \"/System/Volumes/Data\"))\n")
+		// The inbound NIC needs no host DNS search domains in its lease.
+		profile.WriteString("(deny file-read-data (literal \"/private/etc/resolv.conf\") (literal \"/private/var/run/resolv.conf\"))\n")
+		for _, executablePath := range []string{rules.Executable, rules.executableAlias} {
+			if executablePath == "" {
+				continue
+			}
+			dir := path.Join(path.Dir(path.Dir(executablePath)), "share", "lima")
+			share, err := profilePath(dir)
+			if err != nil {
+				return err
+			}
+			allowParents(profile, dir)
+			fmt.Fprintf(profile, "(allow file-read-data (literal %s))\n", share)
+			for _, suffix := range []string{".gz", ""} {
+				agent, _ := profilePath(path.Join(dir, "lima-guestagent.Darwin-aarch64"+suffix))
+				fmt.Fprintf(profile, "(allow file-read* (literal %s))\n", agent)
+			}
+		}
 	}
 
 	home, err := profilePath(rules.Home)

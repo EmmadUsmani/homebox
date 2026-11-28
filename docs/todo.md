@@ -45,11 +45,9 @@ publishing from a second machine and cover GPU and autostart separately.
 
 ## macOS guests and the iOS Simulator
 
-The [macOS guest spike](spikes/macos-guests.md) covers Lima's installer, first
-boot and socket NIC. Before adding a `box` profile, establish a pinned SSH path
-with the homebox gateway as the only egress path and validate host confinement
-and `box doctor` on a fresh guest. Test the iOS Simulator once Xcode and a
-runtime can be staged into that guest.
+The `macos` profile is described in the [security model](../SECURITY.md#macos-guest-profile).
+Measure a real laptop SSH connection over the LAN. The local lifecycle check
+uses a separate laptop key and the exported pins over loopback.
 
 ## Update existing Ubuntu VMs for browser sandboxing
 
@@ -68,10 +66,10 @@ Left to do:
 
 ## Follow up on the Mac isolation review
 
-Add controlled guest-side DNS answers for private destinations, fragment
-reassembly and broadcast dispatch fixtures, and a Files-tab check that renders
-unusual filenames in the Mac GUI. The
-[review](security-review-2026-11-28.md) explains existing coverage and limits.
+The gateway now has controlled DNS answer, IPv4 reassembly and broadcast
+dispatch fixtures. A Files-tab check that renders unusual filenames in the
+Mac GUI remains open. The [review](security-review-2026-11-28.md) explains
+existing coverage and limits.
 
 ## Harden the SSH relay
 

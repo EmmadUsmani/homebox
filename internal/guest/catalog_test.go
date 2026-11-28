@@ -98,7 +98,7 @@ func TestEmbeddedProfiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := catalog.Names(); !slices.Equal(got, []string{guest.DefaultProfile}) {
+	if got := catalog.Names(); !slices.Equal(got, []string{"macos", guest.DefaultProfile}) {
 		t.Fatalf("embedded names = %v", got)
 	}
 	profile, err := catalog.Get(guest.DefaultProfile)

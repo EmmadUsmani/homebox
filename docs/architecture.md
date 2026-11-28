@@ -21,6 +21,7 @@ guest/             the profiles themselves, embedded in the binary:
   common/          distro-independent tool layer (POSIX sh)
                    Node, Python and uv via mise
   ubuntu/          Ubuntu LTS: image, apt packages, services
+  macos/           macOS Sequoia: restore image, boot configuration and doctor
 internal/state     box's own records (one file per VM) and port allocation
 internal/egress    public-address policy, host interface checks and bounded daemon log
 internal/confine   OS-specific sandbox profiles for the VM's host process and
@@ -127,6 +128,14 @@ operation's output in memory and reads step names from the provision record.
 The [smoke runner's image archives](../smoke/README.md#container-image-cache)
 live in the host's user cache, separate from box state and VM lifecycles.
 
+### Host state volume headroom
+
+The [state store's free-space check](../internal/state/space_policy.go) measures
+the default volume for VM disks and saved images. VM creation and startup
+check it before creating or launching the instance. Image saves, imports and
+copies check it before staging the destination disk. See the
+[storage limits](../SECURITY.md#not-covered).
+
 ## Ports
 
 Each VM gets a small index `n` (1–99) when created. All its host ports derive
@@ -180,8 +189,8 @@ dead daemon and a stop/start creates a fresh attachment.
    paths include the dyld caches and exclude the APFS Data volume alias.
    [Doctor](../internal/doctor/sandbox_darwin.go) probes the installed
    profiles against host files and the notification service.
-3. Ubuntu uses the second NIC for IPv4 egress and contacts public DNS
-   resolvers directly. Provisioning removes the old proxy settings,
+3. Guests use the second NIC for IPv4 egress and contact public DNS
+   resolvers directly. Ubuntu provisioning removes the old proxy settings,
    redirects and Docker resolver override. The built-in NIC remains
    confined if guest root changes its routing. The socket daemon discards
    IPv6 Ethernet frames and unsupported IPv4 protocols before stack
@@ -196,8 +205,6 @@ dead daemon and a stop/start creates a fresh attachment.
 
 Known limitations ([to do](todo.md) tracks follow-ups):
 
-- The Mac host runs Ubuntu guests through `box`. A macOS guest needs its
-  own verified SSH and isolation path. See the [macOS guest spike](spikes/macos-guests.md).
 - Public egress supports IPv4 TCP, UDP and ICMP echo. IPv6 and other IP
   protocols are outside this gateway's scope.
 - A router with NAT reflection can reflect connections to its public IP
@@ -223,6 +230,24 @@ Box reads public SSH host keys over the driver's verified SSH connection
 during start and provisioning. It stores them in the box record along with
 the driver's identity path, and rebuilds the local OpenSSH files from those
 records. Laptop exports use the same pins and the laptop's own identity.
+
+### macOS guest bootstrap
+
+The [macOS profile](../guest/macos/profile.yaml) selects the restore image.
+Lima installs it offline and prepares the guest disk. At each confined
+start, Lima creates the read-only configuration ISO and runs the
+[profile's boot script](../guest/macos/boot.sh) as guest root. Lima's
+readiness probe checks that the script completed for the current boot
+before box publishes the saved SSH configuration. The profile clears
+DNS and the default route from the SSH service and gets the egress
+address from the gateway's DHCP lease. The gateway answers ARP for its own
+address so macOS can check whether its lease address is in use.
+
+Stock Lima 2.3.0 requires its graphics device for this guest. VZ can finish
+the guest shutdown without Lima emitting its final host-agent event.
+The driver checks Lima's instance status while waiting for that event
+and ends the wait when the instance is stopped. Saved disks and the
+Ubuntu-specific desktop and journal features are outside this profile.
 
 ## Networking and isolation (Linux)
 

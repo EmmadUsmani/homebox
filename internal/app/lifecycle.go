@@ -21,6 +21,9 @@ func (s *Service) Start(ctx context.Context, name string) error {
 		if err != nil {
 			return err
 		}
+		if instance.GuestOS == vm.DarwinGuest && !box.Provisioned {
+			return fmt.Errorf("macOS guest %q requires box provision before it can start", name)
+		}
 		if err := s.start(ctx, &box, instance); err != nil {
 			return err
 		}
@@ -46,6 +49,9 @@ func (s *Service) authorizeLaptopKeys(ctx context.Context, name string, endpoint
 func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instance) error {
 	if instance.Status == vm.StatusRunning {
 		return s.networkDaemonError(box.Name)
+	}
+	if err := s.Store.RequireFreeSpace(); err != nil {
+		return err
 	}
 	if err := s.applyLANSetting(ctx, box); err != nil {
 		return err

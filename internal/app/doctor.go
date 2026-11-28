@@ -19,6 +19,12 @@ import (
 
 // Doctor verifies host publishing and guest isolation for a named or all running boxes.
 func (s *Service) Doctor(ctx context.Context, name string) error {
+	if free, err := s.Store.FreeBytes(); err != nil {
+		s.progress("Host state volume: %v", err)
+	} else {
+		s.progress("Host state volume: %.1f GiB available (%d GiB minimum for VM starts and image writes)", float64(free)/(1<<30), state.MinimumFreeBytes>>30)
+	}
+
 	if name != "" {
 		box, err := s.load(name)
 		if err != nil {
@@ -63,7 +69,11 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	if s.DoctorHost == nil {
 		return errors.New("host diagnostics are unavailable")
 	}
-	script, err := s.Profiles.ReadScript("common/doctor.sh")
+	guestScript, root := "common/doctor.sh", false
+	if instance.GuestOS == vm.DarwinGuest {
+		guestScript, root = "macos/doctor.sh", true
+	}
+	script, err := s.Profiles.ReadScript(guestScript)
 	if err != nil {
 		return err
 	}
@@ -125,7 +135,7 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		defer cancel()
 		stdout := &cappedGuestOutput{limit: 128 << 10, cancel: cancel}
 		stderr := &cappedGuestOutput{limit: 16 << 10, cancel: cancel}
-		guestErr = s.GuestSSH.RunScript(guestCtx, endpoint, script, env, false, stdout, stderr)
+		guestErr = s.GuestSSH.RunScript(guestCtx, endpoint, script, env, root, stdout, stderr)
 		for _, output := range []*cappedGuestOutput{stdout, stderr} {
 			for _, line := range strings.Split(strings.TrimSuffix(output.buffer.String(), "\n"), "\n") {
 				if line != "" {

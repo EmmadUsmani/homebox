@@ -24,11 +24,14 @@ an established open-source project.
 
 ### macOS guest isolation
 
-**Keep macOS guests experimental** (2026-11-28, decided by the lead's worker
-overnight under the owner's autonomy grant). A `box` profile waits for a
-verified pinned SSH path and the same host and LAN isolation as Ubuntu.
-The [spike](spikes/macos-guests.md) records the Lima 2.3.0 networking and
-bootstrap behavior that a profile needs to account for.
+**Use stock Lima and the two-NIC design for macOS guests** (2026-11-28,
+decided by the lead's worker overnight under the owner's autonomy grant).
+The earlier [spike](spikes/macos-guests.md) kept macOS guests experimental
+because Lima's SSH forward needs its built-in NIC. Keep that NIC for inbound
+SSH under Seatbelt and use the confined socket gateway for egress. The initial
+profile pins macOS 15.6.1 so it can run the locally available Xcode 16.2.
+Limit the extra host-side access to the packaged agent, the exact ISO tool
+and metadata on the APFS Data mount point.
 
 ### Linux host confinement
 
@@ -375,3 +378,24 @@ loader, and deny process tracing and cross-process memory access in each
 Linux confinement profile. Keep the hostagent and gateway's pathname Unix
 sockets for current features and record the Landlock limit in SECURITY.md.
 See the [Linux isolation review](security-review-2026-11-28-linux.md).
+
+## 2026-11-28 · Host resource admission and Mac isolation coverage
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Require 10 GiB available on the homebox state volume before accepting new VM
+creation, a stopped VM start, or an image save, import or copy. A fixed
+headroom floor leaves room for host writes without treating sparse virtual
+disk sizes as physical allocations. Report available bytes in status and
+show the floor in doctor. This is an admission check, so ongoing writes
+can still use the remaining space.
+
+Cap the SSH relay at 128 concurrent connections per VM and 64 admissions
+per second with a burst of 128. Bound ownership checks, dials and copy
+workers without terminating established sessions solely because of another
+client's arrival. Keep Lima plain mode and the static forwarding config.
+Test that replacing a published service leaves the published host endpoint
+working and that an unpublished listener remains unavailable on the host.
+
+The Docker e2e check requires a successful public DNS reply from inside the
+container. Try independent resolvers so a single timed-out public endpoint
+does not prevent exercising the local isolation assertions.
