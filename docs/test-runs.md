@@ -125,3 +125,5 @@ check also passed.
 | 2026-11-28T10:27:29.257Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 7.0s | — |
 | 2026-11-28T10:27:54.239Z | 5d68a8e259a0 | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 5/0/1 | 7.0s | — |
 | 2026-11-28T10:30:14.622Z | 8715a2a5e857 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 8.7s | — |
+| 2026-11-28T10:43:24.154Z | 0d608e28cbcf | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 6.9s | — |
+| 2026-11-28T10:55:12.613Z | 0d608e28cbcf | no | Mac14,10 | 27.2.1 | change | partial | ios | PASS | 11/0/0 | 736.1s | fresh macOS |

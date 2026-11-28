@@ -123,6 +123,10 @@ The scratch VMs and both restore-image downloads were removed.
 
 The [iOS smoke area](../../smoke/ios/README.md) automates this path with
 a headless boot, a SwiftUI appearance log assertion and a screenshot.
+On 2026-11-28 it passed with Xcode 16.2 and iOS 18.3.1 on a fresh
+macOS 15.6.1 guest. The simulator booted in 68 seconds. Provisioning from
+the IPSW took 488 seconds with the initial download and 184 seconds
+with the IPSW cached. See the [test history](../test-runs.md).
 
 ## Base images
 
