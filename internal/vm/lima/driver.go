@@ -85,7 +85,10 @@ func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) e
 		if err != nil {
 			return err
 		}
-		changes := ".networks = " + string(networks) + " | .networkOpts.hostLoopback = false | .hostResolver.enabled = false"
+		changes := ".networks = " + string(networks) + " | .hostResolver.enabled = false"
+		if runtime.GOOS == "darwin" {
+			changes += " | .networkOpts.hostLoopback = false"
+		}
 		if len(opts.DNS) > 0 {
 			resolvers, err := json.Marshal(opts.DNS)
 			if err != nil {
@@ -94,6 +97,13 @@ func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) e
 			changes += " | .dns = " + string(resolvers)
 		}
 		if _, err := d.run(ctx, nil, "edit", "--tty=false", "--set", changes, name); err != nil {
+			return err
+		}
+	}
+	if runtime.GOOS == "linux" && opts.Socket.Path != "" {
+		// Lima initializes networks.yaml lazily. Keep that write outside the
+		// long-lived hostagent's otherwise read-only shared configuration.
+		if _, err := d.run(ctx, nil, "network", "list", "--json"); err != nil {
 			return err
 		}
 	}

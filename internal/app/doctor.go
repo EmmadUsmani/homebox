@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 	"strings"
 	"time"
 
@@ -83,6 +84,10 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		Detail: "network daemon is not running",
 	})
 	if relay, ok := s.DoctorHost.(interface {
+		ProbeLinuxSSHRelay(context.Context, string, string, int) []doctor.Check
+	}); ok {
+		checks = append(checks, relay.ProbeLinuxSSHRelay(ctx, instance.SSHPIDFile, instance.RuntimeDir, state.DriverSSHPort(box.Index))...)
+	} else if relay, ok := s.DoctorHost.(interface {
 		ProbeSSHRelay(string, int) doctor.Check
 	}); ok {
 		checks = append(checks, relay.ProbeSSHRelay(instance.HostPIDFile, state.DriverSSHPort(box.Index)))
@@ -109,6 +114,9 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 			"HOMEBOX_BUILTIN_GATEWAY": instance.HostAddress,
 			"HOMEBOX_DENY_TARGETS":    strings.Join(targets, " "),
 			"HOMEBOX_PUBLIC_URL":      "https://example.com",
+		}
+		if runtime.GOOS == "linux" && instance.SSHPIDFile != "" {
+			env["HOMEBOX_CHECK_SLIRP"] = "1"
 		}
 		guestCtx, cancel := context.WithCancel(ctx)
 		defer cancel()

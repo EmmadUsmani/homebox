@@ -34,7 +34,7 @@ func TestOpen(t *testing.T) {
 	}
 	url, err := service.Open(ctx, "main", "8000", false)
 	const want = "http://127.0.0.1:10100/"
-	if runtime.GOOS == "darwin" {
+	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 		if url != "" || opened != want || !errors.Is(err, openErr) {
 			t.Fatalf("macOS Open = %q, opened %q, err %v", url, opened, err)
 		}

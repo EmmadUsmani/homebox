@@ -19,8 +19,9 @@ const probeTimeout = time.Second
 
 // Host probes local network services and supplies guest deny targets.
 type Host struct {
-	Gateway    func(context.Context) (netip.Addr, error)
-	dialRouter func(context.Context, string, string) (net.Conn, error)
+	Gateway        func(context.Context) (netip.Addr, error)
+	RequireGateway bool
+	dialRouter     func(context.Context, string, string) (net.Conn, error)
 }
 
 // Probe runs the host controls and keeps the canaries open until closeCanaries is called.
@@ -171,10 +172,12 @@ func checkUDPCanary(ctx context.Context, address string) error {
 func (h Host) router(ctx context.Context) (string, Check) {
 	check := Check{Name: "router-control", Skipped: true, Detail: "default gateway lookup unavailable"}
 	if h.Gateway == nil {
+		check.Skipped = !h.RequireGateway
 		return "", check
 	}
 	ip, err := h.Gateway(ctx)
 	if err != nil {
+		check.Skipped = !h.RequireGateway
 		check.Detail = err.Error()
 		return "", check
 	}

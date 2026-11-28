@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 
 	"github.com/EmmadUsmani/homebox/internal/app"
 	"github.com/EmmadUsmani/homebox/internal/confine"
@@ -51,6 +52,12 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	if err != nil {
 		return app.Session{}, err
 	}
+	if runtime.GOOS == "linux" && instance.SSHPIDFile == "" {
+		return app.Session{}, fmt.Errorf("Linux isolation requires the Lima QEMU driver")
+	}
+	if instance.SSHPIDFile != "" {
+		instance.HostPIDFile = instance.SSHPIDFile
+	}
 	if !filepath.IsAbs(instance.HostPIDFile) {
 		return app.Session{}, fmt.Errorf("VM driver did not report an absolute host process PID path")
 	}
@@ -61,10 +68,29 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	daemon := daemonConfig(box, dir, host.LAN)
 	daemon.HostPIDFile = filepath.Join(pidDir, filepath.Base(instance.HostPIDFile))
 	hostRules := rules(box, instance)
+	if runtime.GOOS == "linux" {
+		daemon.SSHTargetSocket = filepath.Join(pidDir, confine.QEMUSSHSocket)
+		// Keep the launch identity outside both writable runtime directories.
+		// Replace the inode before granting QEMU an exact-file write rule.
+		daemon.HostPIDFile = filepath.Join(h.Store.BoxDir(box.Name), "qemu-launch.pid")
+		file, err := os.CreateTemp(h.Store.BoxDir(box.Name), ".qemu-launch-")
+		if err != nil {
+			return app.Session{}, err
+		}
+		defer os.Remove(file.Name())
+		if err := file.Close(); err != nil {
+			return app.Session{}, err
+		}
+		if err := os.Rename(file.Name(), daemon.HostPIDFile); err != nil {
+			return app.Session{}, err
+		}
+	}
+	hostRules.HostPIDFile = daemon.HostPIDFile
 	hostRules.GatewaySocket = daemon.Socket
 	hostRules.Home = home
 	hostRules.LimaHome = h.LimaHome
 	hostRules.Executable = limactl
+	hostRules.Launcher = h.Executable
 	wrap, err := confine.Prepare(hostRules, h.Store.BoxDir(box.Name))
 	if err != nil {
 		return app.Session{}, err

@@ -164,10 +164,18 @@ func TestBoxLifecycle(t *testing.T) {
 			t.Fatalf("doctor did not pass %s", check)
 		}
 	}
-	for _, process := range []string{"hostagent", "vmnet"} {
-		for _, probe := range []string{"home-read", "home-write", "volumes-read", "shared-read", "app-temp-read", "shared-temp-read", "mach-lookup"} {
-			if check := process + "-" + probe; !strings.Contains(diagnostics, "PASS "+check) {
+	if runtime.GOOS == "linux" {
+		for _, check := range []string{"sandbox-hostagent", "sandbox-qemu", "sandbox-vmnet", "slirp-deny-tcp-", "slirp-deny-udp-", "slirp-deny-icmp-"} {
+			if !strings.Contains(diagnostics, "PASS "+check) {
 				t.Fatalf("doctor did not pass %s", check)
+			}
+		}
+	} else {
+		for _, process := range []string{"hostagent", "vmnet"} {
+			for _, probe := range []string{"home-read", "home-write", "volumes-read", "shared-read", "app-temp-read", "shared-temp-read", "mach-lookup"} {
+				if check := process + "-" + probe; !strings.Contains(diagnostics, "PASS "+check) {
+					t.Fatalf("doctor did not pass %s", check)
+				}
 			}
 		}
 	}
@@ -178,8 +186,10 @@ if curl -6 --noproxy '*' -fsS -m 3 -o /dev/null 'https://[2606:4700:4700::1111]'
     exit 1
 fi
 (
-    sudo ip route add 1.1.1.1/32 via 192.168.5.2 dev eth0
-    trap 'sudo ip route del 1.1.1.1/32 via 192.168.5.2 dev eth0' EXIT
+    builtin=$(ip -4 -o route get 192.168.5.2 | awk '{for (i=1; i<NF; i++) if ($i == "dev") print $(i+1)}')
+    test -n "$builtin"
+    sudo ip route add 1.1.1.1/32 via 192.168.5.2 dev "$builtin"
+    trap 'sudo ip route del 1.1.1.1/32 via 192.168.5.2 dev "$builtin"' EXIT
     if nc -z -w 2 1.1.1.1 443 ||
         dig +time=1 +tries=1 +short @1.1.1.1 example.com A | grep -Eq '^[0-9]+\.' ||
         ping -4 -c1 -W1 1.1.1.1; then

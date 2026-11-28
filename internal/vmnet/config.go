@@ -18,13 +18,14 @@ type Endpoint struct {
 
 // Config identifies a VM and its host-side network and runtime files.
 type Config struct {
-	Name        string
-	Socket      string
-	HostPIDFile string
-	SSHPublish  Endpoint
-	SSHTarget   int
-	LogFile     string
-	PIDFile     string
+	Name            string
+	Socket          string
+	HostPIDFile     string
+	SSHPublish      Endpoint
+	SSHTarget       int
+	SSHTargetSocket string
+	LogFile         string
+	PIDFile         string
 }
 
 // Args encodes the flags following the hidden _vmnet command.
@@ -36,6 +37,7 @@ func (c Config) Args() []string {
 		"--ssh-ip=" + c.SSHPublish.IP,
 		"--ssh-port=" + strconv.Itoa(c.SSHPublish.Port),
 		"--ssh-target=" + strconv.Itoa(c.SSHTarget),
+		"--ssh-target-socket=" + c.SSHTargetSocket,
 		"--log-file=" + c.LogFile,
 		"--pid-file=" + c.PIDFile,
 	}
@@ -52,6 +54,7 @@ func ParseArgs(args []string) (Config, error) {
 	flags.StringVar(&config.SSHPublish.IP, "ssh-ip", "", "SSH listen IPv4 address")
 	flags.IntVar(&config.SSHPublish.Port, "ssh-port", 0, "published SSH port")
 	flags.IntVar(&config.SSHTarget, "ssh-target", 0, "driver SSH port")
+	flags.StringVar(&config.SSHTargetSocket, "ssh-target-socket", "", "driver SSH Unix socket")
 	flags.StringVar(&config.LogFile, "log-file", "", "log path")
 	flags.StringVar(&config.PIDFile, "pid-file", "", "PID path")
 	if err := flags.Parse(args); err != nil {
@@ -76,6 +79,9 @@ func (c Config) validate() error {
 			return fmt.Errorf("invalid or duplicate VM network port %d", port)
 		}
 		ports[port] = true
+	}
+	if c.SSHTargetSocket != "" && (!filepath.IsAbs(c.SSHTargetSocket) || filepath.Clean(c.SSHTargetSocket) != c.SSHTargetSocket) {
+		return fmt.Errorf("invalid driver SSH socket path")
 	}
 	paths := make(map[string]bool, 4)
 	for _, path := range []string{c.Socket, c.HostPIDFile, c.LogFile, c.PIDFile} {

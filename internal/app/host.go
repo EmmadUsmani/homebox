@@ -45,6 +45,11 @@ func (s *Service) HostInit(ctx context.Context, options HostInitOptions) error {
 		}
 	}
 	return s.Store.WithLock(func() error {
+		if s.CheckHost != nil {
+			if err := s.CheckHost(ctx); err != nil {
+				return err
+			}
+		}
 		s.progress("Checking %s driver", s.Driver.Name())
 		instances, err := s.Driver.List(ctx)
 		if err != nil {

@@ -2,9 +2,7 @@
 
 homebox exists so coding agents can run with full permissions on a machine that
 also holds personal accounts, a browser, email and banking. This page says what
-homebox protects, how, and what it doesn't try to protect. It describes what is
-built today: the Mac host (phases 0 and 1). Windows and Linux hosts don't exist
-yet, and their controls will differ.
+homebox protects, how, and what it doesn't try to protect. It describes the controls on macOS and Linux.
 
 ## Reporting a vulnerability
 
@@ -35,7 +33,7 @@ Docker group membership. The hypervisor, host network rules and host process
 confinement enforce the VM-to-Mac boundary independently. See the
 [decision and alternatives](docs/decisions.md#browser-sandboxes-inside-the-ubuntu-guest).
 
-### The VM and the host
+### The VM and the macOS host
 
 - **A full VM.** Each VM is its own Linux kernel and disk under Apple's
   Virtualization framework, through Lima's `vz` driver. It's not a container.
@@ -62,10 +60,30 @@ When restoring an image into a fresh state directory, `box` generates the
 dedicated Lima login key before launching the confined host agent.
 Image restores use the same host-agent file, process and network permissions.
 
+### The VM and the Linux host
+
+- **QEMU/KVM** runs the VM through Lima. The SSH NIC uses SLIRP with
+  `restrict=on` and `ipv6=off`. QEMU receives the separate gateway
+  connection as an inherited Unix socket. A seccomp filter denies QEMU
+  outbound connects, IPv6 sockets and datagram sockets. Unknown network
+  arguments abort launch.
+- **Landlock** limits hostagent, QEMU and the gateway daemon to their
+  file allowlists. QEMU can write its own disk and selected runtime files.
+  The gateway daemon writes only in its own run directory. The launchers
+  set `no_new_privs`, scope abstract Unix sockets and signals, and install
+  seccomp filters before entering the host processes. A failed filter
+  aborts launch.
+- **SSH** publishes through the gateway daemon. The daemon matches the
+  Unix SSH peer's kernel pidfd to the QEMU launcher identity and watches
+  the process for exit. Lima's own SSH forward stays on IPv4 loopback.
+  The LAN switch controls the published SSH port and static TCP forwards.
+- **Doctor** checks the live QEMU command and SSH listener owners, probes
+  each confinement policy, and tries the host and router canaries through
+  both NICs. See [Linux isolation limits](docs/architecture.md#networking-and-isolation-linux).
+
 ### The VM and the network
 
-The VM reaches the internet through box's own gateway on the host, not through
-Lima's networking ([architecture](docs/architecture.md#networking-and-isolation-macos)).
+The VM reaches the internet through [box's own gateway](docs/architecture.md#networking-and-isolation-macos) on the host.
 
 - Every new connection's destination is checked on the host, against
   [`internal/egress/policy.go`](internal/egress/policy.go). Private ranges,

@@ -39,6 +39,7 @@ fi
 
 if ! python3 - <<'PYTHON'
 import concurrent.futures
+import json
 import os
 import socket
 import struct
@@ -63,20 +64,25 @@ def ntp():
             pass
     return "public-udp-ntp", False
 
-def blocked(protocol, target):
+def blocked(protocol, target, device=None):
     host, port = target.split(":")
     if protocol == "icmp":
         refused = subprocess.run(
-            ["ping", "-4", "-c", "1", "-W", "1", host],
+            ["ping", "-4", "-c", "1", "-W", "1"] + (["-I", device] if device else []) + [host],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         ).returncode == 1
     else:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM if protocol == "tcp" else socket.SOCK_DGRAM) as conn:
+            if device:
+                conn.setsockopt(socket.SOL_SOCKET, socket.SO_BINDTODEVICE, device.encode() + b"\0")
             conn.settimeout(1)
             try:
                 conn.connect((host, int(port)))
                 if protocol == "udp":
-                    conn.send(b"homebox doctor")
+                    if host == "1.1.1.1" and port == "53":
+                        conn.send(bytes.fromhex("123401000001000000000000076578616d706c6503636f6d0000010001"))
+                    else:
+                        conn.send(b"homebox doctor")
                     conn.recv(128)
                 refused = False
             except OSError:
@@ -89,13 +95,49 @@ loopback_ports = [target.split(":")[1] for target in targets if target.startswit
 targets += [f"10.114.0.1:{port}" for port in loopback_ports or ["80"]]
 targets += ["10.100.50.1:80", "172.30.250.1:80", "192.168.250.1:80",
             "100.64.3.1:80", "169.254.169.254:80"]
+def route_to(address):
+    return json.loads(subprocess.check_output(["ip", "-j", "-4", "route", "get", address]))[0]
+
+def check_slirp():
+    route = route_to(builtin)
+    device = route["dev"]
+    if route.get("gateway") or device == "lo":
+        raise RuntimeError("built-in gateway is not directly attached")
+    # Test the built-in path explicitly even while normal traffic uses Homebox.
+    slirp_targets = targets + ["1.1.1.1:443", "1.1.1.1:53"]
+    added = []
+    try:
+        for address in sorted({target.split(":")[0] for target in slirp_targets} - {builtin}):
+            command = ["sudo", "-n", "ip", "-4", "route"]
+            arguments = [address + "/32", "via", builtin, "dev", device]
+            subprocess.run(command + ["add"] + arguments, check=True)
+            added.append(command + ["del"] + arguments)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
+            results = [pool.submit(blocked, protocol, target, device)
+                       for target in slirp_targets for protocol in ("tcp", "udp", "icmp")
+                       if protocol != "icmp" or target.split(":")[0] != builtin]
+            failed = False
+            for result in results:
+                label, ok = result.result()
+                print(f"{'PASS' if ok else 'FAIL'} slirp-{label}")
+                failed |= not ok
+            return failed
+    finally:
+        for command in reversed(added):
+            subprocess.run(command, check=True)
+
 with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
     results = [pool.submit(ntp)]
+    # A host bridge can use the same address as a guest bridge. Bind each
+    # canary probe to the VM's actual uplink so it cannot hit the guest bridge.
+    egress_device = route_to("1.1.1.1")["dev"]
+    inbound_device = route_to(builtin)["dev"]
     for target in targets:
         for protocol in ("tcp", "udp", "icmp"):
             # Lima itself answers echo at its virtual gateway.
             if protocol != "icmp" or target.split(":")[0] != builtin:
-                results.append(pool.submit(blocked, protocol, target))
+                device = inbound_device if target.split(":")[0] == builtin else egress_device
+                results.append(pool.submit(blocked, protocol, target, device))
     if builtin and any(target.startswith(builtin + ":") for target in targets):
         print("SKIP deny-icmp-built-in-gateway: Lima answers locally")
     failed = False
@@ -103,7 +145,13 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=12) as pool:
         label, ok = result.result()
         print(f"{'PASS' if ok else 'FAIL'} {label}")
         failed |= not ok
-    raise SystemExit(int(failed))
+if os.getenv("HOMEBOX_CHECK_SLIRP") == "1":
+    try:
+        failed |= check_slirp()
+    except (OSError, KeyError, ValueError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f"FAIL slirp-route: {error}")
+        failed = True
+raise SystemExit(int(failed))
 PYTHON
 then
     failed=1

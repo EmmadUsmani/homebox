@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -37,7 +38,7 @@ func watchHostProcess(parent context.Context, process hostProcess) (context.Cont
 	case err != nil && !errors.Is(err, unix.ENOSYS) && !errors.Is(err, unix.EINVAL):
 		return nil, nil, err
 	}
-	if !process.current() {
+	if !process.current() || (process.inode != 0 && !process.matchesDescriptor(descriptor)) {
 		if descriptor >= 0 {
 			unix.Close(descriptor)
 		}
@@ -93,4 +94,45 @@ func processStart(pid int) uint64 {
 	}
 	start, _ := strconv.ParseUint(fields[19], 10, 64)
 	return start
+}
+
+// resolveLaunchProcess reads the pidfs identity recorded by the QEMU wrapper.
+// Each pidfs inode belongs to one process, even when a numeric PID is reused.
+func resolveLaunchProcess(path string) (hostProcess, error) {
+	file, err := os.OpenFile(path, os.O_RDONLY|unix.O_NOFOLLOW|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return hostProcess{}, err
+	}
+	defer file.Close()
+	info, err := file.Stat()
+	if err != nil {
+		return hostProcess{}, err
+	}
+	if !info.Mode().IsRegular() || info.Size() > 64 {
+		return hostProcess{}, fmt.Errorf("invalid QEMU launch PID file")
+	}
+	data, err := io.ReadAll(io.LimitReader(file, 64))
+	if err != nil {
+		return hostProcess{}, err
+	}
+	var p hostProcess
+	if n, _ := fmt.Sscan(string(data), &p.pid, &p.device, &p.inode); n != 3 ||
+		p.pid <= 1 || p.inode == 0 || !p.matchesPIDFD() {
+		return hostProcess{}, nil
+	}
+	return p, nil
+}
+
+func (p hostProcess) matchesPIDFD() bool {
+	fd, err := unix.PidfdOpen(p.pid, 0)
+	if err != nil {
+		return false
+	}
+	defer unix.Close(fd)
+	return p.matchesDescriptor(fd)
+}
+
+func (p hostProcess) matchesDescriptor(fd int) bool {
+	var stat unix.Stat_t
+	return unix.Fstat(fd, &stat) == nil && stat.Dev == p.device && stat.Ino == p.inode
 }
