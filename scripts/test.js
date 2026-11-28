@@ -94,6 +94,7 @@ async function runSuite(options) {
     const disk = tier !== "change" && options.areas.length === 0 ? "80" : "30";
     const vmSize = ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
     const freshVM = [...vmSize, "--disk", disk];
+    const explicitImage = Boolean(options.image || options.imageHome || options.imageFile);
     const level = tier === "full" ? "full" : "quick";
     const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])];
     const revision = git("rev-parse", "--short=12", "HEAD").trim();
@@ -103,6 +104,9 @@ async function runSuite(options) {
     fs.mkdirSync(resultsRoot, { recursive: true });
     const results = fs.mkdtempSync(path.join(resultsRoot, `${tier}-${new Date().toISOString().slice(0, 10)}-`));
     const steps = [];
+    const linux = process.platform === "linux";
+    const desktopScripts = path.join(root, "desktop/scripts");
+    const desktopArtifacts = path.join(results, "desktop");
     let scratch;
     let active;
     let activeVerifier;
@@ -174,8 +178,8 @@ async function runSuite(options) {
 
     const run = (name, executable, args, commandEnv = env) =>
         step(name, log => command(executable, args, commandEnv, log));
-    const runNativeVerifier = (name, executable, args) =>
-        step(name, log => command(executable, args, env, log, undefined, true));
+    const runNativeVerifier = (name, executable, args, commandEnv = env) =>
+        step(name, log => command(executable, args, commandEnv, log, undefined, true));
     const box = (name, ...args) => run(name, env.BOX, args);
 
     const desktopBundle = path.join(root, "desktop/dist/homebox.app");
@@ -225,7 +229,7 @@ async function runSuite(options) {
         }
         if (selected.desktop) {
             const built = await run("desktop-build", "node", ["desktop/scripts/build.js"]);
-            if (built && !interrupted) {
+            if (built && !interrupted && process.platform === "darwin") {
                 const permission = capture("swift", ["-e", "import ApplicationServices; print(AXIsProcessTrusted())"]);
                 if (permission.status !== 0) {
                     report("desktop-accessibility", "FAIL", "0.0s", permission.stderr?.trim() || "Swift probe failed");
@@ -235,11 +239,27 @@ async function runSuite(options) {
                     selected.desktopUI = true;
                     await runNativeVerifier("desktop-viewer", "node", ["desktop/scripts/verify-desktop-isolation.js"]);
                 }
+            } else if (built && !interrupted && linux) {
+                if (!fs.existsSync(path.join(desktopScripts, "verify-linux.js"))) {
+                    report("desktop-verification", "SKIP", "0.0s", "this checkout predates the Linux verifier");
+                } else if (capture("sh", ["-c", "command -v xvfb-run"]).status !== 0) {
+                    report("desktop-verification", "SKIP", "0.0s", "install xvfb for a disposable Linux display");
+                } else {
+                    selected.desktopUI = true;
+                    fs.mkdirSync(desktopArtifacts);
+                    await linuxVerifier("desktop-viewer", "verify-desktop-isolation-linux.js", [
+                        path.join(desktopArtifacts, "viewer"), "--replace-clipboard",
+                    ]);
+                    await linuxVerifier("desktop-linux", "verify-linux.js", [path.join(desktopArtifacts, "app")]);
+                }
+                if (tier === "full") {
+                    report("desktop-settings-actions", "SKIP", "0.0s", "publishing, resizing and repinning UI fixture uses macOS Accessibility");
+                }
             }
         }
 
         if (selected.smoke.length || selected.doctor || selected.desktopUI) {
-            if (process.platform !== "darwin") throw new Error("VM checks require a macOS homebox host");
+            if (!["darwin", "linux"].includes(process.platform)) throw new Error("VM checks require a macOS or Linux homebox host");
             if (interrupted) throw new Error("interrupted before VM setup");
             scratch = fs.mkdtempSync(path.join(os.homedir(), ".hb-w-"));
             env.HOMEBOX_HOME = path.join(scratch, "state");
@@ -250,7 +270,8 @@ async function runSuite(options) {
             let booted = false;
             if (ready && !interrupted) {
                 if (tier === "change" && selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
-                const imageArgs = tier === "change" && !selected.guest ? await smokeImage() : freshVM;
+                const useImage = tier === "change" ? !selected.guest : explicitImage;
+                const imageArgs = useImage ? await smokeImage() : freshVM;
                 if (!interrupted) {
                     if (imageArgs === freshVM) imageSource = "fresh";
                     vmAttempted = true;
@@ -292,8 +313,7 @@ async function runSuite(options) {
         const totals = Object.fromEntries(["PASS", "FAIL", "SKIP"].map(status =>
             [status, steps.filter(step => step.status === status).length]));
         const outcome = totals.FAIL || interrupted ? "FAIL" : "PASS";
-        const model = capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch();
-        const version = capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a";
+        const [model, version] = hostDetails();
         const row = `| ${new Date().toISOString()} | ${revision} | ${dirty ? "yes" : "no"} | ${model} | ${version} | ${tier} | ${selected.scoped ? "partial" : "default"} | ${areas.join(", ") || "static"} | ${outcome} | ${totals.PASS}/${totals.FAIL}/${totals.SKIP} | ${duration(started)} | ${imageSource.replaceAll("|", "\\|").replace(/[\r\n]/g, " ")} |\n`;
         console.log(`\n${row.trimEnd()}\nLogs: ${results}`);
         if (!process.env.HOMEBOX_TEST_CHECKOUT) fs.appendFileSync(history, row);
@@ -316,6 +336,7 @@ async function runSuite(options) {
         const log = path.join(results, "smoke-image.log");
         const flags = capture(env.BOX, ["new", "--help"], { env });
         const fallback = reason => {
+            if (tier !== "change") throw new Error(reason);
             console.warn(`Warning: ${reason}. Provisioning a fresh VM.`);
             return freshVM;
         };
@@ -354,25 +375,66 @@ async function runSuite(options) {
         return ["--image", image, ...vmSize];
     }
 
+    function linuxVerifier(name, script, args, settings = env) {
+        return runNativeVerifier(name, "dbus-run-session", ["--", "xvfb-run", "-a", "node",
+            path.join(desktopScripts, script), ...args], settings);
+    }
+
     async function desktopChecks() {
-        const scripts = path.join(root, "desktop/scripts");
+        if (linux) {
+            if (await box("desktop-install", "desktop", vm, "--install") &&
+                await box("desktop-file-fixture", "ssh", vm, "--",
+                    'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"')) {
+                const settings = {
+                    ...env, GDK_DEBUG: "no-portals", HOMEBOX_VERIFY_NATIVE_DIALOGS: "1",
+                    HOMEBOX_VERIFY_CLIPBOARD: "1", HOMEBOX_VERIFY_LIFECYCLE: tier === "full" ? "1" : "0",
+                };
+                // Supply the verifier's disposable SSH fixture.
+                delete settings.HOMEBOX_DESKTOP_SSH_CONFIG;
+                delete settings.HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS;
+                delete settings.HOMEBOX_VERIFY_REMOTE_ALIAS;
+                await linuxVerifier("desktop-linux-vm", "verify-linux.js", [
+                    path.join(desktopArtifacts, "vm"), path.join(root, "desktop/dist/homebox-linux/homebox"), vm,
+                ], settings);
+            } else {
+                report("desktop-linux-vm", "SKIP", "0.0s", "VM desktop preparation failed");
+            }
+            return;
+        }
+
         const verify = async (stepName, script, ...args) => {
             requireDesktopClosed();
-            await runNativeVerifier(stepName, "swift", [path.join(scripts, script), desktopBundle, env.HOMEBOX_HOME, ...args]);
+            await runNativeVerifier(stepName, "swift", [path.join(desktopScripts, script), desktopBundle, env.HOMEBOX_HOME, ...args]);
             requireDesktopClosed();
         };
-        const artifacts = path.join(results, "desktop");
-        fs.mkdirSync(artifacts);
-        await verify("desktop-files", "verify-files.swift", artifacts, "normal", `local=${vm}`);
+        fs.mkdirSync(desktopArtifacts);
+        await verify("desktop-files", "verify-files.swift", desktopArtifacts, "normal", `local=${vm}`);
         if (tier === "full") {
             if (await box("desktop-install", "desktop", vm, "--install") &&
                 await box("desktop-deps", "ssh", vm, "--", "sudo -n apt-get update && sudo -n apt-get install -y xdotool")) {
-                await verify("desktop-ui", "verify-desktop.swift", vm, artifacts);
+                await verify("desktop-ui", "verify-desktop.swift", vm, desktopArtifacts);
             }
             // Settings changes the scratch VM's SSH host keys, so run it last.
-            await verify("desktop-settings", "verify-settings.swift", vm, artifacts, String(20000 + 100 * index));
+            await verify("desktop-settings", "verify-settings.swift", vm, desktopArtifacts, String(20000 + 100 * index));
         }
     }
+}
+
+function hostDetails() {
+    if (process.platform !== "linux") {
+        return [capture("sysctl", ["-n", "hw.model"]).stdout?.trim() || os.arch(),
+            capture("sw_vers", ["-productVersion"]).stdout?.trim() || "n/a"];
+    }
+    function read(file) {
+        try {
+            return fs.readFileSync(file, "utf8");
+        } catch {
+            return "";
+        }
+    }
+    const model = read("/sys/devices/virtual/dmi/id/product_name").trim() || os.arch();
+    const release = read("/etc/os-release").match(/^PRETTY_NAME=(.*)$/m)?.[1].replace(/^"|"$/g, "");
+    return [model, release || `Linux ${os.release()}`].map(value => value.replace(/[|\r\n]/g, " "));
 }
 
 function last() {

@@ -3,8 +3,11 @@ package app
 import (
 	"context"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/EmmadUsmani/homebox/internal/state"
 )
 
 type imageDriver struct{ testDriver }
@@ -52,5 +55,26 @@ func TestNewFromImage(t *testing.T) {
 	}
 	if err := service.Start(ctx, "clone"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type qemuImageDriver struct{ imageDriver }
+
+func (qemuImageDriver) ImageBackend() string { return "qemu" }
+
+func TestImageCompatibility(t *testing.T) {
+	service, driver, _, _ := fixture(t)
+	service.Driver = qemuImageDriver{imageDriver{testDriver{driver}}}
+	image := state.Image{Name: "cached", Driver: driver.Name(), Arch: runtime.GOARCH}
+	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "vz") {
+		t.Fatalf("legacy VZ image on QEMU: %v", err)
+	}
+	image.Backend = "qemu"
+	if err := service.checkImageCompatibility(image); err != nil {
+		t.Fatal(err)
+	}
+	image.Arch = "riscv64"
+	if err := service.checkImageCompatibility(image); err == nil || !strings.Contains(err.Error(), "riscv64") {
+		t.Fatalf("foreign image architecture: %v", err)
 	}
 }

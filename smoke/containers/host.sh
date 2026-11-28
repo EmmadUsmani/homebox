@@ -36,21 +36,21 @@ start_node() {
         timeout 40 docker run -d --name $project-node -p 127.0.0.1:8073:8080 $project:node"
 }
 
-check 'Mac reaches the Compose web service through the box port mapping' \
+check 'Host reaches the Compose web service through the box port mapping' \
     published_http 'compose:42:PONG' compose up --build --wait --wait-timeout 120
 compose down -v --remove-orphans --rmi local >/dev/null 2>&1
-full_only check 'Mac reaches the distroless Node app through the box port mapping' \
+full_only check 'Host reaches the distroless Node app through the box port mapping' \
     published_http 'node:&lt;42&gt;' start_node
 node_cleanup
 isolation="$(dirname "$0")/fixtures/host-isolation.cjs"
-check "Docker bridge container cannot connect to a live Mac loopback canary" node "$isolation" loopback
-if smoke_matches 'Docker bridge container cannot connect to live Mac LAN-interface canaries'; then
+check "Docker bridge container cannot connect to a live host loopback canary" node "$isolation" loopback
+if smoke_matches 'Docker bridge container cannot connect to live host LAN-interface canaries'; then
     status=0
     node "$isolation" lan || status=$?
     case "$status" in
-        0) pass "Docker bridge container cannot connect to live Mac LAN-interface canaries" ;;
+        0) pass "Docker bridge container cannot connect to live host LAN-interface canaries" ;;
         77) skip "Docker LAN canaries require a non-loopback IPv4 interface" ;;
-        *) fail "Docker bridge container cannot connect to live Mac LAN-interface canaries" ;;
+        *) fail "Docker bridge container cannot connect to live host LAN-interface canaries" ;;
     esac
 fi
 finish

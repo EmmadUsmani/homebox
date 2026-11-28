@@ -35,3 +35,8 @@ are in the smoke results directory. The host phase stops the guest API
 and removes the smoke test's Compose volumes. The API serves the built
 web app without a worker, agent, API token or live data. Browser traffic
 is restricted to same-origin GET requests.
+
+If the prepared Grafana listener test is the only failure and PostgreSQL
+reports an administrative disconnect, Homebox reruns the entire integration
+suite once with fresh containers. The first log remains available as
+`integration-first.log`. The retry must pass the full suite.

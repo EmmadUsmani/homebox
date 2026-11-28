@@ -36,7 +36,11 @@ pull() {
 }
 
 image_archive() {
-    key=$(printf '%s\n' "$1" "$2" | shasum -a 256) || return
+    if command -v shasum >/dev/null 2>&1; then
+        key=$(printf '%s\n' "$1" "$2" | shasum -a 256) || return
+    else
+        key=$(printf '%s\n' "$1" "$2" | sha256sum) || return
+    fi
     printf '%s/%s.tar\n' "$cache" "${key%% *}"
 }
 

@@ -1,11 +1,11 @@
 #!/bin/sh
-# Run guest smoke tests against a VM from the Mac hosting it.
+# Run guest smoke tests against a VM from the machine hosting it.
 #
 #   smoke/run.sh NAME [AREA...]
 #
 # Copies smoke/ into the guest (~/homebox-smoke), then for each area runs
-# prepare.sh on this Mac, setup.sh and test.sh inside the guest as the VM user
-# (bash login shell), and host.sh on this Mac, where present. With no AREA it
+# prepare.sh on this host, setup.sh and test.sh inside the guest as the VM user
+# (bash login shell), and host.sh on this host, where present. With no AREA it
 # runs every area. Logs go to .smoke-results/NAME-TIMESTAMP/. Set BOX to use a
 # box binary other than the one on PATH, and HOMEBOX_HOME for another state dir.
 set -eu

@@ -38,8 +38,9 @@ remote VMs, overview, logs, terminal, files and editor).
 
 The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
 The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
-cover the sandbox and its limits. Linux saved disks and the full smoke
-runner image are tracked separately from the core lifecycle. Measure LAN
+cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
+and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
+workflow. Measure LAN
 publishing from a second machine and cover GPU and autostart separately.
 
 ## macOS guests and the iOS Simulator
@@ -126,7 +127,7 @@ installs [uv through mise](../guest/common/mise.sh).
 ## Docker Hub pull limits in smoke runs
 
 Done on 2026-11-26. The [smoke runner](../smoke/README.md#container-image-cache)
-caches image archives on the Mac to avoid the Docker Hub anonymous pull limit
+caches image archives on the VM host to avoid the Docker Hub anonymous pull limit
 (HTTP 429) on repeat runs. Cold fills still depend on registry availability
 and pull quotas.
 

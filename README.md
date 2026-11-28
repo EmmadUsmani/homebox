@@ -71,8 +71,7 @@ go build -o box ./cmd/box
 SSH and published TCP ports bind to loopback by default. For laptop access,
 use the LAN setup below. Use `box open --print main` to print a service URL
 in a session without a browser. Start and stop through `box` so each boot
-loads the Linux confinement policy. Saved VM disks and restoring from images
-require macOS with VZ.
+loads the Linux confinement policy. Save and restore use standalone QEMU disks on Linux.
 
 ## SSH from a laptop
 
@@ -162,7 +161,7 @@ readings come from SSH.
 
 ## Saved VM images
 
-On a Mac with Lima's VZ driver, stop an Ubuntu VM and save its disk:
+On a supported macOS or Linux host, stop an Ubuntu VM and save its disk:
 
 ```sh
 box stop main
@@ -176,7 +175,7 @@ image's disk size and accepts a larger `--disk`. CPU and memory follow the norma
 `box new` defaults. Save and export warn because images carry everything on
 the guest disk, including any agent logins and tokens.
 
-To move an image to a compatible Mac, run `box image export dev-tools dev-tools.hbimg.gz`,
+To move an image to a host with the same backend and guest architecture, run `box image export dev-tools dev-tools.hbimg.gz`,
 copy the archive by hand, then run `box image import dev-tools.hbimg.gz` there.
 Import verifies the disk's SHA-256 and preserves the original image name.
 See [image storage and compatibility](docs/images-and-sleep.md#images).
@@ -371,6 +370,10 @@ run the command locally.
   the Desktop tab and viewer isolation. News Digest
   runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
+Run the same tiers on a supported x86-64 Linux host with KVM and Lima 2.3.0.
+Install [the Linux host and contributor tools](docs/host-setup-linux.md) and
+use an amd64 QEMU smoke image for saved-image runs.
+
 ```sh
 scripts/test.sh change
 scripts/test.sh change --base HEAD~1
@@ -392,7 +395,7 @@ other VMs or test runners. The News Digest area runs when selected and
 
 The change tier uses `homebox-smoke` from `~/.homebox` when VM checks are
 selected and guest profile files are unchanged. The runner clones the image
-into isolated state on the same APFS volume and uses the store's recorded
+into isolated state and uses the store's recorded
 disk digest. If cloning is unavailable, it warns and copies the disk.
 Explicit archives are checked against their recorded digest during import.
 Use a dedicated test image without signed-in accounts. See
@@ -415,8 +418,11 @@ from the default store on a Mac14,10. See the [run history](docs/test-runs.md).
 Flags take precedence over their corresponding variables. Set
 `HOMEBOX_SMOKE_IMAGE_HOME` if you previously used `HOMEBOX_HOME` to select
 the source store. If the selected image is unavailable, the runner warns
-and provisions a fresh VM. Guest-profile changes, batch and full also
-provision fresh VMs. GitHub CI remains informative.
+and provisions a fresh VM for the change tier. Guest-profile changes use
+fresh VMs in that tier. Batch and full default to fresh VMs. To test a
+specific restored image with either tier, pass an image flag, such as
+`scripts/test.sh full --image homebox-smoke`. These runs fail if the
+image cannot be staged. GitHub CI remains informative.
 
 Logs live in `.smoke-results/` by default. Set `SMOKE_RESULTS` to choose a
 different directory. The runner prints and appends a row

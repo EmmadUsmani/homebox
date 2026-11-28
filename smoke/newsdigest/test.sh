@@ -36,7 +36,26 @@ run_suite() {
 full_only check 'News Digest typecheck' timeout 8m pnpm typecheck
 full_only check 'News Digest lint' timeout 8m pnpm lint
 full_only check 'News Digest unit tests' run_suite unit timeout 8m pnpm test:unit
-full_only check 'News Digest isolated integration tests' run_suite integration timeout 20m pnpm test:integration
+integration_suite() {
+    local log="$artifacts/integration.log"
+    if run_suite integration timeout 20m pnpm test:integration; then
+        return 0
+    fi
+    # The prepared Grafana fixture can lose its PostgreSQL connection during
+    # startup or shutdown. Retry the entire suite once for only this failure.
+    if [[ $(grep -c '^not ok ' "$log") != 1 ]] ||
+        ! grep -Eq '^not ok [0-9]+ - prepared aggregate database publishes only loopback on an isolated network$' "$log" ||
+        ! grep -Fq "error: 'terminating connection due to administrator command'" "$log"; then
+        return 1
+    fi
+    mv -- "$log" "$artifacts/integration-first.log" || return
+    run_suite integration timeout 20m pnpm test:integration
+}
+
+full_only check 'News Digest isolated integration tests' integration_suite
+if [[ -e "$artifacts/integration-first.log" ]]; then
+    printf '%s\n' 'News Digest reran the entire integration suite after the prepared PostgreSQL listener lost its connection.'
+fi
 
 boot() {
     local postgres redis

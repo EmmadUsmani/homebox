@@ -309,6 +309,19 @@ Hub's anonymous pull quota. The [smoke runner](../smoke/README.md#container-imag
 stores archives on the Mac and transfers them over pinned SSH initiated by the
 Mac, keeping the cache outside guest reach.
 
+## Linux saved VM disks (2026-11-27)
+
+The Linux smoke implementation uses Lima 2.3.0's standalone qcow2 disk
+directly. Explicit backend and guest architecture metadata keep boot checks
+specific to the hypervisor and CPU. The existing VZ archive layout stays
+readable. Import and restore reject qcow2 references to other files so a
+saved disk needs only the documented host firmware and its own contents.
+
+The Linux smoke implementation added an explicit image option to the batch
+and full tiers so the saved artifact can be exercised end to end. Their
+default still provisions a fresh guest. Linux native desktop checks use a
+disposable X11 display for clipboard and UI fixtures. The macOS Settings
+fixture is reported separately when the runner uses the Linux verifiers.
 
 ## 2026-11-27 · Ubuntu desktop build
 
