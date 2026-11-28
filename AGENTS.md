@@ -34,6 +34,7 @@ describe it are true, in the same commit or the one right after.
 | [docs/todo.md](docs/todo.md) | Follow-up work is agreed, done or dropped |
 | [docs/spikes/](docs/spikes) | A spike finishes: record what was tried and found, including [Wails desktop](docs/spikes/wails-desktop.md) |
 | [docs/host-setup-macos.md](docs/host-setup-macos.md) | Host requirements or settings change, including autostart |
+| [docs/host-setup-linux.md](docs/host-setup-linux.md) | Linux host prerequisites or contributor tools change |
 | [images/README.md](images/README.md) | A project-maintained image gets a local build recipe |
 | [docs/images-and-sleep.md](docs/images-and-sleep.md) | Images or sleep are built, or a spike answers one of its questions |
 | [docs/observability.md](docs/observability.md) | Status, logs or the desktop app are built, or a spike answers one of its questions |
