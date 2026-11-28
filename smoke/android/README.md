@@ -18,6 +18,9 @@ To let the tiered runner create and remove the nested VM, run:
 SMOKE_ANDROID=1 scripts/test.sh full --area android
 ```
 
+The runner defaults to 8 GiB. Set `SMOKE_ANDROID_MEMORY_GIB` to give the
+scratch VM a different memory allocation in GiB.
+
 You can add `--image homebox-smoke` to either VM creation path to
 start from a compatible Linux image. The CPU setting is chosen for the
 new VM even if the source VM used a different setting.

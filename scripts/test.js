@@ -94,7 +94,8 @@ async function runSuite(options) {
     const nestedAndroid = process.platform === "linux" && selected.smoke.includes("android") &&
         process.env.SMOKE_ANDROID === "1";
     const disk = nestedAndroid ? "50" : tier !== "change" && options.areas.length === 0 ? "80" : "30";
-    const vmSize = nestedAndroid ? ["--cpus", "4", "--memory", "8", "--nested-virt"]
+    const androidMemory = process.env.SMOKE_ANDROID_MEMORY_GIB || "8";
+    const vmSize = nestedAndroid ? ["--cpus", "4", "--memory", androidMemory, "--nested-virt"]
         : ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
     const freshVM = [...vmSize, "--disk", disk, "--force-provision"];
     const explicitImage = Boolean(options.image || options.imageHome || options.imageFile);
