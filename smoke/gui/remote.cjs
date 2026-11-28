@@ -82,7 +82,7 @@ async function run() {
             return image.data[pixel] < 40 && image.data[pixel + 1] > 170;
         });
         await canvas.screenshot({ path: path.join(artifacts, "remote-before-input.png") });
-        console.log("PASS Mac Playwright sees GUI pixels through the one-time desktop URL");
+        console.log("PASS Host Playwright sees GUI pixels through the one-time desktop URL");
 
         stage = "checking remote keyboard and mouse input";
         await click(x + 80, y + 44);

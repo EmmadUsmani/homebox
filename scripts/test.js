@@ -94,6 +94,7 @@ async function runSuite(options) {
     const disk = tier !== "change" && options.areas.length === 0 ? "80" : "30";
     const vmSize = ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
     const freshVM = [...vmSize, "--disk", disk];
+    const explicitImage = Boolean(options.image || options.imageHome || options.imageFile);
     const level = tier === "full" ? "full" : "quick";
     const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])];
     const revision = git("rev-parse", "--short=12", "HEAD").trim();
@@ -225,7 +226,8 @@ async function runSuite(options) {
             let booted = false;
             if (ready && !interrupted) {
                 if (tier === "change" && selected.guest) console.log("Guest profile changed. Provisioning a fresh VM.");
-                const imageArgs = tier === "change" && !selected.guest ? await smokeImage() : freshVM;
+                const useImage = tier === "change" ? !selected.guest : explicitImage;
+                const imageArgs = useImage ? await smokeImage() : freshVM;
                 if (!interrupted) {
                     if (imageArgs === freshVM) imageSource = "fresh";
                     vmAttempted = true;
@@ -290,6 +292,7 @@ async function runSuite(options) {
         const log = path.join(results, "smoke-image.log");
         const flags = capture(env.BOX, ["new", "--help"], { env });
         const fallback = reason => {
+            if (tier !== "change") throw new Error(reason);
             console.warn(`Warning: ${reason}. Provisioning a fresh VM.`);
             return freshVM;
         };

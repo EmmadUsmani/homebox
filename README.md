@@ -323,10 +323,10 @@ run the command locally.
   the Desktop tab and viewer isolation. News Digest
   runs when `SMOKE_NEWSDIGEST_REPO` points to a checkout.
 
-
 Run the same tiers on a supported x86-64 Linux host with KVM and Lima 2.3.0.
 Install [the Linux host and contributor tools](docs/host-setup-linux.md) and
 use an amd64 QEMU smoke image for saved-image runs.
+
 ```sh
 scripts/test.sh change
 scripts/test.sh change --base HEAD~1
@@ -371,8 +371,11 @@ from the default store on a Mac14,10. See the [run history](docs/test-runs.md).
 Flags take precedence over their corresponding variables. Set
 `HOMEBOX_SMOKE_IMAGE_HOME` if you previously used `HOMEBOX_HOME` to select
 the source store. If the selected image is unavailable, the runner warns
-and provisions a fresh VM. Guest-profile changes, batch and full also
-provision fresh VMs. GitHub CI remains informative.
+and provisions a fresh VM for the change tier. Guest-profile changes use
+fresh VMs in that tier. Batch and full default to fresh VMs. To test a
+specific restored image with either tier, pass an image flag, such as
+`scripts/test.sh full --image homebox-smoke`. These runs fail if the
+image cannot be staged. GitHub CI remains informative.
 
 Logs live in `.smoke-results/` by default. Set `SMOKE_RESULTS` to choose a
 different directory. The runner prints and appends a row

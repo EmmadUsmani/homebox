@@ -25,7 +25,7 @@ if npm ci --prefix "$scratch" --no-audit --no-fund &&
         >"$scratch/remote.log" 2>&1 || smoke_failures=$((smoke_failures + 1))
     cat "$scratch/remote.log"
 else
-    fail 'Prepare the Mac Playwright browser'
+    fail 'Prepare the host Playwright browser'
     touch "$scratch/remote.log"
 fi
 check 'Write GUI evidence gallery' node "$here/gallery.cjs" "$artifacts" \

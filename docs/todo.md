@@ -33,8 +33,9 @@ remote VMs, overview, logs, terminal, files and editor).
 
 The core CLI work uses Lima 2.3.0, QEMU/KVM and the shared IPv4 gateway.
 The [Linux architecture notes](architecture.md#networking-and-isolation-linux)
-cover the sandbox and its limits. Linux saved disks and the full smoke
-runner image are tracked separately from the core lifecycle. Measure LAN
+cover the sandbox and its limits. See [saved images](images-and-sleep.md#images)
+and [the smoke image recipe](../images/homebox-smoke/README.md) for the disk
+workflow. Measure LAN
 publishing from a second machine and cover GPU and autostart separately.
 
 ## Update existing Ubuntu VMs for browser sandboxing
