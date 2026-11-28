@@ -22,6 +22,14 @@ an established open-source project.
 - *Proxmox:* not adopted; a candidate for the Linux GPU box, undecided. It
   replaces the host OS and runs only on x86. See [alternatives](alternatives.md#proxmox-ve).
 
+### macOS guest isolation
+
+**Keep macOS guests experimental** (2026-11-28, decided by the lead's worker
+overnight under the owner's autonomy grant). A `box` profile waits for a
+verified pinned SSH path and the same host and LAN isolation as Ubuntu.
+The [spike](spikes/macos-guests.md) records the Lima 2.3.0 networking and
+bootstrap behavior that a profile needs to account for.
+
 ### Linux host confinement
 
 **Use unprivileged launch-time confinement** (implementation agent,
