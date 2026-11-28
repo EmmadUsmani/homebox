@@ -1,3 +1,4 @@
+import { isMac } from "../platform";
 import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
@@ -27,7 +28,7 @@ export function HostKeyWarning({ vm, openSSHSettings }: ConnectionProps) {
                 The connection is blocked until you verify the VM.</p>
             {openSSHSettings
                 ? <button type="button" onClick={openSSHSettings}>Open SSH host key settings</button>
-                : <p>If you rebuilt it on purpose, review and replace the SSH keys in Settings on the Mac hosting the VM, or run <code>{`box repin ${vm.kind === "remote" ? vm.alias : vm.name}`}</code> there. Then reinstall the laptop SSH config.</p>}
+                : <p>If you rebuilt it on purpose, review and replace the SSH keys in Settings on the {isMac ? "Mac" : "host"} hosting the VM, or run <code>{`box repin ${vm.kind === "remote" ? vm.alias : vm.name}`}</code> there. Then reinstall the laptop SSH config.</p>}
         </div>
     );
 }
@@ -121,7 +122,9 @@ function TerminalPane({ vm, selected, openSSHSettings }: ConnectionProps & { sel
             void sendInput();
         });
         terminal.attachCustomKeyEventHandler((event) => {
-            if (!event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return true;
+            const clipboardShortcut = isMac ? event.metaKey && !event.ctrlKey && !event.shiftKey
+                : event.ctrlKey && event.shiftKey && !event.metaKey;
+            if (!clipboardShortcut || event.altKey) return true;
             const key = event.key.toLowerCase();
             if (key !== "c" && key !== "v") return true;
             event.preventDefault();
@@ -262,7 +265,7 @@ function Sessions({ vm: reference, openSSHSettings }: ConnectionProps) {
             </div>
             <footer className="terminal-footer">
                 <span>SSH with the pinned host key · no agent or X11 forwarding</span>
-                <span>Copy: ⌘C · Paste: ⌘V</span>
+                <span>{isMac ? "Copy: ⌘C · Paste: ⌘V" : "Copy: Ctrl+Shift+C · Paste: Ctrl+Shift+V"}</span>
             </footer>
         </section>
     );

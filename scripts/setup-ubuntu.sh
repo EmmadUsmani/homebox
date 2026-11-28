@@ -35,6 +35,7 @@ lima_version=2.3.0
 lima_sha256=cc8ba97f1c801b899f7c9eda9919dfc4ce4fa2c140c53e5add15aa2d0a1936f9
 host_packages=(ca-certificates curl qemu-system-x86 qemu-utils ovmf nftables openssh-client)
 dev_packages=(build-essential pkg-config git gh jq ripgrep fd-find tmux unzip zip sqlite3 shellcheck)
+desktop_packages=(libgtk-4-dev libwebkitgtk-6.0-dev libx11-dev xdg-utils)
 docker_packages=(docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin)
 
 sudo -v
@@ -69,8 +70,8 @@ if [[ $dev == false ]]; then
 fi
 
 printf 'Installing contributor packages\n'
-sudo apt-get install -y "${dev_packages[@]}"
-dpkg-query -W "${dev_packages[@]}"
+sudo apt-get install -y "${dev_packages[@]}" "${desktop_packages[@]}"
+dpkg-query -W "${dev_packages[@]}" "${desktop_packages[@]}"
 
 go_version=$(awk '$1 == "go" { print $2; exit }' "$repo/go.mod")
 if [[ ! $go_version =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then

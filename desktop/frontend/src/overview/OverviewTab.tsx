@@ -1,3 +1,4 @@
+import { isMac, thisHost } from "../platform";
 import { useState } from "react";
 import { Call } from "@wailsio/runtime";
 import type { LocalStatus, VMDetail } from "../types";
@@ -40,8 +41,8 @@ export function OverviewTab(props: OverviewProps) {
     const containers = status.containers ?? [];
     const hostMemory = local?.host?.memory_bytes;
     const agentMemory = local?.hostagent?.memory_bytes;
-    const memoryDetail = hostMemory !== undefined ? `${footprint.format(hostMemory / gib)} GiB on this Mac`
-        : agentMemory !== undefined ? `${footprint.format(agentMemory / gib)} GiB on this Mac (Lima hostagent)` : undefined;
+    const memoryDetail = hostMemory !== undefined ? `${footprint.format(hostMemory / gib)} GiB on ${thisHost}`
+        : agentMemory !== undefined ? `${footprint.format(agentMemory / gib)} GiB on ${thisHost} (Lima hostagent)` : undefined;
 
     async function openPort(port: number) {
         setOpenError("");
@@ -57,7 +58,7 @@ export function OverviewTab(props: OverviewProps) {
             {!!status.errors?.length && <p className="notice" role="status">Some readings are unavailable or stale. {status.errors.join(" · ")}</p>}
             <div className="metrics">
                 <section className="card">
-                    <div className="muted">{local ? local.hostagent && !local.host ? "CPU (Lima hostagent)" : "CPU (seen from the Mac)" : "Guest load"}</div>
+                    <div className="muted">{local ? local.hostagent && !local.host ? "CPU (Lima hostagent)" : (isMac ? "CPU (seen from the Mac)" : "CPU (seen from the host)") : "Guest load"}</div>
                     <div className="metric">{local ? usage ? `${number.format(usage.cpu_percent)}%` : "—" : load ?? "—"}</div>
                     {local && <div className="muted">{local.cpus} cores{usage && ` · ${usage.source}`}</div>}
                     {local && load && <div className="muted">Guest load {load}</div>}
@@ -127,7 +128,7 @@ export function OverviewTab(props: OverviewProps) {
                     {local.provisioning?.error && <p className="warning">{local.provisioning.error}</p>}
                 </section>}
             </div>
-            {!local && <p className="muted">Host CPU, memory footprint, published ports, provisioning, isolation checks and blocked network attempts are only visible on the host Mac.</p>}
+            {!local && <p className="muted">Host CPU, memory footprint, published ports, provisioning, isolation checks and blocked network attempts are only visible on the {isMac ? "host Mac" : "host"}.</p>}
         </div>
     );
 }

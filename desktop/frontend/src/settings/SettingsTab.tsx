@@ -1,3 +1,4 @@
+import { thisHost } from "../platform";
 import { useEffect, useState } from "react";
 import { Call, Clipboard, Dialogs } from "@wailsio/runtime";
 import "./settings.css";
@@ -60,12 +61,12 @@ function PublishedPorts({ name, stopped, running }: { name: string; stopped: boo
 
     return <section className="card settings-card">
         <h2>Published ports</h2>
-        <p className="muted">Forward guest TCP ports to this Mac. The listening address determines who can connect.</p>
+        <p className="muted">Forward guest TCP ports to {thisHost}. The listening address determines who can connect.</p>
         {!stopped && <p className="muted">Stop the VM before changing its published ports.</p>}
         <form className="settings-form" onSubmit={(event) => {
             event.preventDefault();
             void run(async () => {
-                if (await confirm("Publish port?", `Forward guest port ${guest} to port ${host} on this Mac using the host’s publishing settings?`, "Publish")) {
+                if (await confirm("Publish port?", `Forward guest port ${guest} to port ${host} on ${thisHost} using the host’s publishing settings?`, "Publish")) {
                     await update({ Add: [`${guest}:${host}`] });
                     setGuest("");
                     setHost("");
@@ -193,7 +194,7 @@ function LaptopSSHConfig() {
 
     return <section className="card settings-card">
         <h2>Laptop SSH config</h2>
-        <p className="muted">Export SSH aliases for the VMs on this Mac. The laptop installer includes the pinned keys.</p>
+        <p className="muted">Export SSH aliases for the VMs on {thisHost}. The laptop installer includes the pinned keys.</p>
         <form className="settings-form" onSubmit={(event) => {
             event.preventDefault();
             void run(async () => {
@@ -209,7 +210,7 @@ function LaptopSSHConfig() {
             }}>
                 {sshOutputs.map(([value, label]) => <option key={value} value={value}>{label}</option>)}
             </select></label>
-            <label>Host address <input placeholder="Use this Mac’s local name" value={host} disabled={!usesHost || pending}
+            <label>Host address <input placeholder={`Use ${thisHost}’s local name`} value={host} disabled={!usesHost || pending}
                 onChange={(event) => { setHost(event.target.value); setOutput(undefined); }} /></label>
             <button disabled={pending}>Show SSH config</button>
         </form>

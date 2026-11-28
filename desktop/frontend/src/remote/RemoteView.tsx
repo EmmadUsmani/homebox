@@ -1,11 +1,12 @@
+import { isMac } from "../platform";
 import { useEffect, useState, type FormEvent } from "react";
 import { Clipboard } from "@wailsio/runtime";
 import type { RemoteState, RemoteVM } from "./useRemoteHosts";
 import "./remote.css";
 
 const hints = {
-    unreachable: ["Unreachable", "The name doesn’t resolve or the connection timed out.", "The Mac may be off, asleep or off this network."],
-    "not-running": ["VM not running", "The Mac refused the connection.", "Box’s SSH relay listens only while the VM runs, so the VM may be stopped."],
+    unreachable: ["Unreachable", "The name doesn’t resolve or the connection timed out.", isMac ? "The Mac may be off, asleep or off this network." : "The host may be off, asleep or off this network."],
+    "not-running": ["VM not running", isMac ? "The Mac refused the connection." : "The host refused the connection.", "Box’s SSH relay listens only while the VM runs, so the VM may be stopped."],
     "connection-broken": ["Connection broken", "The SSH connection failed.", "The VM’s SSH server may still be booting, or your login may need attention."],
     reachable: ["Reachable", "Logged in with a pinned key.", "Guest status is available over the laptop’s SSH login."],
     "host-key-changed": ["Host key changed", "", ""],
@@ -78,7 +79,7 @@ export function RemoteView({ vm, checkAgain }: { vm: RemoteVM; checkAgain: () =>
             {changed && <section className="remote-key-alert" role="alert">
                 <h2><Dot state={state} />Host key changed: not connecting</h2>
                 <p>SSH couldn’t verify this VM against its pinned key. The VM may have been rebuilt, its pin may be missing, or something else may be answering in its place.</p>
-                <p>If you rebuilt it on purpose, review and replace the keys in Settings on that Mac, or run <code>{command}</code> there using the VM’s name. Then reinstall the laptop SSH config.</p>
+                <p>If you rebuilt it on purpose, review and replace the keys in Settings on that {isMac ? "Mac" : "host"}, or run <code>{command}</code> there using the VM’s name. Then reinstall the laptop SSH config.</p>
                 <div className="remote-actions">
                     <button type="button" onClick={() => void copy()}>Copy command</button>
                     {retry}
@@ -89,7 +90,7 @@ export function RemoteView({ vm, checkAgain }: { vm: RemoteVM; checkAgain: () =>
                 <strong>{state ? hints[state][0] : vm.error ?? "Checking SSH connection"}</strong>
                 {retry}
             </div>}
-            <h2 className="remote-subtitle">{changed ? "Other states the app can show for a VM on another Mac" : "Remote connection hints"}</h2>
+            <h2 className="remote-subtitle">{changed ? (isMac ? "Other states the app can show for a VM on another Mac" : "Other states the app can show for a VM on another host") : "Remote connection hints"}</h2>
             <div className="remote-grid">
                 {(["unreachable", "not-running", "connection-broken", "reachable"] as const).map((hint) =>
                     <article className="card remote-hint" key={hint} aria-current={state === hint ? "true" : undefined}>
@@ -99,7 +100,7 @@ export function RemoteView({ vm, checkAgain }: { vm: RemoteVM; checkAgain: () =>
                     </article>
                 )}
             </div>
-            <small>Manage remote VMs on their host Mac. A refused connection can mean the VM is stopped or has been deleted.</small>
+            <small>Manage remote VMs on their {isMac ? "host Mac" : "host"}. A refused connection can mean the VM is stopped or has been deleted.</small>
         </div>
     </section>;
 }

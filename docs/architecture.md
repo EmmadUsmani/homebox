@@ -44,9 +44,11 @@ e2e/               opt-in CLI lifecycle tests against a real VM
 
 ## Dependency rules
 
+- On Ubuntu, the desktop module's Wails build uses GTK4, WebKitGTK 6.0
+  and X11 headers. See the [desktop build dependencies](host-setup-linux.md#install-desktop-build-dependencies).
 - CLI and desktop both call `app` and get the local service from
   `internal/wiring`. The desktop binds local status, logs and VM actions to the
-  web view; its daemon executable is the sibling `box` inside the bundle.
+  web view; its daemon executable is the sibling `box` inside the app bundle or Linux build directory.
   Desktop wiring supplies standard Homebrew and system tool paths on launch.
   The CLI retains its environment and supplies its own daemon executable.
   The desktop's [SSH source](../internal/app/remote.go) uses the laptop's
@@ -74,8 +76,11 @@ e2e/               opt-in CLI lifecycle tests against a real VM
   owns the local listener and HTTP connections. Its caller owns SSH and
   cancels the proxy when SSH is lost. The app leases that connection from
   `desktop/session` and overlays a native WebKit view on the selected tab.
-  WKWebView is configured independently of the app's Wails view. See
-  [guest viewer isolation](../SECURITY.md#macos-guest-viewer).
+  WKWebView on macOS and WebKitGTK on Linux use independent native
+  configuration and nonpersistent website data. The Linux view overlays the
+  app's WebKitGTK widget within the existing GTK window. See the
+  [macOS](../SECURITY.md#macos-guest-viewer) and
+  [Linux](../SECURITY.md#linux-guest-viewer) viewer policies.
 - `desktop/session` also leases a shared SFTP channel per SSH transport for
   the Files tab. Its bounded listings use pkg/sftp v2's directory handle
   API. The pinned upstream revision includes bounds on directory entry and

@@ -117,7 +117,7 @@ plus any the user adds in the app. Add a host accepts an existing SSH alias
 using letters, digits, dots, hyphens or underscores and starting with a letter
 or digit. The VM's key must be pinned in `homebox_known_hosts`. The remote
 Overview shows guest readings. For remote logs, the app directs users to
-the VM's host Mac.
+the VM's host.
 
 **What the app can tell about each one.** box checks each host on a timer and
 reports what it found as a hint, not a diagnosis:
@@ -153,7 +153,7 @@ can reach.
 
 A full desktop app (owner), built with **Wails**: a Go backend that calls
 `internal/app` directly, and a web frontend in the OS's own web view. The same
-code runs on the laptop and on a host; on a host it also sees the local VMs.
+code runs on macOS and Ubuntu 26.04. Local VM management requires host support.
 
 The local VM list and Overview refresh every few seconds, retaining readings
 on refresh errors. The Overview memory card uses the guest's used and total
@@ -172,10 +172,10 @@ the view cancels the stream.
 | Logs | Live or recent log lines, filterable by source and guest unit |
 | Terminal | Implemented with xterm.js and Go SSH. Each terminal tab opens a PTY on the VM’s shared pinned connection. |
 | Files | Implemented. Browse from the SSH user’s home, show hidden files, and stream uploads and downloads through native file dialogs over the shared SSH connection. |
-| Editor | Implemented. Open and edit up to 2 MiB of UTF-8 text with locally bundled Monaco. Save over SFTP with ⌘S and find with ⌘F. |
+| Editor | Implemented. Open and edit up to 2 MiB of UTF-8 text with locally bundled Monaco. Save and find with ⌘S and ⌘F on macOS or Ctrl+S and Ctrl+F on Linux. |
 | Desktop | Connect to Xfce over pinned SSH, install the desktop layer if needed, and reconnect after SSH loss |
 | Settings | Local VM port mappings and size, SSH host key review and replacement, and laptop SSH exports |
-| About homebox | App and bundled CLI versions in the macOS app menu |
+| About homebox | App and bundled CLI versions in the app menu |
 
 - **SSH in the app** obeys the same rules as box's SSH config: it uses only the
   pinned host keys from `homebox_known_hosts` (or box's local ones for VMs on
@@ -189,7 +189,10 @@ the view cancels the stream.
 - **Distribution: build from source.** No signed or notarized builds, so no
   Apple developer account (owner, 2026-11-22). An app built on your own Mac
   isn't quarantined, so it opens normally. See the
-  [README](../README.md#desktop-app-macos) for the source build.
+  [README](../README.md#desktop-app) for the source builds. On Linux the
+  build places the two executables and a launcher entry in one directory.
+  Published server links open with `xdg-open`. Linux terminal copy and paste
+  use Ctrl+Shift+C and Ctrl+Shift+V.
 - **Wails version.** v3 reached stable on 2026-10-26. The app uses v3.1.0.
   See the [version and build checks](spikes/wails-desktop.md#version-and-build).
 - **Layout.** The nested `desktop/` Go module imports the shared app service.
@@ -213,14 +216,15 @@ The Desktop tab uses the same proxy and installer as the CLI. It leases
 the app's pinned SSH connection for either a local VM or an SSH alias.
 Choose **Connect** to open the viewer. The tab shows setup progress,
 offers **Install desktop** if the layer is missing, and offers
-**Reconnect** after a drop. Use **Paste to VM** to put Mac clipboard text
+**Reconnect** after a drop. Use **Paste to VM** to put host clipboard text
 on the Xfce clipboard, then paste in the guest app. Use **Copy from VM**
-to bring Xfce clipboard text to the Mac. The buttons transfer up to
+to bring Xfce clipboard text to the host. The buttons transfer up to
 1 MiB of plain text per click. On an older desktop layer, run
 `box desktop NAME --install` to add clipboard support. Leaving the tab, selecting another VM or
 closing the app releases the viewer and closes its loopback listener.
-[Security](../SECURITY.md#macos-guest-viewer) describes the native WebKit
-view and its isolation verification.
+[macOS viewer isolation](../SECURITY.md#macos-guest-viewer) and
+[Linux viewer isolation](../SECURITY.md#linux-guest-viewer) describe the native
+WebKit views and their verification.
 
 On November 26, 2026, the laptop app discovered a Mini-hosted VM under
 **Other hosts** using one verified ED25519 pin. The Terminal opened two
