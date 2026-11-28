@@ -444,3 +444,20 @@ access to the guest user.
 Use an opt-in headless Android smoke area with the AOSP x86-64 image,
 software graphics and an SDK-built fixture APK. Keep the SDK and license
 acceptance out of default provisioning.
+
+
+## Host boot autostart
+
+**Use the shared start operation for each marked VM** (2026-11-28, decided
+by the lead's worker overnight under the owner's autonomy grant). Existing
+records begin unmarked. Provisioning a new VM marks it once provisioning
+finishes. Internal image builders are excluded. The job reports each
+failure and attempts the remaining marked VMs.
+
+**Install one job per owner account and bind it to the selected state
+directory** (2026-11-28, decided by the lead's worker overnight under the
+owner's autonomy grant). On Linux the job runs through the lingering user
+manager. Disabling the job leaves account-wide lingering available to other
+services. On macOS the owner installs a reviewed LaunchDaemon with sudo,
+or selects a user LaunchAgent for the graphical-login fallback. Both keep
+the boot job's tool path explicit.

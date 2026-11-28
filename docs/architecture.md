@@ -10,7 +10,7 @@ two disagree, plan.md wins.
 cmd/box            CLI entry point and confined process dispatch
 desktop/           independent Go module with Wails and embedded React/Vite output
 internal/wiring    assembles the local app.Service for both entry points
-internal/cli       commands, flags, output; calls app, nothing else
+internal/cli       commands, flags, output; calls app and manages boot job setup
 internal/app       use cases (new, start, stop, rm, ls, ssh, ports, ssh-config,
                    doctor, host init, status, top, logs, desktop); the only place that knows the order of steps
 internal/vm        Driver interface and value types (Spec, Instance, Endpoint, ...)
@@ -23,6 +23,7 @@ guest/             the profiles themselves, embedded in the binary:
                    Node, Python and uv via mise
   ubuntu/          Ubuntu LTS: image, apt packages, services
   macos/           macOS Sequoia: restore image, boot configuration and doctor
+internal/autostart renders and configures systemd and launchd jobs
 internal/state     box's own records (one file per VM) and port allocation
 internal/egress    public-address policy, host interface checks and bounded daemon log
 internal/confine   OS-specific sandbox profiles for the VM's host process and
@@ -134,6 +135,18 @@ operation's output in memory and reads step names from the provision record.
 
 The [smoke runner's image archives](../smoke/README.md#container-image-cache)
 live in the host's user cache, separate from box state and VM lifecycles.
+
+### Autostart
+
+The `autostart` field in each box record stores whether the owner wants it
+running after a host restart. Start sets it after the VM starts, New after
+provisioning, and Stop clears it after the VM stops. Older records without
+the field are unmarked. Internal image builders leave it unset.
+
+The OS runs `box autostart run` as the owner. The job takes the state lock
+per VM, checks the mark again under that lock, and uses the regular start
+operation. A failed VM or unreadable record is logged and the job continues
+through the inventory. It returns a failure if any record failed.
 
 ### Host state volume headroom
 

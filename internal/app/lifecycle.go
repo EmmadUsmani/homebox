@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"slices"
 
 	"github.com/EmmadUsmani/homebox/internal/state"
@@ -13,30 +14,56 @@ import (
 // Start brings up confinement and starts a stored VM.
 func (s *Service) Start(ctx context.Context, name string) error {
 	return s.Store.WithLock(func() error {
-		box, err := s.load(name)
-		if err != nil {
-			return err
-		}
-		instance, err := s.Driver.Get(ctx, name)
-		if err != nil {
-			return err
-		}
-		if instance.GuestOS == vm.DarwinGuest && !box.Provisioned {
-			return fmt.Errorf("macOS guest %q requires box provision before it can start", name)
-		}
-		if err := s.start(ctx, &box, instance); err != nil {
-			return err
-		}
-		// Keys added with `box host init` since the last start reach the VM now.
-		endpoint, err := s.pinSSH(ctx, &box)
-		if err != nil {
-			return err
-		}
-		if box.ImageBuild {
-			return nil
-		}
-		return s.authorizeLaptopKeys(ctx, name, endpoint)
+		return s.startRecorded(ctx, name, false)
 	})
+}
+
+// startRecorded requires the store lock.
+func (s *Service) startRecorded(ctx context.Context, name string, markedOnly bool) error {
+	box, err := s.Store.Load(name)
+	if markedOnly && errors.Is(err, os.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if markedOnly && (!box.Autostart || box.ImageBuild) {
+		return nil
+	}
+	if err := s.checkDriver(box); err != nil {
+		return err
+	}
+	if box.PendingResize != nil {
+		return pendingResizeError(name)
+	}
+	if markedOnly {
+		s.progress("Autostart: starting %s", name)
+	}
+	instance, err := s.Driver.Get(ctx, name)
+	if err != nil {
+		return err
+	}
+	if instance.GuestOS == vm.DarwinGuest && !box.Provisioned {
+		return fmt.Errorf("macOS guest %q requires box provision before it can start", name)
+	}
+	if err := s.start(ctx, &box, instance); err != nil {
+		return err
+	}
+	if !box.ImageBuild && !box.Autostart {
+		box.Autostart = true
+		if err := s.Store.Save(box); err != nil {
+			return err
+		}
+	}
+	// Keys added with `box host init` since the last start reach the VM now.
+	endpoint, err := s.pinSSH(ctx, &box)
+	if err != nil {
+		return err
+	}
+	if box.ImageBuild {
+		return nil
+	}
+	return s.authorizeLaptopKeys(ctx, name, endpoint)
 }
 
 // authorizeLaptopKeys puts the host's laptop keys into the guest; it is idempotent.
@@ -85,7 +112,8 @@ func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instanc
 // Stop stops the guest before tearing down isolation.
 func (s *Service) Stop(ctx context.Context, name string) error {
 	return s.Store.WithLock(func() error {
-		if _, err := s.loadRecord(name); err != nil {
+		box, err := s.loadRecord(name)
+		if err != nil {
 			return err
 		}
 		instance, err := s.Driver.Get(ctx, name)
@@ -98,7 +126,12 @@ func (s *Service) Stop(ctx context.Context, name string) error {
 				return err
 			}
 		}
-		return s.releaseIsolation(ctx, name)
+		var saveErr error
+		if box.Autostart {
+			box.Autostart = false
+			saveErr = s.Store.Save(box)
+		}
+		return errors.Join(saveErr, s.releaseIsolation(ctx, name))
 	})
 }
 

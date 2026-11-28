@@ -28,6 +28,8 @@ type stubApp struct {
 	sshOptions     app.SSHConfigOptions
 }
 
+func (*stubApp) AutostartRun(context.Context) error { return nil }
+
 func (s *stubApp) New(_ context.Context, options app.NewOptions) error {
 	s.newOptions = options
 	return nil

@@ -109,10 +109,17 @@ func (s *Service) load(name string) (state.Box, error) {
 
 func (s *Service) loadRecord(name string) (state.Box, error) {
 	box, err := s.Store.Load(name)
-	if err == nil && box.Driver != s.Driver.Name() {
-		err = fmt.Errorf("box %q uses driver %q, current driver is %q", name, box.Driver, s.Driver.Name())
+	if err == nil {
+		err = s.checkDriver(box)
 	}
 	return box, err
+}
+
+func (s *Service) checkDriver(box state.Box) error {
+	if box.Driver != s.Driver.Name() {
+		return fmt.Errorf("box %q uses driver %q, current driver is %q", box.Name, box.Driver, s.Driver.Name())
+	}
+	return nil
 }
 
 // Listing joins an on-disk record with driver status.

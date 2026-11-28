@@ -179,7 +179,7 @@ func (s *Service) newBox(ctx context.Context, options NewOptions, profile guest.
 	if err := s.Store.Save(box); err != nil {
 		return err
 	}
-	return s.provision(ctx, box, profile)
+	return s.provision(ctx, box, profile, !build)
 }
 
 func (s *Service) resolveNewOptions(options *NewOptions) error {
@@ -237,11 +237,11 @@ func (s *Service) Provision(ctx context.Context, name string) error {
 		if err != nil {
 			return err
 		}
-		return s.provision(ctx, box, profile)
+		return s.provision(ctx, box, profile, false)
 	})
 }
 
-func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Profile) (err error) {
+func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Profile, markAutostart bool) (err error) {
 	defer func() {
 		if err != nil {
 			err = &ProvisionError{Name: box.Name, Err: err}
@@ -286,10 +286,10 @@ func (s *Service) provision(ctx context.Context, box state.Box, profile guest.Pr
 	}
 	worker := *s
 	worker.Progress = &logFramer{emit: log.line}
-	return worker.runProvision(ctx, box, profile, setStep, log)
+	return worker.runProvision(ctx, box, profile, setStep, log, markAutostart)
 }
 
-func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest.Profile, setStep func(string) error, log *provisionLog) error {
+func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest.Profile, setStep func(string) error, log *provisionLog, markAutostart bool) error {
 	restoringImage := box.Image != "" && !box.Provisioned
 	instance, err := s.Driver.Get(ctx, box.Name)
 	if errors.Is(err, vm.ErrNotFound) {
@@ -405,6 +405,7 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	}
 	now := time.Now().UTC()
 	box.Provisioned, box.ProvisionedAt = true, &now
+	box.Autostart = box.Autostart || markAutostart
 	if err := s.Store.Save(box); err != nil {
 		return err
 	}
