@@ -408,3 +408,12 @@ working and that an unpublished listener remains unavailable on the host.
 The Docker e2e check requires a successful public DNS reply from inside the
 container. Try independent resolvers so a single timed-out public endpoint
 does not prevent exercising the local isolation assertions.
+
+## 2026-11-28 · macOS Screen Sharing permission setup
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Keep macOS Screen Sharing pending until a supported setup grants the guest
+agent screen capture and input permissions while the RFB listener stays on
+loopback. The [scratch guest test](spikes/macos-guests.md#screen-sharing-over-pinned-ssh)
+authenticated through the existing proxy and received a black framebuffer.
+The built-in backend needs a permission setup that works on fresh guests.
