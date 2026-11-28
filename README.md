@@ -352,7 +352,9 @@ or permanently delete the VM and its disks by typing its name.
 connection and run separate shells. For remote VMs, the app offers SSH agent
 keys first, then tries unencrypted default SSH keys. **Files** browses the
 selected VM over SFTP, starting in the SSH user's home directory. Upload and
-download use native file dialogs. Open UTF-8 text files up to 2 MiB for light
+download use native file dialogs. The file list shows control and format
+characters as Unicode codes. Use real paths when opening files. Open UTF-8
+text files up to 2 MiB for light
 editing, use ⌘S and ⌘F on macOS or Ctrl+S and Ctrl+F on Linux to save
 and find, and use **Reload and compare** if
 the VM file changed since you opened it. Open **Desktop** and choose

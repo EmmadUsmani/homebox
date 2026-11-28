@@ -142,6 +142,8 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T10:41:36.961Z | 8918295d5d15 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | android, containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 24/0/2 | 1665.7s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T10:45:23.428Z | 8918295d5d15 | yes | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android, doctor | PASS | 12/0/0 | 218.1s | fresh |
 | 2026-11-28T10:56:31.221Z | d3f825cf7061 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.6s | — |
+| 2026-11-28T11:02:20.571Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 176.1s | fresh |
+| 2026-11-28T11:04:31.179Z | be400e61c8ff | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 11/1/1 | 130.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T11:06:32.675Z | 556bb896c8bd | yes | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 9.8s | — |
 | 2026-11-28T11:13:14.096Z | 1c7868e74d0a | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 6/0/0 | 7.4s | — |
 | 2026-11-28T11:04:49.408Z | 442abe519242 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | FAIL | 9/1/0 | 487.0s | — |
@@ -149,3 +151,5 @@ built-in gateway because Lima answers it locally.
 | 2026-11-28T11:13:53.823Z | eff5d0c5e702 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | desktop | PASS | 10/0/0 | 436.4s | GUI profile base |
 | 2026-11-28T11:18:18.492Z | 08b929525a4c | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | FAIL | 5/1/0 | 9.0s | — |
 | 2026-11-28T11:18:36.621Z | 80762d67a7a4 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 6/0/0 | 8.3s | — |
+| 2026-11-28T11:20:56.870Z | 4d9097a3b66d | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 16/1/0 | 383.1s | fresh |
+| 2026-11-28T11:25:45.521Z | c59324f85391 | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 17/0/0 | 276.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |

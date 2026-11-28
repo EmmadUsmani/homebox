@@ -316,7 +316,7 @@ func regularFile(client *sftp.Client, target string) (fs.FileInfo, error) {
 	if !info.Mode().IsRegular() {
 		return nil, errors.New("Select a regular file. Symbolic links and special files cannot be opened.")
 	}
-	return info, nil
+	return info, checkDirectoryPath(client, path.Dir(target))
 }
 
 func unchangedFile(client *sftp.Client, target string, stamp FileStamp) (fs.FileInfo, error) {
@@ -333,14 +333,14 @@ func unchangedFile(client *sftp.Client, target string, stamp FileStamp) (fs.File
 	return info, nil
 }
 
-func writableDirectory(client *sftp.Client, directory string) error {
+func checkDirectoryPath(client *sftp.Client, directory string) error {
 	for current := directory; current != "/"; current = path.Dir(current) {
 		info, err := client.LStat(current)
 		if err != nil {
 			return err
 		}
 		if info.Mode()&fs.ModeSymlink != 0 {
-			return errors.New("Writes through symbolic links are blocked. Open the real directory and try again.")
+			return errors.New("Paths through symbolic links are blocked. Open the real directory and try again.")
 		}
 		if !info.IsDir() {
 			return errors.New("VM path does not point to a directory")
@@ -351,7 +351,7 @@ func writableDirectory(client *sftp.Client, directory string) error {
 
 func stageFile(client *sftp.Client, target string) (*sftp.File, string, error) {
 	directory := path.Dir(target)
-	if err := writableDirectory(client, directory); err != nil {
+	if err := checkDirectoryPath(client, directory); err != nil {
 		return nil, "", err
 	}
 	temporary := path.Join(directory, ".homebox-"+rand.Text())
@@ -375,7 +375,7 @@ func saveFile(client *sftp.Client, target string, stamp FileStamp, content strin
 	if _, err := io.WriteString(file, content); err != nil {
 		return FileStamp{}, err
 	}
-	if err := writableDirectory(client, path.Dir(target)); err != nil {
+	if err := checkDirectoryPath(client, path.Dir(target)); err != nil {
 		return FileStamp{}, err
 	}
 	current, err := unchangedFile(client, target, stamp)
