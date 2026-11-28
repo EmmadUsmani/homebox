@@ -207,16 +207,42 @@ fi
 		t.Fatalf("Docker isolation controls failed:\n%s", controls.String())
 	}
 	defer closeCanaries()
-	box(2*time.Minute, "ssh", name, "--", `set -eu
+	t.Log(box(2*time.Minute, "ssh", name, "--", `set -eu
 docker run -i --rm python:3.14-alpine python - `+strings.Join(targets, " ")+` 10.114.0.1:53 <<'PYTHON'
+import secrets
 import socket
-import subprocess
+import struct
 import sys
 import urllib.request
 
 with urllib.request.urlopen("https://example.com", timeout=8) as response:
     assert response.status == 200
-subprocess.run(["nslookup", "example.com", "9.9.9.9"], timeout=8, check=True)
+
+# Send an A query over UDP only. Require two providers so one resolver's
+# packet loss cannot fail the gateway check.
+dns_replies = 0
+for resolver in ("9.9.9.9", "1.1.1.1", "8.8.8.8"):
+    transaction = secrets.randbits(16)
+    query = struct.pack("!6H", transaction, 0x0100, 1, 0, 0, 0)
+    query += b"\x07example\x03com\x00" + struct.pack("!2H", 1, 1)
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as conn:
+            conn.settimeout(2)
+            conn.connect((resolver, 53))
+            conn.send(query)
+            reply_id, flags, _, answers, _, _ = struct.unpack_from("!6H", conn.recv(4096))
+    except (OSError, struct.error) as error:
+        print(f"UDP DNS via {resolver}: {error}")
+        continue
+    is_response = flags & 0x8000
+    truncated_or_error = flags & 0x020f
+    if reply_id != transaction or not is_response or truncated_or_error or not answers:
+        print(f"UDP DNS via {resolver}: invalid response")
+        continue
+    print(f"UDP DNS via {resolver}: {answers} answers")
+    dns_replies += 1
+assert dns_replies >= 2, f"UDP DNS from Docker succeeded via only {dns_replies} public resolvers"
+
 for target in sys.argv[1:]:
     host, port = target.split(":")
     for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
@@ -231,7 +257,7 @@ for target in sys.argv[1:]:
                 continue
             raise AssertionError(f"container reached {target} via {kind.name}")
 PYTHON
-`)
+`))
 	closeCanaries()
 
 	box(time.Minute, "ssh", name, "--", `set -e
