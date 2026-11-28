@@ -33,7 +33,7 @@ listener() {
         *) return 1 ;;
     esac
     if [ "$(uname -s)" = Linux ]; then
-        listeners=$(ss -H -4 -ltn "sport = :$host_port" | awk '{print $4}')
+        listeners=$(ss -H -ltn "sport = :$host_port" | awk '{print $4}')
         address=$bind
     else
         listeners=$(lsof -nP -a -iTCP:"$host_port" -sTCP:LISTEN -Fn | sed -n 's/^n//p')
