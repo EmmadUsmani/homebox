@@ -7,7 +7,7 @@ import (
 	"os"
 
 	"github.com/EmmadUsmani/homebox/internal/cli"
- "github.com/EmmadUsmani/homebox/internal/confine"
+	"github.com/EmmadUsmani/homebox/internal/confine"
 	"github.com/EmmadUsmani/homebox/internal/isolation"
 	"github.com/EmmadUsmani/homebox/internal/vmnet"
 	"github.com/EmmadUsmani/homebox/internal/wiring"
@@ -17,13 +17,13 @@ import (
 var version = "dev"
 
 func main() {
-    if handled, err := confine.Dispatch(os.Args); handled {
-        if err != nil {
-            fmt.Fprintln(os.Stderr, "box confinement:", err)
-            os.Exit(1)
-        }
-        return
-    }
+	if handled, err := confine.Dispatch(os.Args); handled {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "box confinement:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	// The per-VM network daemon is box re-executing itself; it needs none of
 	// the service wiring below.
 	if len(os.Args) > 1 && os.Args[1] == isolation.DaemonCommand {
