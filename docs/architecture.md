@@ -302,3 +302,12 @@ the SSH user. It uses the guest's Node.js, Git and Codex CLI. The supervisor
 publishes to the project's existing origin and writes local status files that
 the operator can read over SSH. The Ubuntu systemd user unit is an optional
 launcher.
+
+
+### Host state volume headroom
+
+The [state store's free-space check](../internal/state/space_policy.go) measures
+the default volume for VM disks and saved images. VM creation and startup
+check it before creating or launching the instance. Image saves, imports and
+copies check it before staging the destination disk. See the
+[storage limits](../SECURITY.md#not-covered).

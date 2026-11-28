@@ -126,6 +126,9 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		if err := s.validatePorts(box); err != nil {
 			return err
 		}
+		if err := s.Store.RequireFreeSpace(); err != nil {
+			return err
+		}
 		if err := s.Store.Save(box); err != nil {
 			return err
 		}

@@ -19,6 +19,12 @@ import (
 
 // Doctor verifies host publishing and guest isolation for a named or all running boxes.
 func (s *Service) Doctor(ctx context.Context, name string) error {
+	if free, err := s.Store.FreeBytes(); err != nil {
+		s.progress("Host state volume: %v", err)
+	} else {
+		s.progress("Host state volume: %.1f GiB available (%d GiB minimum for VM starts and image writes)", float64(free)/(1<<30), state.MinimumFreeBytes>>30)
+	}
+
 	if name != "" {
 		box, err := s.load(name)
 		if err != nil {

@@ -454,3 +454,12 @@ shellcheck --shell=sh guest/*/*.sh
 - [Wails desktop spike](docs/spikes/wails-desktop.md): version, build isolation and native GUI verification.
 - [Alternatives](docs/alternatives.md): off-the-shelf options compared with homebox.
 - [Instructions for agents](AGENTS.md)
+
+
+### Host storage headroom
+
+Keep at least 10 GiB available on the volume that holds homebox state.
+`box new`, starting a stopped VM, and `box image save`, `import` and `copy`
+check this before admitting the operation. `box doctor` and `box status NAME`
+report available space on that volume. For status JSON, see `host_free_bytes`.
+See [aggregate storage limits](SECURITY.md#not-covered) for what can still grow.

@@ -9,6 +9,13 @@ import (
 	"net/netip"
 	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
+)
+
+const (
+	maxConnections       = 128
+	connectionsPerSecond = 64
 )
 
 // Relay forwards TCP connections to a loopback service.
@@ -68,6 +75,8 @@ func (r Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
 	}()
 	stop := context.AfterFunc(ctx, func() { listener.Close() })
 	defer stop()
+	slots := make(chan struct{}, maxConnections)
+	attempts := rate.NewLimiter(connectionsPerSecond, maxConnections)
 	for {
 		client, err := listener.AcceptTCP()
 		if err != nil {
@@ -76,7 +85,15 @@ func (r Relay) Serve(ctx context.Context, listener *net.TCPListener) error {
 			}
 			return err
 		}
-		workers.Go(func() { r.forward(ctx, client, target) })
+		if len(slots) == cap(slots) || !attempts.Allow() {
+			client.Close()
+			continue
+		}
+		slots <- struct{}{}
+		workers.Go(func() {
+			defer func() { <-slots }()
+			r.forward(ctx, client, target)
+		})
 	}
 }
 

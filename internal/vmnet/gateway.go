@@ -58,17 +58,17 @@ func serveGateway(ctx context.Context, listener net.Listener, logger *slog.Logge
 	// Only a single attachment can feed this stack.
 	listener.Close()
 	logger.Info("guest network connected")
-	return gatewaySession(ctx, conn, logger)
+	return gatewaySession(ctx, conn, logger, hostEgress())
 }
 
-func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger) error {
+func gatewaySession(ctx context.Context, conn net.Conn, logger *slog.Logger, upstream gatewayEgress) error {
 	ctx, cancel := context.WithCancel(ctx)
 	link := channel.New(frameQueue, frameMax, gatewayMAC)
 	network := stack.New(stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, arp.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol, udp.NewProtocol, icmp.NewProtocol4},
 	})
-	flows := newFlows(ctx, network, logger)
+	flows := newFlows(ctx, network, logger, upstream)
 	var workers sync.WaitGroup
 	defer func() {
 		cancel()
