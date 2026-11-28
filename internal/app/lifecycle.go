@@ -66,6 +66,7 @@ func (s *Service) start(ctx context.Context, box *state.Box, instance vm.Instanc
 		return cleanup(err)
 	}
 	s.progress("Starting %s", box.Name)
+	session.Start.NestedVirt = box.NestedVirt
 	if err := s.Driver.Start(ctx, box.Name, session.Start); err != nil {
 		return cleanup(fmt.Errorf("start VM: %w", err))
 	}

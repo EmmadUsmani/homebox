@@ -42,6 +42,10 @@ cover the sandbox and its limits. Linux saved disks and the full smoke
 runner image are tracked separately from the core lifecycle. Measure LAN
 publishing from a second machine and cover GPU and autostart separately.
 
+Nested KVM is available by opt-in for Linux x86-64 guests. The
+[Android smoke area](../smoke/android/README.md) covers the headless AOSP
+emulator. An Android guest profile remains open.
+
 ## macOS guests and the iOS Simulator
 
 The [macOS guest spike](spikes/macos-guests.md) covers Lima's installer, first

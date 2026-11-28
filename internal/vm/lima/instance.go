@@ -25,6 +25,7 @@ type instanceRecord struct {
 	Disk         int64  `json:"disk"`
 	SSHLocalPort int    `json:"sshLocalPort"`
 	Config       struct {
+		VMOpts   vmOptions       `json:"vmOpts"`
 		Networks []networkConfig `json:"networks"`
 		User     struct {
 			Name string `json:"name"`

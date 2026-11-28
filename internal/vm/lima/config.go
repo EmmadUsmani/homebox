@@ -3,12 +3,22 @@ package lima
 import (
 	"crypto/rand"
 	"fmt"
+	"runtime"
 
 	"github.com/EmmadUsmani/homebox/internal/vm"
 	"go.yaml.in/yaml/v3"
 )
 
+type qemuConfig struct {
+	CPUType map[string]string `yaml:"cpuType" json:"cpuType"`
+}
+
+type vmOptions struct {
+	QEMU *qemuConfig `yaml:"qemu,omitempty" json:"qemu"`
+}
+
 type config struct {
+	VMOpts     *vmOptions        `yaml:"vmOpts,omitempty"`
 	Probes     []probeConfig     `yaml:"probes,omitempty"`
 	Provision  []provisionConfig `yaml:"provision,omitempty"`
 	Param      map[string]string `yaml:"param,omitempty"`
@@ -92,7 +102,23 @@ type portRule struct {
 	Ignore    bool   `yaml:"ignore,omitempty" json:"ignore,omitempty"`
 }
 
+// Lima defaults to the host CPU under KVM. Mask both x86 virtualization
+// extensions explicitly so that nesting stays opt-in.
+func qemuCPUType(nested bool) string {
+	if nested {
+		return "host"
+	}
+	return "host,-vmx,-svm"
+}
+
 func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
+	return renderHostConfig(spec, goos, runtime.GOARCH)
+}
+
+func renderHostConfig(spec vm.Spec, goos, goarch string) ([]byte, error) {
+	if spec.NestedVirt && (goos != "linux" || goarch != "amd64") {
+		return nil, fmt.Errorf("nested virtualization requires Lima QEMU/KVM on an x86-64 Linux host")
+	}
 	var vmType string
 	switch goos {
 	case "darwin":
@@ -112,6 +138,9 @@ func renderConfig(spec vm.Spec, goos string) ([]byte, error) {
 		SSH:          sshConfig{LocalPort: spec.SSHPort},
 		User:         userConfig{Name: spec.User, Home: "/home/" + spec.User, Comment: spec.User},
 		PortForwards: portRules(spec.Forwards),
+	}
+	if goos == "linux" && goarch == "amd64" {
+		settings.VMOpts = &vmOptions{QEMU: &qemuConfig{CPUType: map[string]string{"x86_64": qemuCPUType(spec.NestedVirt)}}}
 	}
 	if spec.ImageDisk != "" {
 		identity := rand.Text()

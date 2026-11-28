@@ -12,6 +12,7 @@ same controls. VM-backed Linux verification is tracked in [To do](todo.md#observ
 | `desktop --no-open` | Native viewer connects over a private SSH tunnel | CLI-only output for opening a browser manually |
 | `doctor [NAME]` | Run doctor for the selected local VM | Done; run per VM for a host-wide check |
 | `host init --authorized-key --lan --no-lan --ssh-include` | First-run host setup | Built by the lifecycle work |
+| `new --nested-virt` | CLI | Linux QEMU/KVM creation flag and status value |
 | `image save / ls / rm / copy / export / import` and `new --image` | CLI | Pending desktop support |
 | `logs NAME -f/--follow --source --unit` | Logs tab with follow, source and unit controls | Done |
 | `logs -n/--lines` | Recent lines per source | Built in this change |

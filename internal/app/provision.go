@@ -27,12 +27,13 @@ var (
 
 // NewOptions overrides the default profile or VM size.
 type NewOptions struct {
-	Name      string
-	Profile   string
-	Image     string
-	CPUs      int
-	MemoryGiB int
-	DiskGiB   int
+	Name       string
+	Profile    string
+	Image      string
+	CPUs       int
+	MemoryGiB  int
+	DiskGiB    int
+	NestedVirt bool
 }
 
 // NewDefaults returns the defaults used when creating a VM on this host.
@@ -82,6 +83,18 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
 		return errors.New("CPU, memory and disk sizes must be positive")
 	}
+	if options.NestedVirt {
+		driver, ok := s.Driver.(interface{ CheckNestedVirt() error })
+		if !ok {
+			return errors.New("--nested-virt is unsupported by this VM driver")
+		}
+		if err := driver.CheckNestedVirt(); err != nil {
+			return err
+		}
+		if options.Image != "" {
+			return errors.New("--nested-virt requires a fresh VM because saved-image creation is unavailable on Linux")
+		}
+	}
 	username, err := defaultUser()
 	if err != nil {
 		return err
@@ -119,7 +132,7 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		}
 		box := state.Box{
 			Name: options.Name, Image: options.Image, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
-			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
+			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB, NestedVirt: options.NestedVirt,
 			DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
 			Forwards: state.DefaultForwards(index, host.LAN), CreatedAt: time.Now().UTC(),
 		}
@@ -258,7 +271,7 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 		}
 		s.progress("Creating %s", box.Name)
 		if err := s.Driver.Create(ctx, vm.Spec{
-			Name: box.Name, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
+			Name: box.Name, NestedVirt: box.NestedVirt, ImageDisk: imageDisk, ImageFirmware: imageFirmware, Images: profile.Images, CPUs: box.CPUs, MemoryGiB: box.MemoryGiB,
 			DiskGiB: box.DiskGiB, User: box.User, SSHPort: state.DriverSSHPort(box.Index),
 			Forwards: box.Forwards,
 			// Keep the built-in host resolver unused until the guest configures public DNS.

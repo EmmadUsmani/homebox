@@ -48,6 +48,21 @@ unless you enable `box host init --lan`. Install `xdg-open` to open
 published URLs from a graphical session. A headless host can use
 `box open --print` and `box desktop --no-open`.
 
+## Enable nested KVM for Android
+
+On an x86-64 Linux host, read the nesting setting for your CPU vendor.
+
+```sh
+cat /sys/module/kvm_intel/parameters/nested # Intel
+cat /sys/module/kvm_amd/parameters/nested   # AMD
+```
+
+The loaded module must report `Y` or `1`. With hardware virtualization
+enabled, create a VM with `box new NAME --nested-virt`. See the
+[Android smoke area](../smoke/android/README.md) for guest KVM permissions,
+SDK setup and headless emulator testing.
+[Nested KVM changes the VM's risk profile](../SECURITY.md#the-vm-and-the-linux-host).
+
 ## Install contributor tools
 
 Run the same script without flags for the full development setup.

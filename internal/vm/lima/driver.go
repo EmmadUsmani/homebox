@@ -45,6 +45,23 @@ func New(opts Options) *Driver {
 // Name identifies the driver.
 func (*Driver) Name() string { return "lima" }
 
+// CheckNestedVirt reports whether the host supports nested KVM.
+func (*Driver) CheckNestedVirt() error {
+	if runtime.GOOS != "linux" || runtime.GOARCH != "amd64" {
+		return errors.New("--nested-virt requires Lima QEMU/KVM on an x86-64 Linux host")
+	}
+	for _, module := range []string{"kvm_intel", "kvm_amd"} {
+		value, err := os.ReadFile(filepath.Join("/sys/module", module, "parameters/nested"))
+		if err == nil {
+			switch strings.TrimSpace(string(value)) {
+			case "Y", "1":
+				return nil
+			}
+		}
+	}
+	return errors.New("--nested-virt requires nested KVM enabled in the host kvm_intel or kvm_amd module")
+}
+
 // Create creates a stopped VM from the supplied spec.
 func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 	if err := validateName(spec.Name); err != nil {
@@ -76,27 +93,42 @@ func (d *Driver) Create(ctx context.Context, spec vm.Spec) error {
 // Start starts an existing VM under the optional command prefix.
 func (d *Driver) Start(ctx context.Context, name string, opts vm.StartOptions) error {
 	// Lima treats a missing bare instance name as a request to create from its default template.
-	instance, err := d.Get(ctx, name)
+	record, err := d.find(ctx, name)
 	if err != nil {
 		return err
+	}
+	instance := record.instance()
+	if opts.NestedVirt && instance.Status != vm.StatusRunning {
+		if err := d.CheckNestedVirt(); err != nil {
+			return err
+		}
+	}
+	var changes []string
+	if runtime.GOOS == "linux" && runtime.GOARCH == "amd64" && record.VMType == "qemu" && instance.Status != vm.StatusRunning {
+		cpu := qemuCPUType(opts.NestedVirt)
+		if record.Config.VMOpts.QEMU == nil || record.Config.VMOpts.QEMU.CPUType["x86_64"] != cpu {
+			changes = append(changes, fmt.Sprintf(".vmOpts.qemu.cpuType.x86_64 = %q", cpu))
+		}
 	}
 	if opts.Socket.Path != "" && instance.Socket != opts.Socket && instance.Status != vm.StatusRunning {
 		networks, err := json.Marshal([]networkConfig{socketNetwork(opts.Socket)})
 		if err != nil {
 			return err
 		}
-		changes := ".networks = " + string(networks) + " | .hostResolver.enabled = false"
+		changes = append(changes, ".networks = "+string(networks), ".hostResolver.enabled = false")
 		if runtime.GOOS == "darwin" {
-			changes += " | .networkOpts.hostLoopback = false"
+			changes = append(changes, ".networkOpts.hostLoopback = false")
 		}
 		if len(opts.DNS) > 0 {
 			resolvers, err := json.Marshal(opts.DNS)
 			if err != nil {
 				return err
 			}
-			changes += " | .dns = " + string(resolvers)
+			changes = append(changes, ".dns = "+string(resolvers))
 		}
-		if _, err := d.run(ctx, nil, "edit", "--tty=false", "--set", changes, name); err != nil {
+	}
+	if len(changes) > 0 {
+		if _, err := d.run(ctx, nil, "edit", "--tty=false", "--set", strings.Join(changes, " | "), name); err != nil {
 			return err
 		}
 	}

@@ -1,3 +1,7 @@
+vmOpts:
+    qemu:
+        cpuType:
+            x86_64: host,-vmx,-svm
 param:
     internal_netplanOptional: "true"
 vmType: qemu

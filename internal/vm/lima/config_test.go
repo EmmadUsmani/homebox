@@ -32,7 +32,7 @@ func TestRenderConfig(t *testing.T) {
 				spec.DNS = []string{"1.1.1.1"}
 				spec.Forwards = nil
 			}
-			actual, err := renderConfig(spec, host)
+			actual, err := renderHostConfig(spec, host, "amd64")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -93,6 +93,20 @@ func TestSocketNetworkDisablesBuiltInHostServices(t *testing.T) {
 	for _, expected := range []string{"socket: /fixture/network.sock", "interface: lima0", "metric: 100", "hostLoopback: false", "enabled: false"} {
 		if !bytes.Contains(config, []byte(expected)) {
 			t.Errorf("config missing %q", expected)
+		}
+	}
+}
+
+func TestNestedVirtConfig(t *testing.T) {
+	spec := sampleSpec()
+	spec.NestedVirt = true
+	data, err := renderHostConfig(spec, "linux", "amd64")
+	if err != nil || !bytes.Contains(data, []byte("x86_64: host\n")) {
+		t.Fatalf("expected host CPU for opted-in VM, got %v\n%s", err, data)
+	}
+	for _, host := range [][2]string{{"darwin", "arm64"}, {"linux", "arm64"}, {"windows", "amd64"}} {
+		if _, err := renderHostConfig(spec, host[0], host[1]); err == nil {
+			t.Errorf("accepted nested virtualization on %s/%s", host[0], host[1])
 		}
 	}
 }

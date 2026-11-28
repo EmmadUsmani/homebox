@@ -86,7 +86,7 @@ func TestProvisionStatus(t *testing.T) {
 
 func TestStatusOfStoppedBox(t *testing.T) {
 	service, driver, ssh, _ := fixture(t)
-	box := state.Box{Name: "stopped", Driver: driver.Name()}
+	box := state.Box{Name: "stopped", Driver: driver.Name(), NestedVirt: true}
 	if err := service.Store.Save(box); err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestStatusOfStoppedBox(t *testing.T) {
 		t.Fatal(err)
 	}
 	status, err := service.Status(t.Context(), box.Name)
-	if err != nil || status.State != "stopped" || status.Doctor == nil || status.Doctor.Passed != 7 || len(ssh.calls) != 0 {
+	if err != nil || status.State != "stopped" || !status.NestedVirt || status.Doctor == nil || status.Doctor.Passed != 7 || len(ssh.calls) != 0 {
 		t.Fatalf("stopped status: %+v, err=%v, guest calls=%v", status, err, ssh.calls)
 	}
 	data, err := json.Marshal(status)
@@ -107,7 +107,7 @@ func TestStatusOfStoppedBox(t *testing.T) {
 	if err := json.Unmarshal(data, &keys); err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{"name", "state", "doctor"} {
+	for _, field := range []string{"name", "state", "doctor", "nested_virt"} {
 		if keys[field] == nil {
 			t.Errorf("missing JSON field %q in %s", field, data)
 		}

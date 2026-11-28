@@ -31,6 +31,11 @@ func statusCommand(service Application) *cobra.Command {
 func printStatus(out io.Writer, status app.VMStatus) error {
 	table := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintf(table, "VM\t%s\nState\t%s\nUptime\t%s\nDoctor\t%s\n", status.Name, status.State, uptime(status), doctorHealth(status))
+	nested := "off"
+	if status.NestedVirt {
+		nested = "on"
+	}
+	fmt.Fprintf(table, "Nested virtualization\t%s\n", nested)
 	if result := status.Doctor; result != nil {
 		fmt.Fprintf(table, "\t%s (%d passed, %d failed, %d skipped)\n", result.CheckedAt.Local().Format("2006-01-02 15:04:05 MST"),
 			result.Passed, result.Failed, result.Skipped)
