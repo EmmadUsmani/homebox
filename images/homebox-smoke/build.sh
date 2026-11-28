@@ -108,7 +108,7 @@ printf 'Building %s in %s (index %s)\n' "$image" "$HOMEBOX_HOME" "$index"
 
 phase='provision the build VM'
 "$box" host init
-"$box" new "$vm" --cpus 4 --memory 8 --disk 80
+"$box" new "$vm" --cpus 4 --memory 8 --disk 80 --force-provision
 phase='install the desktop'
 "$box" desktop "$vm" --install
 phase='run the smoke suite'
@@ -116,7 +116,8 @@ SMOKE_LEVEL=full SMOKE_MATCH='' "$repo/smoke/run.sh" "$vm"
 phase='check isolation'
 "$box" doctor "$vm"
 phase='check agent sign-in and remove dependency test fixtures'
-"$box" ssh "$vm" -- 'bash -l -s' < "$repo/images/homebox-smoke/prepare-guest.sh"
+cat "$repo/images/lib/prepare-guest.sh" "$repo/images/homebox-smoke/prepare-guest.sh" |
+    "$box" ssh "$vm" -- 'bash -l -s'
 phase='scan the guest for credentials'
 "$box" ssh "$vm" -- 'sudo -n bash -s' < "$repo/images/lib/scan-secrets.sh"
 phase='trim and stop the build VM'

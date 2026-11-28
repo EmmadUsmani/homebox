@@ -2,9 +2,15 @@ package app
 
 import (
 	"context"
+	"errors"
 	"os"
+	"slices"
 	"strings"
 	"testing"
+
+	"github.com/EmmadUsmani/homebox/internal/doctor"
+	"github.com/EmmadUsmani/homebox/internal/guest"
+	"github.com/EmmadUsmani/homebox/internal/state"
 )
 
 type imageDriver struct{ testDriver }
@@ -52,5 +58,95 @@ func TestNewFromImage(t *testing.T) {
 	}
 	if err := service.Start(ctx, "clone"); err != nil {
 		t.Fatal(err)
+	}
+}
+
+type baseTestProfiles struct {
+	testProfiles
+	revision string
+}
+
+func (p baseTestProfiles) Get(name string) (guest.Profile, error) {
+	profile, err := p.testProfiles.Get(name)
+	profile.ImageUpdate = []guest.Step{{Name: "refresh", Script: "refresh.sh"}}
+	return profile, err
+}
+
+func (p baseTestProfiles) ReadScript(path string) ([]byte, error) {
+	return []byte(path + p.revision), nil
+}
+
+type baseTestDriver struct{ imageDriver }
+
+func (baseTestDriver) SupportsBaseImages() bool { return true }
+
+func TestProfileBaseLifecycle(t *testing.T) {
+	s, driver, ssh, _ := fixture(t)
+	s.Driver = baseTestDriver{imageDriver{testDriver{driver}}}
+	s.Profiles = baseTestProfiles{}
+	s.DoctorHost = doctorHostFunc(func(_ context.Context, _ string, _ int, lan bool) ([]string, []doctor.Check, func()) {
+		if lan {
+			t.Error("base image build published on the LAN")
+		}
+		return nil, nil, func() {}
+	})
+	if err := s.Store.SaveHost(state.Host{LAN: true, AuthorizedKeys: []string{fixtureHostKey}}); err != nil {
+		t.Fatal(err)
+	}
+	ctx := t.Context()
+	if err := s.New(ctx, NewOptions{Name: "first", DiskGiB: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Specs["first"].ImageDisk == "" {
+		t.Fatal("first VM did not use a rebuilt base")
+	}
+	count := 0
+	for _, call := range ssh.calls {
+		if call == "keys" {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("authorized laptop keys %d times; want only the clone", count)
+	}
+	first, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || first.BaseDigest == "" {
+		t.Fatalf("missing base digest: %+v, %v", first, err)
+	}
+	boxes, err := s.Store.List()
+	if err != nil || len(boxes) != 1 || boxes[0].Name != "first" {
+		t.Fatalf("scratch VM was retained: %+v, %v", boxes, err)
+	}
+	ssh.calls = nil
+	if err := s.New(ctx, NewOptions{Name: "second"}); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(ssh.calls, []string{"keys", "refresh.sh"}) {
+		t.Fatalf("current base ran guest steps %v", ssh.calls)
+	}
+	ssh.calls = nil
+	if err := s.New(ctx, NewOptions{Name: "full", ForceProvision: true}); err != nil {
+		t.Fatal(err)
+	}
+	if driver.Specs["full"].ImageDisk != "" || !slices.Equal(ssh.calls, []string{"keys", "sudo base.sh", "tools.sh"}) {
+		t.Fatalf("force provision used image or unexpected steps: %v", ssh.calls)
+	}
+
+	s.Profiles = baseTestProfiles{revision: "2"}
+	ssh.fail = errors.New("simulated provision failure")
+	if err := s.RebuildImage(ctx, "", "failing"); err == nil {
+		t.Fatal("rebuild succeeded despite failing provision step")
+	}
+	old, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || old.BaseDigest != first.BaseDigest {
+		t.Fatalf("failed build replaced the previous base: %+v, %v", old, err)
+	}
+	ssh.fail = nil
+	if err := s.New(ctx, NewOptions{Name: "refreshed"}); err != nil {
+		t.Fatal(err)
+	}
+	refreshed, _, err := s.Store.LoadImage("base-ubuntu")
+	if err != nil || refreshed.BaseDigest == first.BaseDigest {
+		t.Fatalf("stale image was not rebuilt: %+v, %v", refreshed, err)
 	}
 }

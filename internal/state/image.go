@@ -34,6 +34,8 @@ type Image struct {
 	DiskGiB        int       `json:"disk_gib"`
 	DiskBytes      int64     `json:"disk_bytes"`
 	CreatedAt      time.Time `json:"created_at"`
+	BaseDigest     string    `json:"base_digest,omitempty"`
+	BaseUser       string    `json:"base_user,omitempty"`
 	BoxVersion     string    `json:"box_version"`
 	Firmware       []byte    `json:"efi_variables,omitempty"`
 	FirmwareSHA256 string    `json:"efi_sha256,omitempty"`
@@ -113,11 +115,34 @@ func (s *Store) RemoveImage(name string) error {
 
 // SaveImage copies a stopped disk into an unpublished directory before hashing it.
 func (s *Store) SaveImage(ctx context.Context, box Box, name, version string, copyDisk func(string) ([]byte, error)) error {
+	return s.saveImage(ctx, box, name, version, "", copyDisk)
+}
+
+// SaveBaseImage replaces an older managed base only after staging the new disk.
+func (s *Store) SaveBaseImage(ctx context.Context, box Box, name, version, digest string, copyDisk func(string) ([]byte, error)) error {
+	return s.saveImage(ctx, box, name, version, digest, copyDisk)
+}
+
+func (s *Store) saveImage(ctx context.Context, box Box, name, version, digest string, copyDisk func(string) ([]byte, error)) error {
 	image := Image{
 		Format: imageFormat, Name: name, Profile: box.Profile, Driver: box.Driver, Arch: runtime.GOARCH,
 		CPUs: box.CPUs, MemoryGiB: box.MemoryGiB, DiskGiB: box.DiskGiB, CreatedAt: time.Now().UTC(), BoxVersion: version,
 	}
-	return s.stageImage(&image, os.Rename, func(path string) error {
+	publish := os.Rename
+	replace := false
+	if digest != "" {
+		image.BaseDigest, image.BaseUser = digest, box.User
+		old, _, err := s.LoadImage(name)
+		switch {
+		case err == nil && old.BaseDigest != "" && old.Profile == box.Profile:
+			publish, replace = exchangeImageDirs, true
+		case err == nil:
+			return fmt.Errorf("image %q already exists and is not a managed base for %q", name, box.Profile)
+		case !errors.Is(err, os.ErrNotExist):
+			return err
+		}
+	}
+	return s.stageImage(&image, replace, publish, func(path string) error {
 		firmware, err := copyDisk(path)
 		if err != nil {
 			return err
@@ -145,7 +170,7 @@ func (s *Store) CopyImage(ctx context.Context, source *Store, name string, onFal
 	publish := func(staged, destination string) error {
 		return s.WithLock(func() error { return os.Rename(staged, destination) })
 	}
-	return s.stageImage(&image, publish, func(destination string) error {
+	return s.stageImage(&image, false, publish, func(destination string) error {
 		return source.WithLock(func() error {
 			var disk string
 			var err error
@@ -165,14 +190,14 @@ func (s *Store) CopyImage(ctx context.Context, source *Store, name string, onFal
 	})
 }
 
-func (s *Store) stageImage(image *Image, publish func(string, string) error, stageDisk func(string) error) error {
+func (s *Store) stageImage(image *Image, replace bool, publish func(string, string) error, stageDisk func(string) error) error {
 	if err := ValidateName(image.Name); err != nil {
 		return err
 	}
 	destination := filepath.Join(s.imagesDir(), image.Name)
-	if _, err := os.Lstat(destination); err == nil {
+	if _, err := os.Lstat(destination); err == nil && !replace {
 		return fmt.Errorf("image %q already exists", image.Name)
-	} else if !errors.Is(err, os.ErrNotExist) {
+	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
 	if err := os.MkdirAll(s.imagesDir(), 0700); err != nil {
@@ -260,7 +285,7 @@ func (s *Store) ImportImage(ctx context.Context, path, name string) (string, err
 	if name != "" {
 		image.Name = name
 	}
-	err = s.stageImage(&image, os.Rename, func(path string) error {
+	err = s.stageImage(&image, false, os.Rename, func(path string) error {
 		disk, err := os.OpenFile(path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0600)
 		if err != nil {
 			return err

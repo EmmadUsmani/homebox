@@ -14,5 +14,6 @@ change the exact disk bytes between builds.
 
 ## Available images
 
+- [base-ubuntu](base-ubuntu/README.md) is the signed-out Ubuntu profile cache.
 - [homebox-smoke](homebox-smoke/README.md) contains the desktop layer and the
   development tools exercised by the guest smoke suite.

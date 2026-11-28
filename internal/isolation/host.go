@@ -65,7 +65,8 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	if err != nil {
 		return app.Session{}, err
 	}
-	daemon := daemonConfig(box, dir, host.LAN)
+	lan := host.LAN && !box.ImageBuild
+	daemon := daemonConfig(box, dir, lan)
 	daemon.HostPIDFile = filepath.Join(pidDir, filepath.Base(instance.HostPIDFile))
 	hostRules := rules(box, instance)
 	if runtime.GOOS == "linux" {
@@ -103,7 +104,7 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 	daemonWrap, err := confine.Prepare(confine.Rules{
 		Daemon: true, RuntimeDir: dir, Executable: executable,
 		GatewaySocket: daemon.Socket, HostPIDFile: daemon.HostPIDFile,
-		BindTCP: []confine.Bind{{Port: daemon.SSHPublish.Port, LAN: host.LAN}},
+		BindTCP: []confine.Bind{{Port: daemon.SSHPublish.Port, LAN: lan}},
 	}, h.Store.BoxDir(box.Name))
 	if err != nil {
 		return app.Session{}, err

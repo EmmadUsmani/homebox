@@ -136,3 +136,6 @@ ln -sf /etc/machine-id /var/lib/dbus/machine-id
 printf '%%s\n' "$identity" > "$marker"
 `, identity, user, user)
 }
+
+// SupportsBaseImages reports whether this host can save and restore a base disk.
+func (d *Driver) SupportsBaseImages() bool { return runtime.GOOS == "darwin" }
