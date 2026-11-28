@@ -136,6 +136,8 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		countGuestDoctorChecks(&result, stdout.buffer.String())
 		if stdout.exceeded || stderr.exceeded {
 			guestErr = errGuestOutputLimit
+		} else if guestErr == nil && result.Failed > hostFailures {
+			guestErr = errors.New("guest reported failed checks")
 		}
 	}
 	if guestErr != nil {

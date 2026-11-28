@@ -163,7 +163,7 @@ dead daemon and a stop/start creates a fresh attachment.
    one attachment. It provides DHCP and uses gVisor netstack to terminate
    guest TCP and UDP and handle IPv4 echo. Every new flow checks the numeric
    destination against the shared egress policy and the host's current
-   interface networks before opening a host socket. The daemon bounds flow
+   interface networks, including loopback aliases, before opening a host socket. The daemon bounds flow
    count, connection attempts, idle time and denial logs. Each VM has 1,536
    active flow slots and admits up to 500 new flows per second with a burst of
    1,536. DNS over UDP releases its slot after two seconds of inactivity.
@@ -185,7 +185,8 @@ dead daemon and a stop/start creates a fresh attachment.
    resolvers directly. Provisioning removes the old proxy settings,
    redirects and Docker resolver override. The built-in NIC remains
    confined if guest root changes its routing. The socket daemon discards
-   IPv6 Ethernet frames and creates IPv4 host sockets only.
+   IPv6 Ethernet frames and unsupported IPv4 protocols before stack
+   processing. It creates IPv4 host sockets only.
 4. The daemon opens the published SSH relay after observing the driver
    host process. It checks the listener and the watched process's kernel
    start time before and after each upstream dial. On macOS the check reads

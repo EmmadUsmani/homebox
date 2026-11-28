@@ -339,6 +339,7 @@ same socket path cannot replace that connection. Keep the same fail-closed
 network and surface the recovery commands. Live recovery remains open and
 would require a change to how the drivers hold the connection.
 
+## Profile base images
 
 **Managed profile base cache** (2026-11-28, decided by the lead's worker overnight
 under the owner's autonomy grant). The profile definition, build scripts and
@@ -346,3 +347,15 @@ credential checks determine cache freshness. Build the Ubuntu disk at 20 GiB
 and let the clone grow to the requested size. Keep manual image names intact.
 Refresh a managed disk with an atomic directory exchange after verification,
 so a failed build leaves the previous image available.
+
+## 2026-11-28 · Mac isolation review
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Include loopback aliases in the shared host-interface denial policy. macOS can
+assign other address ranges to loopback interfaces and the existing policy
+already denies the standard loopback address ranges. Drop unsupported IPv4
+protocols before stack processing while preserving fragmentation for supported
+transports. A failed guest doctor check now makes the command fail even
+when SSH returns zero.
+The [Mac isolation review](security-review-2026-11-28.md) records the checks
+and residual limits.
