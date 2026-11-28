@@ -3,6 +3,7 @@ package confine
 import (
 	"flag"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -60,6 +61,30 @@ func TestInvalidRules(t *testing.T) {
 	} {
 		if _, err := render(rules); err == nil {
 			t.Errorf("accepted invalid rules: %+v", rules)
+		}
+	}
+}
+
+func TestDarwinGuestAgentReadScope(t *testing.T) {
+	rules := Rules{
+		Home: "/Users/fixture", LimaHome: "/state/lima", RuntimeDir: "/state/lima/mac",
+		Executable: "/tools/lima/bin/limactl", executableAlias: "/opt/bin/limactl",
+	}
+	ubuntu, err := render(rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules.DarwinGuest = true
+	mac, err := render(rules)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, dir := range []string{"/tools/lima/share/lima", "/opt/share/lima"} {
+		if spec := `(literal "` + dir + `/lima-guestagent.Darwin-aarch64.gz")`; strings.Contains(ubuntu, spec) || !strings.Contains(mac, spec) {
+			t.Errorf("Darwin agent access is not restricted to macOS guests: %s", spec)
+		}
+		if strings.Contains(mac, `(subpath "`+dir+`")`) {
+			t.Errorf("recursive read access to %s", dir)
 		}
 	}
 }

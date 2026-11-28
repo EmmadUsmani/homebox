@@ -167,3 +167,32 @@ func TestGuestFrameTransportAdmission(t *testing.T) {
 		})
 	}
 }
+
+func TestGuestARPOnlyTargetsGateway(t *testing.T) {
+	for _, test := range []struct {
+		name, sender, target string
+		want                 bool
+	}{
+		{"gateway discovery", guestIP, GatewayIP, true},
+		{"gateway probe with no configured address", "0.0.0.0", GatewayIP, true},
+		{"guest duplicate-address probe", "0.0.0.0", guestIP, false},
+		{"unrelated address", guestIP, "10.114.0.42", false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			frame := make([]byte, header.EthernetMinimumSize+header.ARPSize)
+			header.Ethernet(frame).Encode(&header.EthernetFields{
+				SrcAddr: guestMAC, DstAddr: header.EthernetBroadcastAddress, Type: header.ARPProtocolNumber,
+			})
+			packet := header.ARP(frame[header.EthernetMinimumSize:])
+			packet.SetIPv4OverEthernet()
+			packet.SetOp(header.ARPRequest)
+			copy(packet.HardwareAddressSender(), guestMAC)
+			sender, target := stackAddress(test.sender), stackAddress(test.target)
+			copy(packet.ProtocolAddressSender(), sender.AsSlice())
+			copy(packet.ProtocolAddressTarget(), target.AsSlice())
+			if got := guestFrame(frame); got != test.want {
+				t.Fatalf("guestFrame() = %t, want %t", got, test.want)
+			}
+		})
+	}
+}
