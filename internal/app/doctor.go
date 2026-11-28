@@ -83,7 +83,7 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 	if out == nil {
 		out = io.Discard
 	}
-	targets, checks, closeCanaries := s.DoctorHost.Probe(ctx, instance.HostAddress, box.SSHPort, host.LAN)
+	targets, checks, closeCanaries := s.DoctorHost.Probe(ctx, instance.HostAddress, box.SSHPort, host.LAN && !box.ImageBuild)
 	defer closeCanaries()
 	if sandbox, ok := s.DoctorHost.(interface {
 		ProbeSandbox(context.Context, string) []doctor.Check
@@ -163,7 +163,10 @@ func (s *Service) doctorBox(ctx context.Context, box state.Box) error {
 		}
 	}
 	result.CheckedAt = time.Now().UTC()
-	saveErr := s.Store.SaveDoctorResult(box, result)
+	var saveErr error
+	if !box.ImageBuild {
+		saveErr = s.Store.SaveDoctorResult(box, result)
+	}
 	if err := errors.Join(hostErr, guestErr, ctx.Err(), saveErr); err != nil {
 		return fmt.Errorf("doctor %s: %w", box.Name, err)
 	}

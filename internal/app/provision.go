@@ -28,12 +28,14 @@ var (
 
 // NewOptions overrides the default profile or VM size.
 type NewOptions struct {
-	Name      string
-	Profile   string
-	Image     string
-	CPUs      int
-	MemoryGiB int
-	DiskGiB   int
+	ForceProvision bool
+	Version        string
+	Name           string
+	Profile        string
+	Image          string
+	CPUs           int
+	MemoryGiB      int
+	DiskGiB        int
 }
 
 // NewDefaults returns the defaults used when creating a VM on this host.
@@ -75,9 +77,24 @@ func defaultUser() (string, error) {
 	return name[:min(len(name), 31)], nil
 }
 
+func (s *Service) validateSocketPaths(name string) error {
+	type validator interface{ ValidateSocketPaths(string) error }
+	for _, component := range []any{s.Driver, s.Isolation} {
+		if checker, ok := component.(validator); ok {
+			if err := checker.ValidateSocketPaths(name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // New reserves a box record, creates its VM and provisions the guest.
 func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if err := state.ValidateName(options.Name); err != nil {
+		return err
+	}
+	if err := s.validateSocketPaths(options.Name); err != nil {
 		return err
 	}
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {
@@ -86,6 +103,9 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 	username, err := defaultUser()
 	if err != nil {
 		return err
+	}
+	if options.ForceProvision && options.Image != "" {
+		return errors.New("--force-provision cannot be used with --image")
 	}
 	return s.Store.WithLock(func() error {
 		if options.Image != "" {
@@ -103,41 +123,53 @@ func (s *Service) New(ctx context.Context, options NewOptions) error {
 		if profile.OS == vm.DarwinGuest && (runtime.GOOS != "darwin" || runtime.GOARCH != "arm64" || options.Image != "") {
 			return errors.New("macOS guests require an Apple silicon Mac and an installer image")
 		}
-		if _, err := s.Store.Load(options.Name); err == nil {
-			return fmt.Errorf("box %q already exists", options.Name)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return err
-		}
-		if _, err := s.Driver.Get(ctx, options.Name); err == nil {
-			return fmt.Errorf("driver already has an instance named %q", options.Name)
-		} else if !errors.Is(err, vm.ErrNotFound) {
-			return err
-		}
-		host, err := s.Store.LoadHost()
-		if err != nil {
-			return err
-		}
-		index, err := s.Store.NextIndex()
-		if err != nil {
-			return err
-		}
-		box := state.Box{
-			Name: options.Name, Image: options.Image, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
-			CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
-			DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
-			Forwards: state.DefaultForwards(index, host.LAN), CreatedAt: time.Now().UTC(),
-		}
-		if err := s.validatePorts(box); err != nil {
-			return err
-		}
-		if err := s.Store.RequireFreeSpace(); err != nil {
-			return err
-		}
-		if err := s.Store.Save(box); err != nil {
-			return err
-		}
-		return s.provision(ctx, box, profile)
+		return s.newBox(ctx, options, profile, username, false)
 	})
+}
+
+func (s *Service) newBox(ctx context.Context, options NewOptions, profile guest.Profile, username string, build bool) error {
+	if _, err := s.Store.Load(options.Name); err == nil {
+		return fmt.Errorf("box %q already exists", options.Name)
+	} else if !errors.Is(err, os.ErrNotExist) {
+		return err
+	}
+	if _, err := s.Driver.Get(ctx, options.Name); err == nil {
+		return fmt.Errorf("driver already has an instance named %q", options.Name)
+	} else if !errors.Is(err, vm.ErrNotFound) {
+		return err
+	}
+	host, err := s.Store.LoadHost()
+	if err != nil {
+		return err
+	}
+	baseImage := false
+	if !options.ForceProvision && options.Image == "" {
+		options.Image, err = s.profileBase(ctx, options, profile, username)
+		if err != nil {
+			return err
+		}
+		baseImage = options.Image != ""
+	}
+	index, err := s.Store.NextIndex()
+	if err != nil {
+		return err
+	}
+	box := state.Box{
+		Name: options.Name, Image: options.Image, BaseImage: baseImage, ImageBuild: build, Profile: options.Profile, Driver: s.Driver.Name(), Index: index,
+		CPUs: options.CPUs, MemoryGiB: options.MemoryGiB,
+		DiskGiB: options.DiskGiB, User: username, SSHPort: state.SSHPort(index),
+		Forwards: state.DefaultForwards(index, host.LAN && !build), CreatedAt: time.Now().UTC(),
+	}
+	if err := s.validatePorts(box); err != nil {
+		return err
+	}
+	if err := s.Store.RequireFreeSpace(); err != nil {
+		return err
+	}
+	if err := s.Store.Save(box); err != nil {
+		return err
+	}
+	return s.provision(ctx, box, profile)
 }
 
 func (s *Service) resolveNewOptions(options *NewOptions) error {
@@ -331,8 +363,10 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	if err != nil {
 		return err
 	}
-	if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
-		return err
+	if !box.ImageBuild {
+		if err := s.authorizeLaptopKeys(ctx, box.Name, endpoint); err != nil {
+			return err
+		}
 	}
 	env := map[string]string{
 		"HOMEBOX_USER":           box.User,
@@ -342,6 +376,9 @@ func (s *Service) runProvision(ctx context.Context, box state.Box, profile guest
 	steps := profile.Steps
 	if restoringImage {
 		steps = nil
+		if box.BaseImage {
+			steps = profile.ImageUpdate
+		}
 	}
 	for _, step := range steps {
 		if err := setStep(step.Name); err != nil {

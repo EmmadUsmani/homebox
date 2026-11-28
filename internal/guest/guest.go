@@ -26,6 +26,7 @@ type Profile struct {
 	BootScript  string `yaml:"bootScript"`
 	Images      []vm.Image
 	Steps       []Step
+	ImageUpdate []Step `yaml:"imageUpdate"`
 }
 
 // DefaultProfile is used when `box new` gets no --profile.

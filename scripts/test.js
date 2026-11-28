@@ -93,7 +93,7 @@ async function runSuite(options) {
     const { tier, match, keep } = options;
     const disk = tier !== "change" && options.areas.length === 0 ? "80" : "30";
     const vmSize = ["--cpus", "2", "--memory", selected.smoke.includes("containers") ? "6" : "4"];
-    const freshVM = [...vmSize, "--disk", disk];
+    const freshVM = [...vmSize, "--disk", disk, "--force-provision"];
     const explicitImage = Boolean(options.image || options.imageHome || options.imageFile);
     const level = tier === "full" ? "full" : "quick";
     const areas = [...selected.smoke, ...["doctor", "e2e", "desktop"].filter(area => selected[area])];

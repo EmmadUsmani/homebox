@@ -52,6 +52,7 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T07:09:45.465Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 403.0s | fresh |
 | 2026-11-28T07:16:48.094Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 422.5s | fresh |
 | 2026-11-28T07:17:40.952Z | 765ff4798484 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | PASS | 23/0/1 | 1674.9s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T07:19:21.923Z | 155f20f93dd5 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | FAIL | 8/2/3 | 256.2s | fresh |
 | 2026-11-28T07:19:56.190Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 11/0/0 | 188.0s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T07:22:48.304Z | ee08b9eed107 | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 795.4s | — |
 | 2026-11-28T07:23:40.128Z | 49c67f72ebf9 | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 12/0/0 | 197.3s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
@@ -62,15 +63,20 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T07:34:28.701Z | 92fe09f48cdd | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 12/0/0 | 203.6s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T07:46:00.064Z | c90c74810834 | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor | PASS | 11/0/0 | 351.3s | fresh |
 | 2026-11-28T07:48:04.079Z | 765ff4798484 | no | MS-7D31 | Ubuntu 26.04.1 LTS | batch | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e | PASS | 17/0/0 | 891.7s | fresh |
+| 2026-11-28T07:48:48.235Z | 7f3fa4a991cf | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 803.5s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T07:54:37.303Z | 96fac58983b3 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | FAIL | 12/1/0 | 745.7s | fresh |
 | 2026-11-28T08:03:37.754Z | 6bc4a86c50a3 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | services, doctor, e2e, desktop | PASS | 18/0/1 | 864.5s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T08:07:47.348Z | 0626d22750ea | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 1132.2s | fresh |
+| 2026-11-28T08:11:49.895Z | a58cd1797020 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1029.5s | fresh |
 | 2026-11-28T08:12:56.338Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 731.7s | — |
+| 2026-11-28T08:17:54.136Z | 7d2dc7f252c8 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 585.4s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:18:12.309Z | cd361fc2635c | no | Mac14,10 | 27.2.1 | change | default | containers, gui, native, newsdigest, os, runtimes, services, doctor, e2e, desktop | FAIL | 19/1/1 | 766.8s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:18:31.301Z | 77154b81d5f9 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 334.8s | fresh |
 | 2026-11-28T08:24:55.875Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor | PASS | 12/0/0 | 318.8s | fresh |
-| 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
-| 2026-11-28T07:48:48.235Z | 7f3fa4a991cf | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 803.5s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
-| 2026-11-28T08:07:47.348Z | 0626d22750ea | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 1132.2s | fresh |
-| 2026-11-28T08:17:54.136Z | 7d2dc7f252c8 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | FAIL | 10/1/0 | 585.4s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:33:24.392Z | db5e415ffab2 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 916.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
+| 2026-11-28T08:38:23.727Z | 295bcad96c9e | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1071.5s | fresh |
 | 2026-11-28T08:49:16.914Z | 6e10b577bd50 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 910.1s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T08:52:27.995Z | 9aba63bdcca5 | no | Mac14,10 | 27.2.1 | change | partial | doctor | PASS | 10/0/0 | 170.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T08:57:08.583Z | de40f5fd8483 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1016.1s | fresh |
+| 2026-11-28T09:16:30.655Z | 86dcbcb53521 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1112.0s | fresh |

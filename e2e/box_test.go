@@ -104,7 +104,7 @@ func TestBoxLifecycle(t *testing.T) {
 	}
 	cleanupVM(name)
 
-	box(12*time.Minute, "new", name, "--cpus", "2", "--memory", "4", "--disk", "20")
+	box(12*time.Minute, "new", name, "--cpus", "2", "--memory", "4", "--disk", "20", "--force-provision")
 	record, err := store.Load(name)
 	if err != nil {
 		t.Fatal(err)
@@ -207,7 +207,7 @@ fi
 		t.Fatalf("Docker isolation controls failed:\n%s", controls.String())
 	}
 	defer closeCanaries()
-	box(2*time.Minute, "ssh", name, "--", `set -eu
+	t.Log(box(2*time.Minute, "ssh", name, "--", `set -eu
 docker run -i --rm python:3.14-alpine python - `+strings.Join(targets, " ")+` 10.114.0.1:53 <<'PYTHON'
 import socket
 import subprocess
@@ -238,7 +238,7 @@ for target in sys.argv[1:]:
                 continue
             raise AssertionError(f"container reached {target} via {kind.name}")
 PYTHON
-`)
+`))
 	closeCanaries()
 
 	box(time.Minute, "ssh", name, "--", `set -e
