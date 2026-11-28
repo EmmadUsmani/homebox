@@ -188,6 +188,9 @@ func (s *Service) localStatus(box Listing) VMStatus {
 			status.Provisioning.Step = untrusted.Line(run.Step)
 		}
 	}
+	if box.Status == vm.StatusRunning {
+		status.addError("network", s.networkDaemonError(box.Name))
+	}
 	status.Doctor, err = s.Store.LoadDoctorResult(box.Name)
 	status.addError("doctor record", err)
 	return status

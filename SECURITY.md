@@ -35,6 +35,10 @@ confinement enforce the VM-to-Mac boundary independently. See the
 
 ### The VM and the macOS host
 
+These controls apply to homebox's Ubuntu guests. Lima's experimental macOS
+guest templates have a separate networking and bootstrap path.
+See the [macOS guest spike](docs/spikes/macos-guests.md).
+
 - **A full VM.** Each VM is its own Linux kernel and disk under Apple's
   Virtualization framework, through Lima's `vz` driver. It's not a container.
 - **Nothing shared.** No mounts of host folders, no SSH agent forwarding and no
@@ -113,6 +117,9 @@ The VM reaches the internet through [box's own gateway](docs/architecture.md#net
   host-key check. `box repin` changes pins only after you review them.
 - Ports are published only on the Mac's loopback unless you turn on LAN
   publishing (`box host init --lan`), per host.
+
+If the per-VM gateway daemon exits, egress stays blocked. Stop and start
+the VM through box to establish a fresh confined gateway connection.
 
 ### Checking it
 
@@ -295,6 +302,11 @@ journal without running the log reader as root.
 
 Anything in the VM is readable by the agents in it, including the agents' own
 logins.
+
+The optional [agent factory](factory/README.md) runs Codex with full guest
+permissions. Its owner-file checks guard the supervisor's normal publication
+path. The guest user can bypass them. Use a dedicated VM and scope its Git
+and provider credentials to the work you intend to authorize.
 
 - Log Claude Code and Codex in yourself, inside the VM. Those logins live there.
 - Give the VM a fine-grained GitHub token scoped to the repositories it needs,
