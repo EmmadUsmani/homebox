@@ -43,6 +43,13 @@ func ProbeLinux(ctx context.Context, dir string) map[string]error {
 		return results
 	}
 	defer socket.Close()
+	pathname := filepath.Join(home, filepath.Base(f.Name())+".sock")
+	pathSocket, err := net.Listen("unix", pathname)
+	if err != nil {
+		results["setup"] = err
+		return results
+	}
+	defer pathSocket.Close()
 	for _, name := range []string{"hostagent", "qemu", "vmnet"} {
 		profile := linuxHostProfile
 		if name == "vmnet" {
@@ -55,7 +62,7 @@ func ProbeLinux(ctx context.Context, dir string) map[string]error {
 		}
 		if err == nil {
 			probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-			out, runErr := exec.CommandContext(probeCtx, rules.Launcher, "_confine", path, "probe", name, f.Name(), port, abstract).CombinedOutput()
+			out, runErr := exec.CommandContext(probeCtx, rules.Launcher, "_confine", path, "probe", name, f.Name(), port, abstract, pathname).CombinedOutput()
 			cancel()
 			err = runErr
 			if err != nil {
@@ -68,14 +75,15 @@ func ProbeLinux(ctx context.Context, dir string) map[string]error {
 }
 
 func probe(rules Rules, path string, args []string) error {
-	if len(args) != 4 {
-		return errors.New("expected profile kind, file, TCP port and Unix canary")
+	if len(args) != 5 {
+		return errors.New("expected profile kind, file, TCP port and Unix canaries")
 	}
 	port, err := strconv.Atoi(args[2])
 	if err != nil || !validPort(port) {
 		return errors.New("invalid TCP canary port")
 	}
-	if err := install(rules, path, args[0] == "qemu"); err != nil {
+	qemu := args[0] == "qemu"
+	if err := install(rules, path, qemu); err != nil {
 		return err
 	}
 	for _, mode := range []int{os.O_RDONLY, os.O_WRONLY} {
@@ -87,34 +95,64 @@ func probe(rules Rules, path string, args []string) error {
 			return fmt.Errorf("outside file access mode %d: expected EACCES, got %v", mode, err)
 		}
 	}
-	fd, err := unix.Socket(unix.AF_INET6, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+	if err := checkSocketFilter(rules.Daemon, qemu); err != nil {
+		return err
+	}
+	parent := os.Getppid()
+	if err := unix.Kill(parent, 0); !errors.Is(err, unix.EPERM) {
+		return fmt.Errorf("signal to parent: expected EPERM, got %v", err)
+	}
+	f, err := os.Open(fmt.Sprintf("/proc/%d/cmdline", parent))
 	if err == nil {
+		f.Close()
+	}
+	if !errors.Is(err, unix.EACCES) {
+		return fmt.Errorf("parent cmdline: expected EACCES, got %v", err)
+	}
+	for _, socket := range []struct {
+		name    string
+		address string
+		denied  bool
+	}{
+		{"abstract Unix", args[3], true},
+		{"pathname Unix", args[4], qemu},
+	} {
+		fd, err := unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+		if err != nil {
+			return err
+		}
+		err = unix.Connect(fd, &unix.SockaddrUnix{Name: socket.address})
 		unix.Close(fd)
+		if socket.denied && !errors.Is(err, unix.EPERM) && !errors.Is(err, unix.EACCES) {
+			return fmt.Errorf("%s connect: expected permission denial, got %v", socket.name, err)
+		}
+		if !socket.denied && err != nil {
+			return fmt.Errorf("%s connect: %w", socket.name, err)
+		}
 	}
-	if !errors.Is(err, unix.EPERM) {
-		return fmt.Errorf("IPv6 socket: expected EPERM, got %v", err)
-	}
-	fd, err = unix.Socket(unix.AF_UNIX, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
-	if err != nil {
+	if err := checkTCPConnect(port, rules.Daemon); err != nil {
 		return err
 	}
-	err = unix.Connect(fd, &unix.SockaddrUnix{Name: args[3]})
-	unix.Close(fd)
-	if !errors.Is(err, unix.EPERM) && !errors.Is(err, unix.EACCES) {
-		return fmt.Errorf("abstract Unix connect: expected permission denial, got %v", err)
+	// Successful exec replaces the probe and exits nonzero.
+	if err := unix.Exec("/usr/bin/false", []string{"false"}, nil); !errors.Is(err, unix.EACCES) {
+		return fmt.Errorf("exec outside allowlist: expected EACCES, got %v", err)
 	}
-	if rules.Daemon {
-		return nil
-	}
-	if err := checkFastOpenFilter(false); err != nil {
-		return err
-	}
-	fd, err = unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
+	return nil
+}
+
+func checkTCPConnect(port int, daemon bool) error {
+	fd, err := unix.Socket(unix.AF_INET, unix.SOCK_STREAM|unix.SOCK_CLOEXEC, 0)
 	if err != nil {
 		return err
 	}
 	defer unix.Close(fd)
 	err = unix.Connect(fd, &unix.SockaddrInet4{Port: port, Addr: [4]byte{127, 0, 0, 1}})
+	if daemon {
+		if err != nil {
+			return fmt.Errorf("gateway TCP connect: %w", err)
+		}
+		return nil
+	}
 	if !errors.Is(err, unix.EACCES) && !errors.Is(err, unix.EPERM) {
 		return fmt.Errorf("TCP connect: expected permission denial, got %v", err)
 	}
@@ -130,7 +168,57 @@ func probe(rules Rules, path string, args []string) error {
 
 // An invalid descriptor makes the errno distinguish a seccomp denial from
 // normal kernel handling, without depending on network or TCP settings.
-func checkFastOpenFilter(daemon bool) error {
+func checkSocketFilter(daemon, qemu bool) error {
+	for _, call := range []struct {
+		name string
+		nr   uintptr
+	}{
+		{"io_uring_setup", unix.SYS_IO_URING_SETUP},
+		{"io_uring_enter", unix.SYS_IO_URING_ENTER},
+		{"io_uring_register", unix.SYS_IO_URING_REGISTER},
+		{"ptrace", unix.SYS_PTRACE},
+		{"process_vm_readv", unix.SYS_PROCESS_VM_READV},
+		{"process_vm_writev", unix.SYS_PROCESS_VM_WRITEV},
+	} {
+		_, _, err := unix.Syscall6(call.nr, ^uintptr(0), 0, 0, 0, 0, 0)
+		if err != unix.EPERM {
+			return fmt.Errorf("%s filter: expected EPERM, got %v", call.name, err)
+		}
+	}
+	for _, socket := range []struct {
+		family, kind, protocol int
+		allowed                bool
+	}{
+		{unix.AF_INET6, unix.SOCK_STREAM, 0, false},
+		{unix.AF_PACKET, unix.SOCK_RAW, 0, false},
+		{unix.AF_NETLINK, unix.SOCK_RAW, unix.NETLINK_ROUTE, !qemu},
+		{unix.AF_NETLINK, unix.SOCK_RAW, unix.NETLINK_USERSOCK, false},
+		{unix.AF_INET, unix.SOCK_STREAM, 0, true},
+		{unix.AF_INET, unix.SOCK_DGRAM, 0, daemon},
+		{unix.AF_UNIX, unix.SOCK_DGRAM, 0, !qemu},
+	} {
+		fd, err := unix.Socket(socket.family, socket.kind|unix.SOCK_CLOEXEC, socket.protocol)
+		if err == nil {
+			unix.Close(fd)
+		}
+		if socket.allowed && err != nil || !socket.allowed && !errors.Is(err, unix.EPERM) {
+			return fmt.Errorf("socket (%d, %d, %d), allowed=%t: got %v", socket.family, socket.kind, socket.protocol, socket.allowed, err)
+		}
+	}
+	if qemu {
+		fds, err := unix.Socketpair(unix.AF_UNIX, unix.SOCK_DGRAM|unix.SOCK_CLOEXEC, 0)
+		if err == nil {
+			unix.Close(fds[0])
+			unix.Close(fds[1])
+		}
+		if !errors.Is(err, unix.EPERM) {
+			return fmt.Errorf("QEMU datagram socketpair: expected EPERM, got %v", err)
+		}
+	}
+	return checkSendFilter(daemon)
+}
+
+func checkSendFilter(daemon bool) error {
 	const invalidFD = ^uintptr(0)
 	blocked := unix.EPERM
 	if daemon {

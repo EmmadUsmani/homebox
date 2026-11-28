@@ -78,7 +78,7 @@ func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.S
 		daemon.SSHTargetSocket = filepath.Join(pidDir, confine.QEMUSSHSocket)
 		// Keep the launch identity outside both writable runtime directories.
 		// Replace the inode before granting QEMU an exact-file write rule.
-		daemon.HostPIDFile = filepath.Join(h.Store.BoxDir(box.Name), "qemu-launch.pid")
+		daemon.HostPIDFile = filepath.Join(h.Store.BoxDir(box.Name), confine.QEMULaunchPIDFile)
 		file, err := os.CreateTemp(h.Store.BoxDir(box.Name), ".qemu-launch-")
 		if err != nil {
 			return app.Session{}, err

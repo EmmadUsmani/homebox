@@ -48,7 +48,8 @@ func install(r Rules, profile string, qemu bool) error {
 		rights uint64
 	}
 	files := []fileRule{{"/dev/null", readFile | writeFile},
-		{"/usr/lib", readTree | unix.LANDLOCK_ACCESS_FS_EXECUTE}, {"/etc/ld.so.cache", readFile}}
+		{"/usr/lib", readTree}, {"/lib64/ld-linux-x86-64.so.2", execute},
+		{"/etc/ld.so.cache", readFile}}
 	if qemu {
 		files = append(files, fileRule{r.RuntimeDir, readTree | unix.LANDLOCK_ACCESS_FS_MAKE_SOCK | unix.LANDLOCK_ACCESS_FS_REMOVE_FILE},
 			fileRule{filepath.Join(r.RuntimeDir, "disk"), writeFile},
