@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -11,6 +13,7 @@ import (
 	"github.com/EmmadUsmani/homebox/internal/doctor"
 	"github.com/EmmadUsmani/homebox/internal/guest"
 	"github.com/EmmadUsmani/homebox/internal/state"
+	"github.com/EmmadUsmani/homebox/internal/vm"
 )
 
 type imageDriver struct{ testDriver }
@@ -148,5 +151,31 @@ func TestProfileBaseLifecycle(t *testing.T) {
 	refreshed, _, err := s.Store.LoadImage("base-ubuntu")
 	if err != nil || refreshed.BaseDigest == first.BaseDigest {
 		t.Fatalf("stale image was not rebuilt: %+v, %v", refreshed, err)
+	}
+}
+
+type socketLimitedBaseDriver struct {
+	baseTestDriver
+	root string
+}
+
+func (d socketLimitedBaseDriver) ValidateSocketPaths(name string) error {
+	return vm.ValidateUnixSocketPath(filepath.Join(d.root, name, "ssh.sock.1234567890123456"))
+}
+
+func TestRebuildImageRejectsLongSocketPathBeforeCreatingState(t *testing.T) {
+	if runtime.GOOS != "darwin" && runtime.GOOS != "linux" {
+		t.Skip("host does not validate Unix socket paths")
+	}
+	service, driver, _, _ := fixture(t)
+	service.Store.Root = filepath.Join(service.Store.Root, strings.Repeat("a", 108))
+	service.Driver = socketLimitedBaseDriver{baseTestDriver{imageDriver{testDriver{driver}}}, filepath.Join(service.Store.Root, "lima")}
+	service.Profiles = baseTestProfiles{}
+	err := service.RebuildImage(t.Context(), "", "test")
+	if err == nil || !strings.Contains(err.Error(), "shorter HOMEBOX_HOME") {
+		t.Fatalf("expected a socket path error, got %v", err)
+	}
+	if _, err := os.Stat(service.Store.Root); !errors.Is(err, os.ErrNotExist) || len(driver.Specs) != 0 {
+		t.Fatalf("rebuild created state or a VM: %v", err)
 	}
 }

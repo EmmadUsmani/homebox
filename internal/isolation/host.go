@@ -33,6 +33,11 @@ type Host struct {
 
 var _ app.Isolation = (*Host)(nil)
 
+// ValidateSocketPaths checks the gateway socket before a box is reserved.
+func (h *Host) ValidateSocketPaths(name string) error {
+	return vm.ValidateUnixSocketPath(gatewaySocket(h.runDir(name)))
+}
+
 // Up starts the VM's network daemon and returns the confined launch command.
 func (h *Host) Up(_ context.Context, box state.Box, instance vm.Instance) (app.Session, error) {
 	host, err := h.Store.LoadHost()
@@ -168,10 +173,14 @@ func (h *Host) prepareRunDir(name string) (string, error) {
 	return filepath.EvalSymlinks(dir)
 }
 
+func gatewaySocket(dir string) string {
+	return filepath.Join(dir, "net.sock")
+}
+
 func daemonConfig(box state.Box, dir string, lan bool) vmnet.Config {
 	return vmnet.Config{
 		Name:       box.Name,
-		Socket:     filepath.Join(dir, "net.sock"),
+		Socket:     gatewaySocket(dir),
 		SSHPublish: vmnet.Endpoint{IP: state.HostIP(lan), Port: box.SSHPort},
 		SSHTarget:  state.DriverSSHPort(box.Index),
 		LogFile:    state.NetworkLogPath(dir),

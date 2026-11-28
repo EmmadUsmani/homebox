@@ -76,9 +76,24 @@ func defaultUser() (string, error) {
 	return name[:min(len(name), 31)], nil
 }
 
+func (s *Service) validateSocketPaths(name string) error {
+	type validator interface{ ValidateSocketPaths(string) error }
+	for _, component := range []any{s.Driver, s.Isolation} {
+		if checker, ok := component.(validator); ok {
+			if err := checker.ValidateSocketPaths(name); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 // New reserves a box record, creates its VM and provisions the guest.
 func (s *Service) New(ctx context.Context, options NewOptions) error {
 	if err := state.ValidateName(options.Name); err != nil {
+		return err
+	}
+	if err := s.validateSocketPaths(options.Name); err != nil {
 		return err
 	}
 	if options.CPUs < 0 || options.MemoryGiB < 0 || options.DiskGiB < 0 {

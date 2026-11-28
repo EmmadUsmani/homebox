@@ -82,6 +82,10 @@ func (s *Service) RebuildImage(ctx context.Context, profileName, version string)
 	if err != nil {
 		return err
 	}
+	options, err = s.baseBuildOptions(options)
+	if err != nil {
+		return err
+	}
 	return s.Store.WithLock(func() error {
 		return s.rebuildBase(ctx, driver, profile, options, user)
 	})
@@ -110,10 +114,21 @@ func (s *Service) profileBase(ctx context.Context, options NewOptions, profile g
 	case !errors.Is(err, os.ErrNotExist):
 		return "", err
 	}
+	options, err = s.baseBuildOptions(options)
+	if err != nil {
+		return "", err
+	}
 	if err := s.rebuildBase(ctx, driver, profile, options, user); err != nil {
 		return "", err
 	}
 	return name, nil
+}
+
+func (s *Service) baseBuildOptions(options NewOptions) (NewOptions, error) {
+	options.Name = "b" + strings.ToLower(rand.Text()[:4])
+	options.Image, options.ForceProvision = "", true
+	options.CPUs, options.MemoryGiB, options.DiskGiB = min(options.CPUs, 4), min(options.MemoryGiB, 6), baseImageDiskGiB
+	return options, s.validateSocketPaths(options.Name)
 }
 
 func (s *Service) rebuildBase(ctx context.Context, driver baseImageDriver, profile guest.Profile, options NewOptions, user string) (err error) {
@@ -132,9 +147,6 @@ func (s *Service) rebuildBase(ctx context.Context, driver baseImageDriver, profi
 	if err != nil {
 		return err
 	}
-	options.Name = "b" + strings.ToLower(rand.Text()[:4])
-	options.Image, options.ForceProvision = "", true
-	options.CPUs, options.MemoryGiB, options.DiskGiB = min(options.CPUs, 4), min(options.MemoryGiB, 6), baseImageDiskGiB
 	s.progress("Building profile base image %s", name)
 	buildErr := s.newBox(ctx, options, profile, user, true)
 	var provisionErr *ProvisionError
