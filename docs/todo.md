@@ -65,6 +65,13 @@ Left to do:
 - Run the VMs as a separate macOS user, so Unix permissions protect the
   owner's files even if a sandbox has a gap.
 
+## Follow up on the Mac isolation review
+
+Add controlled guest-side DNS answers for private destinations, fragment
+reassembly and broadcast dispatch fixtures, and a Files-tab check that renders
+unusual filenames in the Mac GUI. The
+[review](security-review-2026-11-28.md) explains existing coverage and limits.
+
 ## Harden the SSH relay
 
 Done. The relay verifies that the live host process owns the driver's SSH
