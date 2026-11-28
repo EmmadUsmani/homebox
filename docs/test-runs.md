@@ -74,3 +74,4 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T08:33:19.976Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 394.1s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
 | 2026-11-28T08:36:58.200Z | 006e9c5e9902 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 217.0s | fresh |
 | 2026-11-28T08:37:24.579Z | 1d7b34045c1e | no | Mac14,10 | 27.2.1 | batch | partial | e2e | PASS | 6/0/0 | 748.5s | — |
+| 2026-11-28T08:50:36.032Z | 5bf68adbcf20 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 622.2s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
