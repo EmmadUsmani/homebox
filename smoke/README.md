@@ -111,6 +111,14 @@ six skips for host-only phases, News Digest preparation, and the unavailable
 `perf` counter. The laptop reached the published guest web fixtures and
 exercised the native app's [remote views](../docs/observability.md#remote-desktop-phase-2).
 
+On November 27, 2026, all seven areas ran in an Ubuntu amd64 VM restored
+from the [Linux smoke image](../images/homebox-smoke/README.md#recorded-linux-image-2026-11-27)
+on Ubuntu 26.04.1 LTS with KVM and Lima 2.3.0. The restored guest had 2 vCPUs
+and 6 GiB of RAM. The smoke areas reported 203 passes and zero failures.
+The hardware cycle counter and host Chromium sandbox were unavailable.
+The Linux native app and viewer verifiers passed on disposable X11 displays.
+See the [tier results](../docs/test-runs.md).
+
 ## Areas
 
 - [native](native/README.md): C and C++ toolchains, build systems, C libraries, debuggers and sanitizers, Go, Rust, Zig, WebAssembly, foreign-architecture emulation, Homebrew, Nix and apt.

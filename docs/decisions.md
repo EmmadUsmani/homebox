@@ -306,6 +306,12 @@ specific to the hypervisor and CPU. The existing VZ archive layout stays
 readable. Import and restore reject qcow2 references to other files so a
 saved disk needs only the documented host firmware and its own contents.
 
+The Linux smoke implementation added an explicit image option to the batch
+and full tiers so the saved artifact can be exercised end to end. Their
+default still provisions a fresh guest. Linux native desktop checks use a
+disposable X11 display for clipboard and UI fixtures. The macOS Settings
+fixture is reported separately when the runner uses the Linux verifiers.
+
 ## 2026-11-27 · Ubuntu desktop build
 
 The owner requested that the desktop app run on the Ubuntu host. The
