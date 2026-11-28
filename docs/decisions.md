@@ -307,3 +307,15 @@ WebKitGTK viewer inside the existing layout. This keeps the viewer on the
 same platform toolkit as the application while preserving the display proxy
 and pinned SSH path. [Linux viewer isolation](../SECURITY.md#linux-guest-viewer)
 records the WebKitGTK clipboard and navigation limits.
+
+## 2026-11-28 · Mac isolation review
+
+Decided by the lead's worker overnight under the owner's autonomy grant.
+Include loopback aliases in the shared host-interface denial policy. macOS can
+assign other address ranges to loopback interfaces and the existing policy
+already denies the standard loopback address ranges. Drop unsupported IPv4
+protocols before stack processing while preserving fragmentation for supported
+transports. Treat a failure reported
+by a guest doctor check as a command failure even when SSH returns zero.
+The [Mac isolation review](security-review-2026-11-28.md) records the checks
+and residual limits.

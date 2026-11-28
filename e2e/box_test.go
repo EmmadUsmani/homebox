@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -249,6 +250,8 @@ nohup python3 -m http.server 8000 --bind 0.0.0.0 --directory "$dir" </dev/null >
 		t.Fatalf("curl response = %q", output)
 	}
 
+	checkUnpublishedPort(t, name, box)
+
 	config := box(time.Minute, "ssh-config", "--host", "example.local")
 	for _, want := range []string{"Host " + name, "HostName example.local", fmt.Sprintf("Port %d", record.SSHPort), "User " + record.User} {
 		if !strings.Contains(config, want+"\n") {
@@ -315,6 +318,39 @@ func assertRunning(t *testing.T, listing, name string) {
 		}
 	}
 	t.Fatalf("%s is missing or stopped:\n%s", name, listing)
+}
+
+func checkUnpublishedPort(t *testing.T, name string, box func(time.Duration, ...string) string) {
+	t.Helper()
+	candidate, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := candidate.Addr().(*net.TCPAddr).Port
+	if err := candidate.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	const marker = "homebox unpublished"
+	box(time.Minute, "ssh", name, "--", fmt.Sprintf(`set -eu
+dir=$(mktemp -d)
+printf '%s\n' > "$dir/index.html"
+nohup timeout 40s python3 -m http.server %d --bind 0.0.0.0 --directory "$dir" >"$dir/server.log" 2>&1 </dev/null &
+curl -q --noproxy '*' -fsS --retry 5 --retry-connrefused --retry-delay 1 --max-time 2 http://127.0.0.1:%d/ | grep -Fx '%s'
+`, marker, port, port, marker))
+	// The short-lived fixture belongs to the disposable VM. Sample long
+	// enough for background listener discovery to observe a working server.
+	address := net.JoinHostPort("127.0.0.1", strconv.Itoa(port))
+	until := time.Now().Add(10 * time.Second)
+	for time.Now().Before(until) {
+		conn, err := net.DialTimeout("tcp4", address, 250*time.Millisecond)
+		if err == nil {
+			conn.Close()
+			t.Fatalf("host opened a listener for unpublished guest port %d", port)
+		}
+		time.Sleep(250 * time.Millisecond)
+	}
+	box(time.Minute, "ssh", name, "--", fmt.Sprintf("curl -q --noproxy '*' -fsS --max-time 2 http://127.0.0.1:%d/ | grep -Fx '%s'", port, marker))
 }
 
 func checkHTTP(t *testing.T, url string) {

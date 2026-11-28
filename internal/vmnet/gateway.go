@@ -230,11 +230,19 @@ func guestFrame(frame []byte) bool {
 		if !packet.IsValid(len(payload)) {
 			return false
 		}
+		protocol := packet.TransportProtocol()
 		if packet.SourceAddress() == guestAddress {
-			return packet.DestinationAddress() != gatewayAddress || packet.TransportProtocol() != icmp.ProtocolNumber4
+			switch protocol {
+			case tcp.ProtocolNumber, udp.ProtocolNumber:
+				return true
+			case icmp.ProtocolNumber4:
+				return packet.DestinationAddress() != gatewayAddress
+			default:
+				return false
+			}
 		}
 		return packet.SourceAddress() == header.IPv4Any && packet.DestinationAddress() == header.IPv4Broadcast &&
-			packet.TransportProtocol() == udp.ProtocolNumber
+			protocol == udp.ProtocolNumber
 	default:
 		return false
 	}

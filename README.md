@@ -433,6 +433,7 @@ shellcheck --shell=sh guest/*/*.sh
 - [Code architecture](docs/architecture.md): packages and dependency rules.
 - [Decisions](docs/decisions.md): why each design decision was made, and what was turned down.
 - [Security model](SECURITY.md): what homebox protects, how, and what it doesn't.
+- [Mac isolation review](docs/security-review-2026-11-28.md): controls, coverage and limits.
 - [Guest smoke tests](smoke/README.md): development checks with a Mac-side container image cache for repeat runs.
 - [Local test runs](docs/test-runs.md): recorded results by tier.
 - [Mac host setup](docs/host-setup-macos.md): keeping a Mac on and reachable (work in progress).

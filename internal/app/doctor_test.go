@@ -73,6 +73,12 @@ func TestDoctor(t *testing.T) {
 		t.Fatal("named stopped VM passed doctor")
 	}
 
+	ssh.scriptOutput = "FAIL deny-tcp-canary: unexpected response\n"
+	if err := service.Doctor(t.Context(), "working"); err == nil || !strings.Contains(err.Error(), "guest reported failed checks") {
+		t.Fatalf("doctor accepted a failed check with a successful guest exit: %v", err)
+	}
+	ssh.scriptOutput = ""
+
 	guestFail := errors.New("guest diagnostic failed")
 	ssh.fail = guestFail
 	service.Progress.(*bytes.Buffer).Reset()
@@ -86,7 +92,7 @@ func TestDoctor(t *testing.T) {
 			t.Fatalf("output %q missing %q", output, want)
 		}
 	}
-	if len(ssh.calls) != 3 || probes != 3 || cleanups != 3 || strings.Contains(output, "Checking stopped") {
+	if len(ssh.calls) != 4 || probes != 4 || cleanups != 4 || strings.Contains(output, "Checking stopped") {
 		t.Fatalf("unexpected execution: %q, SSH %v, probes %d, cleanups %d", output, ssh.calls, probes, cleanups)
 	}
 }
