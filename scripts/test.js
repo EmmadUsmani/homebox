@@ -250,15 +250,23 @@ async function runSuite(options) {
                 } else if (capture("sh", ["-c", "command -v xvfb-run"]).status !== 0) {
                     report("desktop-verification", "SKIP", "0.0s", "install xvfb for a disposable Linux display");
                 } else {
-                    selected.desktopUI = true;
                     fs.mkdirSync(desktopArtifacts);
                     await linuxVerifier("desktop-viewer", "verify-desktop-isolation-linux.js", [
                         path.join(desktopArtifacts, "viewer"), "--replace-clipboard",
                     ]);
                     await linuxVerifier("desktop-linux", "verify-linux.js", [path.join(desktopArtifacts, "app")]);
-                }
-                if (tier === "full") {
-                    report("desktop-settings-actions", "SKIP", "0.0s", "publishing, resizing and repinning UI fixture uses macOS Accessibility");
+                    if (tier === "full") {
+                        await linuxVerifier("desktop-linux-lifecycle", "verify-linux.js", [
+                            path.join(desktopArtifacts, "lifecycle"),
+                            path.join(root, "desktop/dist/homebox-linux/homebox"), "--create-delete",
+                        ], {
+                            ...env, HOMEBOX_FIRST_INDEX: String(index), GDK_DEBUG: "no-portals",
+                            HOMEBOX_VERIFY_NATIVE_DIALOGS: "1", HOMEBOX_VERIFY_CLIPBOARD: "1",
+                        });
+                    }
+                    // Full Linux verification exercises the VM-backed tabs on the
+                    // GUI-created VM. Keep the CLI fixture for explicit image runs.
+                    selected.desktopUI = tier !== "full" || explicitImage || keep;
                 }
             }
         }

@@ -140,10 +140,10 @@ class Keyboard:
 
     def type(self, text):
         for letter in text:
-            self.key("space" if letter == " " else letter)
+            self.key({" ": "space", "-": "minus"}.get(letter, letter))
 
 
-def verify_vm(pid, output, vm, binary):
+def verify_vm(pid, output, vm, binary, created=False):
     window = wait_for(lambda: app_window(pid), "Homebox window")
     press(window, re.escape(vm) + ".*")
     named(window, "Stop", "button")
@@ -194,7 +194,13 @@ def verify_vm(pid, output, vm, binary):
 
     press(window, "Desktop", "page tab")
     press(window, "Connect")
-    named(window, "Copy from VM", "button")
+    if created:
+        press(window, "Install desktop")
+        visible_text(window, "Installing the desktop layer")
+        screenshot(pid, "homebox", output / "linux-desktop-install.png")
+        enabled(window, "Connect", timeout=900)
+        press(window, "Connect")
+    named(window, "Copy from VM", "button", 60)
     time.sleep(3)
     screenshot(pid, "homebox", output / "linux-vm-desktop.png")
 
@@ -225,12 +231,12 @@ def verify_vm(pid, output, vm, binary):
     press(window, "Overview", "page tab")
 
     remote = os.getenv("HOMEBOX_VERIFY_REMOTE_ALIAS")
-    if remote:
+    if remote and not created:
         press(window, re.escape(remote) + r".*\breachable")
         check_terminal(marker + "remote")
         screenshot(pid, "homebox", output / "linux-vm-pinned-ssh.png")
 
-    if os.getenv("HOMEBOX_VERIFY_LIFECYCLE") == "1":
+    if not created and os.getenv("HOMEBOX_VERIFY_LIFECYCLE") == "1":
         press(window, re.escape(vm) + ".*")
         press(window, "Stop")
         named(window, re.escape(vm) + r".*\bstopped", "button", 60)
@@ -245,6 +251,136 @@ def verify_vm(pid, output, vm, binary):
         screenshot(pid, "homebox", output / "linux-vm-restarted.png")
 
     print("Linux VM desktop smoke passed")
+
+def enabled(window, name, role="button", timeout=12):
+    return wait_for(
+        lambda: next((node for node in descendants(window)
+                      if re.fullmatch(name, node.get_name()) and node.get_role_name() == role
+                      and node.get_state_set().contains(Atspi.StateType.ENABLED)), None),
+        f"enabled {name}", timeout,
+    )
+
+
+def enter(window, keyboard, name, value):
+    node = enabled(window, re.escape(name) + r"(?: .*)?", "entry")
+    if not Atspi.Component.grab_focus(node):
+        raise RuntimeError(f"Failed to focus {name}")
+    keyboard.key("a", "Control_L")
+    keyboard.type(value)
+    wait_for(lambda: Atspi.Text.get_text(node, 0, -1) == value,
+             f"{name} input to receive the fixture value")
+
+
+def operation(window, success, failure, timeout=1800):
+    def result():
+        for node in descendants(window):
+            name = node.get_name()
+            if node.get_text_iface() and not name:
+                name = Atspi.Text.get_text(node, 0, -1) or ""
+            if name.startswith(failure):
+                raise RuntimeError(name)
+            if name.startswith(success):
+                return True
+        return False
+
+    wait_for(result, success, timeout)
+
+
+def verify_create_delete(pid, output, binary, vm):
+    window = wait_for(lambda: app_window(pid), "Homebox window")
+    state = Path(os.environ["HOMEBOX_HOME"])
+    box = Path(binary).with_name("box")
+
+    def capture(step):
+        screenshot(pid, "homebox", output / f"linux-lifecycle-{step}.png")
+
+    def cli(*args):
+        return subprocess.check_output([box, *args], text=True, timeout=15)
+
+    named(window, "No VMs on this host", "heading")
+    press(window, "Set up this host")
+    operation(window, "Host setup complete", "Host setup failed", 60)
+    capture("host-setup")
+    enabled(window, "New VM")
+    press(window, "New VM")
+    enabled(window, "Create VM")
+    keyboard = Keyboard(pid)
+    enter(window, keyboard, "VM name", vm)
+    enter(window, keyboard, "CPUs", "2")
+    enter(window, keyboard, "Memory (GiB)", "4")
+    capture("new-vm")
+    press(window, "Create VM")
+    visible_text(window, "Creating VM…")
+    capture("creating")
+    operation(window, "VM created", "VM creation failed")
+    named(window, vm + r".*\brunning", "button", 60)
+    capture("created")
+    record = state / "boxes" / vm / "box.json"
+    size = json.loads(record.read_text())
+    if (size["cpus"], size["memory_gib"]) != (2, 4):
+        raise RuntimeError("New VM did not use the entered CPU and memory values")
+
+    cli("ssh", vm, "--", 'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"')
+    verify_vm(pid, output, vm, binary, created=True)
+
+    press(window, "More")
+    press(window, "Re-run provisioning")
+    visible_text(window, "Provisioning VM…")
+    capture("provisioning")
+    operation(window, "Provisioning complete", "Provisioning failed")
+    capture("provisioned")
+
+    press(window, "Stop")
+    named(window, vm + r".*\bstopped", "button", 120)
+    capture("stopped")
+    press(window, "Settings", "page tab")
+    enter(window, keyboard, "Memory (GiB)", "3")
+    enabled(window, "Save VM size")
+    press(window, "Save VM size")
+    visible_text(window, "VM size saved.")
+    if json.loads(record.read_text())["memory_gib"] != 3:
+        raise RuntimeError("Resized memory was not persisted")
+    capture("resized")
+    host_port = 20000 + 100 * int(os.environ.get("HOMEBOX_FIRST_INDEX", "1"))
+    enter(window, keyboard, "Guest port", "9000")
+    enter(window, keyboard, "Host port", str(host_port))
+    press(window, "Publish port")
+    press(accessible_app(pid), "Publish")
+    visible_text(window, "Published ports updated.")
+    visible_text(window, f"Guest 9000 → 127.0.0.1:{host_port}")
+    capture("port-published")
+    press(window, "Overview", "page tab")
+    press(window, "Start")
+    named(window, vm + r".*\brunning", "button", 180)
+
+    def ssh_ready():
+        try:
+            return subprocess.run([box, "ssh", vm, "--", "true"], capture_output=True,
+                                  timeout=5).returncode == 0
+        except subprocess.TimeoutExpired:
+            return False
+
+    wait_for(ssh_ready, "SSH after restarting the guest", 120)
+    capture("restarted")
+
+    press(window, "More")
+    press(window, "Delete VM…")
+    confirmation = f"Type {vm} to confirm"
+    enter(window, keyboard, confirmation, "wrong")
+    if named(window, "Delete VM", "button").get_state_set().contains(Atspi.StateType.ENABLED):
+        raise RuntimeError("Delete accepted an incorrect name")
+    capture("delete-disabled")
+    enter(window, keyboard, confirmation, vm)
+    enabled(window, "Delete VM")
+    capture("delete-confirmation")
+    press(window, "Delete VM")
+    operation(window, "VM deleted", "VM deletion failed", 120)
+    named(window, "No VMs on this host", "heading")
+    if any((state / directory / vm).exists() for directory in ("boxes", "lima")):
+        raise RuntimeError("VM state remains after deletion")
+    capture("deleted")
+    print("Linux desktop create, provision, resize, publish, restart and delete passed")
+
 
 def verify(pid, output):
     window = wait_for(lambda: app_window(pid), "Homebox window")
@@ -294,11 +430,17 @@ def verify(pid, output):
 
 if __name__ == "__main__":
     try:
-        if len(sys.argv) > 3:
+        if len(sys.argv) > 3 and sys.argv[3] == "--create-delete":
+            verify_create_delete(int(sys.argv[1]), Path(sys.argv[2]), sys.argv[4], sys.argv[5])
+        elif len(sys.argv) > 3:
             verify_vm(int(sys.argv[1]), Path(sys.argv[2]), sys.argv[3], sys.argv[4])
         else:
             verify(int(sys.argv[1]), Path(sys.argv[2]))
     except RuntimeError:
+        try:
+            screenshot(int(sys.argv[1]), "homebox", Path(sys.argv[2]) / "linux-failure.png")
+        except RuntimeError:
+            pass
         window = app_window(int(sys.argv[1]))
         if window:
             for node in descendants(window):
