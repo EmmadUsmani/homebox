@@ -390,8 +390,8 @@ def verify_create_delete(pid, output, binary, vm):
     press(window, "Delete VM")
     operation(window, "VM deleted", "VM deletion failed", 120)
     named(window, "No VMs on this host", "heading")
-    if any((state / directory / vm).exists() for directory in ("boxes", "lima")):
-        raise RuntimeError("VM state remains after deletion")
+    if record.exists() or (state / "lima" / vm).exists():
+        raise RuntimeError("VM record or Lima instance remains after deletion")
     capture("deleted")
     print("Linux desktop create, provision, resize, publish, restart and delete passed")
 
