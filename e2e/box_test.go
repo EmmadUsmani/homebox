@@ -216,7 +216,14 @@ import urllib.request
 
 with urllib.request.urlopen("https://example.com", timeout=8) as response:
     assert response.status == 200
-subprocess.run(["nslookup", "example.com", "9.9.9.9"], timeout=8, check=True)
+for resolver in ("1.1.1.1", "8.8.8.8"):
+    try:
+        subprocess.run(["nslookup", "example.com", resolver], timeout=8, check=True)
+        break
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired):
+        pass
+else:
+    raise RuntimeError("direct DNS from Docker failed against both public resolvers")
 for target in sys.argv[1:]:
     host, port = target.split(":")
     for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
