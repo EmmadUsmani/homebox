@@ -98,3 +98,5 @@ check also passed.
 | 2026-11-28T09:29:42.839Z | d2419b4dc947 | no | Mac14,10 | 27.2.1 | batch | partial | os, doctor, e2e | PASS | 12/0/0 | 1076.5s | fresh |
 | 2026-11-28T09:31:00.832Z | 413d9227ac10 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 908.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
 | 2026-11-28T09:42:47.708Z | cc2f6ffa0589 | no | Mac14,10 | 27.2.1 | change | default | e2e | PASS | 6/0/0 | 723.3s | — |
+| 2026-11-28T10:03:28.243Z | 6a31e8a16723 | no | Mac14,10 | 27.2.1 | change | default | static | PASS | 5/0/0 | 12.0s | — |
+| 2026-11-28T10:08:32.165Z | 6a31e8a16723 | no | Mac14,10 | 27.2.1 | change | partial | gui, doctor | PASS | 10/0/0 | 303.8s | fresh |
