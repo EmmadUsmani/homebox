@@ -99,3 +99,8 @@ check also passed.
 | 2026-11-28T09:16:30.655Z | 86dcbcb53521 | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 13/0/0 | 1112.0s | fresh |
 | 2026-11-28T09:19:30.205Z | b57e5254f3d4 | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | static | PASS | 5/0/0 | 8.7s | — |
 | 2026-11-28T09:31:00.832Z | 413d9227ac10 | no | Mac14,10 | 27.2.1 | change | default | doctor, e2e | PASS | 11/0/0 | 908.7s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T09:33:59.415Z | 3a0f788ac4d6 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | FAIL | 10/1/0 | 900.3s | fresh |
+| 2026-11-28T09:41:54.614Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | FAIL | 6/1/2 | 30.3s | — |
+| 2026-11-28T09:48:50.623Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | change | default | android, doctor | PASS | 10/0/1 | 402.3s | homebox-smoke from ~/.homebox (disk SHA-256 424f1ab36dfd5d96801e3929a4897fee8dfd82a628efb38de8ede13e55e7e508) |
+| 2026-11-28T10:03:09.008Z | e5a25e3836da | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | FAIL | 10/1/0 | 828.3s | fresh |
+| 2026-11-28T10:07:45.447Z | 085e17158d73 | no | MS-7D31 | Ubuntu 26.04.1 LTS | full | partial | android | PASS | 11/0/0 | 226.2s | fresh |
