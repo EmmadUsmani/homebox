@@ -142,43 +142,58 @@ func verify(_ bundle: String, _ state: String, _ name: String, _ screenshots: St
         }
     }
 
-    func key(_ code: CGKeyCode) {
+    func key(_ code: CGKeyCode, throughWindowServer: Bool = false) throws {
+        guard NSWorkspace.shared.frontmostApplication?.processIdentifier == pid else {
+            throw Failure(message: "Settings focus lost before editing a field")
+        }
         for down in [true, false] {
             let event = CGEvent(keyboardEventSource: nil, virtualKey: code, keyDown: down)
-            event?.postToPid(pid)
+            event?.flags = []
+            if throughWindowServer { event?.post(tap: .cghidEventTap) }
+            else { event?.postToPid(pid) }
+            Thread.sleep(forTimeInterval: 0.05)
         }
     }
 
     func fill(_ label: String, _ value: String, from previous: Int? = nil) throws {
-        try raiseWindow()
         let field = try find(label, in: window, roles: ["AXTextField"])
-        guard AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success else {
-            throw Failure(message: "Could not focus \(label)")
+        func focus() throws {
+            try raiseWindow()
+            guard AXUIElementSetAttributeValue(field, kAXFocusedAttribute as CFString, kCFBooleanTrue) == .success else {
+                throw Failure(message: "Could not focus \(label)")
+            }
+            _ = try waitFor("keyboard focus in \(label)", seconds: 3) {
+                let focused: Bool? = attribute(field, kAXFocusedAttribute)
+                return focused == true ? true : nil
+            }
         }
-        _ = try waitFor("keyboard focus in \(label)", seconds: 3) {
-            let focused: Bool? = attribute(field, kAXFocusedAttribute)
-            return focused == true ? true : nil
-        }
+
+        let inputs: [(CGKeyCode, String)]
         if let previous, let target = Int(value) {
-            for _ in 0..<abs(target - previous) {
-                key(target > previous ? 126 : 125)
+            let direction = target > previous ? 1 : -1
+            inputs = (0..<abs(target - previous)).map { offset in
+                (direction > 0 ? 126 : 125, String(previous + direction * (offset + 1)))
             }
         } else {
             let digitKeys: [CGKeyCode] = [29, 18, 19, 20, 21, 23, 22, 26, 28, 25]
-            for character in value {
-                key(digitKeys[character.wholeNumberValue!])
-                Thread.sleep(forTimeInterval: 0.1)
+            inputs = value.enumerated().map { offset, digit in
+                (digitKeys[digit.wholeNumberValue!], String(value.prefix(offset + 1)))
             }
         }
-        do {
-            _ = try waitFor("value in \(label)", seconds: 4) { () -> Bool? in
+
+        try focus()
+        for (code, expected) in inputs {
+            func expectedValue() -> Bool? {
                 let text: String? = attribute(field, kAXValueAttribute)
                 let number: NSNumber? = attribute(field, kAXValueAttribute)
-                return text == value || number?.stringValue == value ? true : nil
+                return text == expected || number?.stringValue == expected ? true : nil
             }
-        } catch {
-            let actual: Any? = attribute(field, kAXValueAttribute)
-            throw Failure(message: "Expected \(label) to equal \(value), got \(String(describing: actual))")
+            try key(code)
+            if (try? waitFor("value in \(label)", seconds: 1, expectedValue)) == nil {
+                try focus()
+                try key(code, throughWindowServer: true)
+                _ = try waitFor("\(label) to reach \(expected)", seconds: 4, expectedValue)
+            }
         }
     }
 
