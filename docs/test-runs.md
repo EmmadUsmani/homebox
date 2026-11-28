@@ -33,3 +33,13 @@ partial passes separately. The VM source is recorded for new runs. The
 | 2026-11-28T05:02:15.801Z | 1de9a8577d20 | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 13/2/0 | 355.9s | fresh |
 | 2026-11-28T05:26:22.303Z | 07937da1852f | no | Mac14,10 | 27.2.1 | change | default | os, runtimes, doctor, e2e | PASS | 12/0/0 | 1066.3s | fresh |
 | 2026-11-28T05:42:01.904Z | e26dc3c492f3 | no | Mac14,10 | 27.2.1 | change | partial | desktop | FAIL | 10/1/0 | 191.3s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T05:54:43.253Z | c714943edddd | yes | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 10/2/0 | 321.8s | fresh |
+| 2026-11-28T06:22:46.829Z | e7893e83d97a | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 14/1/0 | 417.6s | fresh |
+| 2026-11-28T06:26:07.476Z | f4f19f6b665d | no | Mac14,10 | 27.2.1 | change | default | desktop | FAIL | 10/1/0 | 193.2s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T06:41:47.339Z | 063afafa5505 | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 11/0/0 | 183.5s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
+| 2026-11-28T06:49:46.265Z | 063afafa5505 | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 478.9s | fresh |
+| 2026-11-28T06:55:41.618Z | 063afafa5505 | no | Mac14,10 | 27.2.1 | full | partial | desktop | FAIL | 14/1/0 | 355.3s | fresh |
+| 2026-11-28T07:03:02.414Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 388.7s | fresh |
+| 2026-11-28T07:09:45.465Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 403.0s | fresh |
+| 2026-11-28T07:16:48.094Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | full | partial | desktop | PASS | 15/0/0 | 422.5s | fresh |
+| 2026-11-28T07:19:56.190Z | 0fa36e510d7b | no | Mac14,10 | 27.2.1 | change | default | desktop | PASS | 11/0/0 | 188.0s | homebox-smoke from ~/.homebox (disk SHA-256 8ce466a4b8e0245c4c1b365237decca45acf25992f311bbe9c3011f601ac9cc0) |
