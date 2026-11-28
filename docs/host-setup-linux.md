@@ -105,6 +105,12 @@ See [Testing](../README.md#testing) for tier selection, evidence and options,
 and [the smoke image recipe](../images/homebox-smoke/README.md) for building
 the local amd64 image used by the change tier.
 
+The full tier exercises the Linux app and its native viewer using
+`xvfb-run` and `dbus-run-session`. Install the verifier dependencies below.
+For the separate Chromium framebuffer and input smoke, install a host Chromium
+or Chrome whose sandbox can start under Ubuntu AppArmor. The runner reports
+when either verification is unavailable.
+
 ## Install desktop build dependencies
 
 The full contributor setup includes the GTK4, WebKitGTK 6.0 and X11

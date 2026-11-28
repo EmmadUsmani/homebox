@@ -104,6 +104,9 @@ async function runSuite(options) {
     fs.mkdirSync(resultsRoot, { recursive: true });
     const results = fs.mkdtempSync(path.join(resultsRoot, `${tier}-${new Date().toISOString().slice(0, 10)}-`));
     const steps = [];
+    const linux = process.platform === "linux";
+    const desktopScripts = path.join(root, "desktop/scripts");
+    const desktopArtifacts = path.join(results, "desktop");
     let scratch;
     let active;
     let interrupted;
@@ -207,11 +210,23 @@ async function runSuite(options) {
                     selected.desktopUI = true;
                     await run("desktop-viewer", "node", ["desktop/scripts/verify-desktop-isolation.js"]);
                 }
+            } else if (built && !interrupted && linux) {
+                if (!fs.existsSync(path.join(desktopScripts, "verify-linux.js"))) {
+                    report("desktop-verification", "SKIP", "0.0s", "this checkout predates the Linux verifier");
+                } else if (capture("sh", ["-c", "command -v xvfb-run"]).status !== 0) {
+                    report("desktop-verification", "SKIP", "0.0s", "install xvfb for a disposable Linux display");
+                } else {
+                    selected.desktopUI = true;
+                    fs.mkdirSync(desktopArtifacts);
+                    await linuxVerifier("desktop-viewer", "verify-desktop-isolation-linux.js", [
+                        path.join(desktopArtifacts, "viewer"), "--replace-clipboard",
+                    ]);
+                    await linuxVerifier("desktop-linux", "verify-linux.js", [path.join(desktopArtifacts, "app")]);
+                }
+                if (tier === "full") {
+                    report("desktop-settings-actions", "SKIP", "0.0s", "publishing, resizing and repinning UI fixture uses macOS Accessibility");
+                }
             }
-        }
-
-        if (selected.desktop && process.platform === "linux") {
-            report("desktop-verification", "SKIP", "0.0s", "Linux desktop verifier is pending integration");
         }
 
         if (selected.smoke.length || selected.doctor || selected.desktopUI) {
@@ -331,22 +346,46 @@ async function runSuite(options) {
         return ["--image", image, ...vmSize];
     }
 
+    function linuxVerifier(name, script, args, settings = env) {
+        return run(name, "dbus-run-session", ["--", "xvfb-run", "-a", "node",
+            path.join(desktopScripts, script), ...args], settings);
+    }
+
     async function desktopChecks() {
+        if (linux) {
+            if (await box("desktop-install", "desktop", vm, "--install") &&
+                await box("desktop-file-fixture", "ssh", vm, "--",
+                    'printf "linux editor fixture\n" > "$HOME/homebox-linux-fixture.txt"')) {
+                const settings = {
+                    ...env, GDK_DEBUG: "no-portals", HOMEBOX_VERIFY_NATIVE_DIALOGS: "1",
+                    HOMEBOX_VERIFY_CLIPBOARD: "1", HOMEBOX_VERIFY_LIFECYCLE: tier === "full" ? "1" : "0",
+                };
+                // Supply the verifier's disposable SSH fixture.
+                delete settings.HOMEBOX_DESKTOP_SSH_CONFIG;
+                delete settings.HOMEBOX_DESKTOP_SSH_KNOWN_HOSTS;
+                delete settings.HOMEBOX_VERIFY_REMOTE_ALIAS;
+                await linuxVerifier("desktop-linux-vm", "verify-linux.js", [
+                    path.join(desktopArtifacts, "vm"), path.join(root, "desktop/dist/homebox-linux/homebox"), vm,
+                ], settings);
+            } else {
+                report("desktop-linux-vm", "SKIP", "0.0s", "VM desktop preparation failed");
+            }
+            return;
+        }
+
         const bundle = path.join(root, "desktop/dist/homebox.app");
-        const scripts = path.join(root, "desktop/scripts");
-        const artifacts = path.join(results, "desktop");
-        fs.mkdirSync(artifacts);
-        await run("desktop-files", "swift", [path.join(scripts, "verify-files.swift"), bundle,
-            env.HOMEBOX_HOME, artifacts, "normal", `local=${vm}`]);
+        fs.mkdirSync(desktopArtifacts);
+        await run("desktop-files", "swift", [path.join(desktopScripts, "verify-files.swift"), bundle,
+            env.HOMEBOX_HOME, desktopArtifacts, "normal", `local=${vm}`]);
         if (tier === "full") {
             if (await box("desktop-install", "desktop", vm, "--install") &&
                 await box("desktop-deps", "ssh", vm, "--", "sudo -n apt-get update && sudo -n apt-get install -y xdotool")) {
-                await run("desktop-ui", "swift", [path.join(scripts, "verify-desktop.swift"), bundle,
-                    env.HOMEBOX_HOME, vm, artifacts]);
+                await run("desktop-ui", "swift", [path.join(desktopScripts, "verify-desktop.swift"), bundle,
+                    env.HOMEBOX_HOME, vm, desktopArtifacts]);
             }
             // Settings changes the scratch VM's SSH host keys, so run it last.
-            await run("desktop-settings", "swift", [path.join(scripts, "verify-settings.swift"), bundle,
-                env.HOMEBOX_HOME, vm, artifacts, String(20000 + 100 * index)]);
+            await run("desktop-settings", "swift", [path.join(desktopScripts, "verify-settings.swift"), bundle,
+                env.HOMEBOX_HOME, vm, desktopArtifacts, String(20000 + 100 * index)]);
         }
     }
 }
