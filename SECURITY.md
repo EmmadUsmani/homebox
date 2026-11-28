@@ -323,7 +323,10 @@ archives as sensitive files and only import archives you trust. SHA-256 verifies
 disk integrity during archive import. Local `box image copy` uses the source
 store's recorded disk digest, so only copy from a store you control. A VM
 created from an image still uses the normal host isolation
-and gets fresh SSH host keys and pins.
+and gets fresh SSH host keys and pins. QEMU images use standalone qcow2.
+Box checks the header before importing or staging a boot disk and rejects
+backing files and external data files. Linux restores start with the same
+restricted network and confined processes as freshly provisioned VMs.
 
 The [project image recipes](images/README.md) build signed-out guests and
 check known credential paths and common plaintext token formats before saving.
