@@ -94,8 +94,7 @@ uses the socket NIC for egress. The initial profile targets macOS Sequoia
 - Lima's `hdiutil makehybrid` exited successfully but built an ISO full of
   empty files under the original filesystem policy. A control using a
   13-byte input reproduced the failure. Allowing metadata access to the
-  exact APFS Data mount point restored the contents without a new Mach
-  service or directory-content rule.
+  exact APFS Data mount point restored the contents.
 - Sequoia declined its DHCP offer because the gateway answered ARP for the
   offered address during macOS duplicate-address detection. Limiting the
   gateway's ARP handling to its own address fixed DHCP.
@@ -104,3 +103,20 @@ uses the socket NIC for egress. The initial profile targets macOS Sequoia
   for Lima's local ICMP reply. A separate client identity connected through
   the SSH relay over loopback and verified noninteractive sudo and denial
   of SSH agent forwarding.
+
+## iOS Simulator
+
+An M2 host transferred the local Xcode 16.2 app bundle to the confined
+Sequoia guest with tar over pinned SSH. In the guest, `xcodebuild -license
+accept` and `xcodebuild -runFirstLaunch` completed noninteractively.
+CoreSimulator refused to stage the 8.1 GiB runtime image on the 55 GiB
+guest disk. A fresh guest with 4 vCPUs, 8 GiB RAM and an 80 GiB disk
+imported the host's iOS 18.3.1 runtime (`22D8075`) using
+`simctl runtime add --move`. Both assets were already installed locally,
+so staging required no Apple ID sign-in.
+
+The guest compiled a two-label SwiftUI app with the iOS Simulator SDK,
+booted an iPhone 16 headlessly with `simctl`, and installed and launched
+the app. `simctl bootstatus` finished in 45 seconds. The screenshot taken
+with `simctl io booted screenshot` rendered both labels at 1179 × 2556.
+The scratch VMs and both restore-image downloads were removed.

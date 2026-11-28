@@ -47,6 +47,9 @@ admin environment with noninteractive sudo. The Ubuntu tooling,
 saved-image workflows and `box desktop --install` are Ubuntu features.
 See the [macOS guest security model](SECURITY.md#macos-guest-profile).
 
+For iOS development, the [simulator spike](docs/spikes/macos-guests.md#ios-simulator)
+used Xcode 16.2 and an 80 GiB guest disk.
+
 ## Quick start on Ubuntu Linux
 
 Use an x86-64 Ubuntu host with KVM access, Landlock ABI 6 or later,
